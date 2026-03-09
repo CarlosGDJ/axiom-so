@@ -1,4 +1,4 @@
-
+﻿
 'use client';
 
 import { useMemo, useRef } from 'react';
@@ -69,7 +69,7 @@ const DEFAULT_STATS: RPGStats = {
     cortisol: 20,
     foco: 50,
     energia: 50,
-    sueño: 50,
+    sueno: 50,
     conexion_social: 50,
     carga_dopaminergica: 20,
     player_score: 50
@@ -342,13 +342,17 @@ export function useUserData(dateRange?: DateRange) {
     if (typeof globalScore === 'number' && typeof latestDailyScore === 'number') {
       const delta = Math.abs(globalScore - latestDailyScore);
       if (delta >= 12) {
-        // Preferimos señal diaria reciente si el estado global está claramente desfasado.
+        // Preferimos seÃ±al diaria reciente si el estado global estÃ¡ claramente desfasado.
         resolvedPlayerScore = Math.round((globalScore * 0.35) + (latestDailyScore * 0.65));
       }
     }
 
+    const rawStats = (computedGlobalState?.rpg_stats || DEFAULT_STATS) as RPGStats & Record<string, number>;
     const resolvedRpgStats: RPGStats = {
-      ...(computedGlobalState?.rpg_stats || DEFAULT_STATS),
+      ...rawStats,
+      sueno: typeof rawStats.sueno === 'number'
+        ? rawStats.sueno
+        : (typeof rawStats['sueño'] === 'number' ? rawStats['sueño'] : DEFAULT_STATS.sueno),
       player_score: resolvedPlayerScore,
     };
 
@@ -395,3 +399,4 @@ export function useUserData(dateRange?: DateRange) {
 
   return { data: currentData, isLoading };
 }
+

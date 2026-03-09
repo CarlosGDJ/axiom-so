@@ -19,8 +19,10 @@ import {
   DominantVariableInfo,
   DashboardConfig,
   ComputedDailyScore,
+  Protocol,
 } from '@/lib/types';
 import { computeClinicalModelV2 } from '@/lib/model-v2-clinical';
+import { impactMatrixPresets, protocolPresets } from '@/lib/seed-data';
 import { computeAreaScoreAtTime } from '@/lib/area-scoring';
 import { subDays, parseISO, differenceInHours, format } from 'date-fns';
 
@@ -30,7 +32,7 @@ const DECAY_K: Record<string, number> = {
   serotonina: 0.1,
   energia: 0.15,
   foco: 0.3,
-  sueño: 0.08,
+  sueno: 0.08,
   conexion_social: 0.2,
   carga_dopaminergica: 0.4,
 };
@@ -41,7 +43,7 @@ const HORMONE_TO_STATS_MAP: Record<string, string | null> = {
   CORTISOL: 'cortisol',
   FOCUS: 'foco',
   ENERGY: 'energia',
-  MELATONINA: 'sueño',
+  MELATONINA: 'sueno',
   OXITOCINA: 'conexion_social',
   DOPA_LOAD: 'carga_dopaminergica',
   ENDORFINAS: null,
@@ -52,6 +54,141 @@ const HORMONE_TO_STATS_MAP: Record<string, string | null> = {
   GABA: null,
   PARASIMPATICO: null,
 };
+
+function buildHeuristicImpactsForVariable(variable: Variable): ImpactMatrix[] {
+  const polarity = variable.polaridad || 1;
+  const intensity = Math.max(1, variable.impacto_base || 5);
+  const baseDuration = Math.max(2, Math.round(Math.max(0.08, variable.duracion_dias || 0.25) * 24));
+  const tipo = (variable.tipo || '').toLowerCase();
+  const area = (variable.area_id || '').toUpperCase();
+
+  // Core fallback profile:
+  // Positive events raise dopamina/foco/energia/serotonina and lower cortisol/dopa load.
+  // Negative events do the inverse.
+  let dopamina = 6 * polarity;
+  let serotonina = 5 * polarity;
+  let cortisol = -7 * polarity;
+  let focus = 5 * polarity;
+  let energy = 5 * polarity;
+  let dopaLoad = -6 * polarity;
+
+  // Context tuning by domain.
+  if (tipo.includes('social') || area.includes('RELACIONES')) {
+    serotonina += 2 * polarity;
+    cortisol -= 2 * polarity;
+  }
+  if (tipo.includes('financier') || area.includes('FINANZAS')) {
+    cortisol -= 2 * polarity;
+    focus += 1.5 * polarity;
+  }
+  if (area.includes('DOPAMINA') || tipo.includes('conductual')) {
+    dopaLoad -= 2 * polarity;
+    dopamina += 1.5 * polarity;
+  }
+  if (tipo.includes('fís') || tipo.includes('fis') || area.includes('SALUD_FIS')) {
+    energy += 2 * polarity;
+    cortisol -= 1 * polarity;
+  }
+
+  const scale = Math.max(0.5, Math.min(1.8, intensity / 8));
+  const mk = (hormone_id: string, effect_size: number, duration_hours = baseDuration): ImpactMatrix => ({
+    id: `heur_${variable.var_id}_${hormone_id}`,
+    matrix_id: `HEUR_${variable.var_id}_${hormone_id}`,
+    var_id: variable.var_id,
+    hormone_id,
+    effect_size: Math.round(effect_size * scale),
+    duration_hours,
+  });
+
+  return [
+    mk('DOPAMINA', dopamina, Math.max(2, Math.round(baseDuration * 0.8))),
+    mk('SEROTONINA', serotonina, baseDuration),
+    mk('CORTISOL', cortisol, Math.max(2, Math.round(baseDuration * 0.9))),
+    mk('FOCUS', focus, Math.max(2, Math.round(baseDuration * 0.85))),
+    mk('ENERGY', energy, baseDuration),
+    mk('DOPA_LOAD', dopaLoad, Math.max(2, Math.round(baseDuration * 1.2))),
+  ];
+}
+
+function buildVirtualVariableFromEvent(event: Event): Variable {
+  const text = `${event.var_id} ${event.contexto || ''}`.toLowerCase();
+  const isFinancial = text.includes('gasto') || text.includes('dinero') || text.includes('deuda');
+  const isSocial = text.includes('social') || text.includes('persona') || text.includes('relacion');
+  const isPhysical = text.includes('sue') || text.includes('sleep') || text.includes('entreno') || text.includes('cuerpo');
+  const isEnvironmental = text.includes('entorno') || text.includes('orden') || text.includes('ruido');
+
+  const tipo: Variable['tipo'] =
+    isFinancial ? 'Financiera' :
+    isSocial ? 'Social' :
+    isPhysical ? 'FÃ­sica' :
+    isEnvironmental ? 'Entorno' :
+    'Conductual';
+
+  const area_id =
+    isFinancial ? 'FINANZAS' :
+    isSocial ? 'RELACIONES' :
+    isPhysical ? 'SALUD_FIS' :
+    isEnvironmental ? 'ENTORNO' :
+    'SALUD_MENT';
+
+  const durationDays = event.duracion_min && event.duracion_min > 0
+    ? Math.min(2, Math.max(0.08, event.duracion_min / 60 / 24))
+    : 0.25;
+
+  const polarity: 1 | -1 =
+    event.tipo === 'Protocolo'
+      ? 1
+      : (event.impulsivo ? -1 : -1);
+
+  return {
+    id: `virtual_${event.var_id}`,
+    var_id: event.var_id,
+    var_nombre: event.contexto?.trim() || event.var_id,
+    area_id,
+    tipo,
+    polaridad: polarity,
+    impacto_base: Math.max(3, Math.min(12, 3 + (event.intensidad * 1.6))),
+    curva: event.impulsivo ? 'Exponencial' : 'Lineal',
+    delay_dias: 0,
+    duracion_dias: durationDays,
+    umbral_riesgo: 2,
+    controlabilidad: 'Media',
+    activo: true,
+  };
+}
+
+function inferProtocolProxyVarId(
+  event: Event,
+  protocolById: Map<string, { nombre?: string; pasos?: string }>,
+  variableById: Map<string, Variable>,
+): string | null {
+  const meta = protocolById.get(event.var_id);
+  const text = `${event.var_id} ${meta?.nombre || ''} ${meta?.pasos || ''} ${event.contexto || ''}`.toLowerCase();
+  const candidates: Array<{ pattern: RegExp; varId: string }> = [
+    { pattern: /respir|4-7-8|coherencia/, varId: 'BREATHING' },
+    { pattern: /medit/, varId: 'MEDITATION' },
+    { pattern: /camina|walk|naturalez/, varId: 'WALK' },
+    { pattern: /sue|sleep|descans/, varId: 'SUEÑO_PROF' },
+    { pattern: /enfoque|focus|deep work|trabajo profundo/, varId: 'DEEP_WORK' },
+    { pattern: /social|vinculo|relaci/, varId: 'SOCIAL_OK' },
+    { pattern: /orden|entorno/, varId: 'ENV_ORDER' },
+  ];
+
+  for (const candidate of candidates) {
+    if (candidate.pattern.test(text) && variableById.has(candidate.varId)) {
+      return candidate.varId;
+    }
+  }
+
+  if (variableById.has('BREATHING')) return 'BREATHING';
+  if (variableById.has('MEDITATION')) return 'MEDITATION';
+  return null;
+}
+
+function buildCollectionSignature<T>(items: T[] | null | undefined, projector: (item: T) => string): string {
+  if (!items || items.length === 0) return 'none';
+  return items.map(projector).sort().join('||');
+}
 
 const CIRCADIAN_PHASES: Record<string, { peakHour: number; amplitude: number }> = {
   CORTISOL: { peakHour: 8, amplitude: 0.16 },
@@ -67,7 +204,7 @@ const CIRCADIAN_PHASES: Record<string, { peakHour: number; amplitude: number }> 
 const MIN_WRITE_INTERVAL = 1000 * 60 * 5;
 const AUTO_CALIBRATION_INTERVAL_MS = 1000 * 60 * 60 * 24;
 const MIN_CALIBRATION_TRANSITIONS = 10;
-const SLEEP_KEY = 'sueño';
+const SLEEP_KEY = 'sueno';
 const FORCE_ENABLE_CLINICAL_V2 = true;
 
 const clamp = (value: number, min = 0, max = 100) => Math.max(min, Math.min(max, value));
@@ -282,6 +419,9 @@ export function useComputedDataWriter() {
   );
   const { data: historicalEvents } = useCollection<Event>(historicalEventsQuery);
 
+  const protocolsRef = useMemoFirebase(() => (user ? collection(firestore, `users/${user.uid}/protocols`) : null), [user, firestore]);
+  const { data: protocols } = useCollection<Protocol>(protocolsRef);
+
   const calibrationScoresQuery = useMemoFirebase(
     () => (user ? query(collection(firestore, `users/${user.uid}/computed_daily_score`), orderBy('fecha', 'desc'), limit(50)) : null),
     [user, firestore],
@@ -319,19 +459,19 @@ export function useComputedDataWriter() {
     [hormones],
   );
   const impactMatrixSig = useMemo(
-    () => (impactMatrix ? `${impactMatrix.length}:${impactMatrix[0]?.id ?? ''}:${impactMatrix[impactMatrix.length - 1]?.id ?? ''}` : 'none'),
+    () => buildCollectionSignature(impactMatrix, (im) => `${im.id}|${im.var_id}|${im.hormone_id}|${im.effect_size}|${im.duration_hours}`),
     [impactMatrix],
   );
   const variablesSig = useMemo(
-    () => (variables ? `${variables.length}:${variables[0]?.id ?? ''}:${variables[variables.length - 1]?.id ?? ''}` : 'none'),
+    () => buildCollectionSignature(variables, (v) => `${v.id}|${v.var_id}|${v.area_id}|${v.impacto_base}|${v.polaridad}|${v.curva}|${v.delay_dias}|${v.duracion_dias}`),
     [variables],
   );
   const eventsSig = useMemo(
-    () => (events ? `${events.length}:${events[0]?.id ?? ''}:${events[events.length - 1]?.id ?? ''}` : 'none'),
+    () => buildCollectionSignature(events, (e) => `${e.id}|${e.var_id}|${e.tipo}|${e.intensidad}|${e.impulsivo ? 1 : 0}|${e.fecha}`),
     [events],
   );
   const interactionsSig = useMemo(
-    () => (interactions ? `${interactions.length}:${interactions[0]?.id ?? ''}:${interactions[interactions.length - 1]?.id ?? ''}` : 'none'),
+    () => buildCollectionSignature(interactions, (i) => `${i.id}|${i.persona_id}|${i.energia_resultante}|${i.respeto_percibido}|${i.fecha}`),
     [interactions],
   );
   const relationsSig = useMemo(
@@ -339,12 +479,16 @@ export function useComputedDataWriter() {
     [relations],
   );
   const transactionsSig = useMemo(
-    () => (transactions ? `${transactions.length}:${transactions[0]?.id ?? ''}:${transactions[transactions.length - 1]?.id ?? ''}` : 'none'),
+    () => buildCollectionSignature(transactions, (t) => `${t.id}|${t.tipo}|${t.categoria}|${t.monto}|${t.impulsivo ? 1 : 0}|${t.fecha}`),
     [transactions],
   );
   const historicalEventsSig = useMemo(
-    () => (historicalEvents ? `${historicalEvents.length}:${historicalEvents[0]?.id ?? ''}:${historicalEvents[historicalEvents.length - 1]?.id ?? ''}` : 'none'),
+    () => buildCollectionSignature(historicalEvents, (e) => `${e.id}|${e.var_id}|${e.tipo}|${e.intensidad}|${e.impulsivo ? 1 : 0}|${e.fecha}`),
     [historicalEvents],
+  );
+  const protocolsSig = useMemo(
+    () => (protocols ? `${protocols.length}:${protocols[0]?.id ?? ''}:${protocols[protocols.length - 1]?.id ?? ''}` : 'none'),
+    [protocols],
   );
   const calibrationScoresSig = useMemo(
     () => (calibrationScores ? `${calibrationScores.length}:${calibrationScores[0]?.id ?? ''}:${calibrationScores[calibrationScores.length - 1]?.id ?? ''}` : 'none'),
@@ -374,14 +518,75 @@ export function useComputedDataWriter() {
     const safeTransactions = transactions ?? [];
     const safeHistoricalEvents = historicalEvents ?? [];
     const safeCalibrationScores = calibrationScores ?? [];
+    const protocolById = new Map<string, { nombre?: string; pasos?: string }>();
+    [...(protocols ?? []), ...(protocolPresets as any[])].forEach((p: any) => {
+      const id = p?.protocolo_id || p?.id;
+      if (!id) return;
+      protocolById.set(id, { nombre: p?.nombre, pasos: p?.pasos });
+    });
+    const variableById = new Map(variables.map(v => [v.var_id, v]));
+
+    const resolveEventVarId = (event: Event): string | null => {
+      if (variableById.has(event.var_id)) return event.var_id;
+      if (event.tipo === 'Protocolo') {
+        const inferred = inferProtocolProxyVarId(event, protocolById, variableById);
+        if (inferred) return inferred;
+      }
+      return null;
+    };
+
+    const effectiveImpactMatrix: ImpactMatrix[] = (() => {
+      const map = new Map<string, ImpactMatrix>();
+      (impactMatrix ?? []).forEach((im) => {
+        map.set(`${im.var_id}::${im.hormone_id}`, im);
+      });
+      impactMatrixPresets.forEach((preset) => {
+        const key = `${preset.var_id}::${preset.hormone_id}`;
+        if (map.has(key)) return;
+        map.set(key, {
+          id: `preset_${preset.matrix_id}`,
+          matrix_id: preset.matrix_id,
+          var_id: preset.var_id,
+          hormone_id: preset.hormone_id,
+          effect_size: preset.effect_size,
+          duration_hours: preset.duration_hours,
+        });
+      });
+
+      // Safety net: every known variable should have at least one hormonal impact.
+      variables.forEach((variable) => {
+        const hasAnyImpact = [...map.values()].some((im) => im.var_id === variable.var_id);
+        if (hasAnyImpact) return;
+        buildHeuristicImpactsForVariable(variable).forEach((heur) => {
+          map.set(`${heur.var_id}::${heur.hormone_id}`, heur);
+        });
+      });
+
+      // Safety net: unknown event var_ids also receive hormonal effects.
+      safeEvents.forEach((event) => {
+        if (resolveEventVarId(event)) return;
+        const hasAnyImpact = [...map.values()].some((im) => im.var_id === event.var_id);
+        if (hasAnyImpact) return;
+        const virtualVariable = buildVirtualVariableFromEvent(event);
+        buildHeuristicImpactsForVariable(virtualVariable).forEach((heur) => {
+          map.set(`${heur.var_id}::${heur.hormone_id}`, heur);
+        });
+      });
+
+      return [...map.values()];
+    })();
+    const normalizedEvents = safeEvents.map((event) => ({
+      ...event,
+      effective_var_id: resolveEventVarId(event) || event.var_id,
+    }));
 
     const currentDataSignature = JSON.stringify({
-      evtCount: safeEvents.length,
-      intCount: safeInteractions.length,
-      txCount: safeTransactions.length,
-      hormoneCount: hormones.length,
-      areaCount: areas.length,
-      lastEvent: safeEvents.length > 0 ? safeEvents[safeEvents.length - 1].evento_id : null,
+      events: buildCollectionSignature(normalizedEvents, (e) => `${e.id}|${e.var_id}|${e.effective_var_id}|${e.tipo}|${e.intensidad}|${e.impulsivo ? 1 : 0}|${e.fecha}`),
+      interactions: buildCollectionSignature(safeInteractions, (i) => `${i.id}|${i.persona_id}|${i.energia_resultante}|${i.respeto_percibido}|${i.fecha}`),
+      transactions: buildCollectionSignature(safeTransactions, (t) => `${t.id}|${t.tipo}|${t.categoria}|${t.monto}|${t.impulsivo ? 1 : 0}|${t.fecha}`),
+      matrix: buildCollectionSignature(effectiveImpactMatrix, (im) => `${im.var_id}|${im.hormone_id}|${im.effect_size}|${im.duration_hours}`),
+      hormones: buildCollectionSignature(hormones, (h) => `${h.id}|${h.hormone_id}|${h.baseline}`),
+      areas: buildCollectionSignature(areas, (a) => `${a.id}|${a.area_id}|${a.umbral_critico}|${a.umbral_riesgo}`),
     });
 
     const now = new Date();
@@ -391,7 +596,6 @@ export function useComputedDataWriter() {
     }
 
     const baseSensitivity = getSensitivity(playerProfile);
-    const variableById = new Map(variables.map(v => [v.var_id, v]));
     const calibration = calibrateSensitivityFromHistory(baseSensitivity, safeHistoricalEvents, safeCalibrationScores, variableById);
     const sensitivity = calibration.values;
     let clinicalV2Enabled = FORCE_ENABLE_CLINICAL_V2;
@@ -415,7 +619,7 @@ export function useComputedDataWriter() {
       cortisol: 20,
       foco: 50,
       energia: 50,
-      sueño: 50,
+      sueno: 50,
       conexion_social: 50,
       carga_dopaminergica: 10,
       player_score: 50,
@@ -428,14 +632,14 @@ export function useComputedDataWriter() {
       const nowHour = now.getHours();
       let totalEffect = 0;
 
-      const relevantImpacts = impactMatrix.filter(im => im.hormone_id === hId);
-      const hEvents = safeEvents.filter(e => relevantImpacts.some(im => im.var_id === e.var_id));
+      const relevantImpacts = effectiveImpactMatrix.filter(im => im.hormone_id === hId);
+      const hEvents = normalizedEvents.filter(e => relevantImpacts.some(im => im.var_id === e.effective_var_id));
 
       hEvents.forEach(event => {
-        const impact = relevantImpacts.find(im => im.var_id === event.var_id);
+        const impact = relevantImpacts.find(im => im.var_id === event.effective_var_id);
         if (!impact) return;
 
-        const variable = variableById.get(event.var_id);
+        const variable = variableById.get(event.effective_var_id) || buildVirtualVariableFromEvent(event);
         const eventDate = parseISO(event.fecha);
         const dt = differenceInHours(now, eventDate);
         if (dt < 0) return;
@@ -460,13 +664,14 @@ export function useComputedDataWriter() {
         effectAtTime *= circadianMultiplier(hId, nowHour);
         totalEffect += effectAtTime;
 
-        const prev = variableContrib.get(event.var_id) || {
-          name: variable?.var_nombre || event.var_id,
+        const contribKey = event.effective_var_id || event.var_id;
+        const prev = variableContrib.get(contribKey) || {
+          name: variable?.var_nombre || contribKey,
           total: 0,
           hoursRemaining: 0,
         };
         const remaining = Math.max(0, effectiveDuration - effectiveDt);
-        variableContrib.set(event.var_id, {
+        variableContrib.set(contribKey, {
           name: prev.name,
           total: prev.total + effectAtTime,
           hoursRemaining: Math.max(prev.hoursRemaining, remaining),
@@ -821,12 +1026,14 @@ export function useComputedDataWriter() {
     relationsSig,
     transactionsSig,
     historicalEventsSig,
+    protocolsSig,
     calibrationScoresSig,
     lastGlobalStateSig,
     calibrationMetaSig,
     modelFlagsSig,
   ]);
 }
+
 
 
 

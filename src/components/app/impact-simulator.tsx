@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useMemo, useState, type ReactNode } from 'react';
 import { collection } from 'firebase/firestore';
@@ -32,7 +32,7 @@ export default function ImpactSimulator({ userData }: ImpactSimulatorProps) {
     cortisol: 20,
     foco: 70,
     energia: 75,
-    sueño: 50,
+    sueno: 50,
     conexion_social: 50,
     carga_dopaminergica: 20,
     player_score: 50,
@@ -78,7 +78,7 @@ export default function ImpactSimulator({ userData }: ImpactSimulatorProps) {
       contexto: 'Registrado desde simulador de impacto.',
       tipo: selectedType,
     });
-    toast({ title: 'Impacto aplicado', description: 'El evento se registró correctamente.' });
+    toast({ title: 'Impacto aplicado', description: 'El evento se registrÃ³ correctamente.' });
     setSelectedId('');
   };
 
@@ -94,10 +94,10 @@ export default function ImpactSimulator({ userData }: ImpactSimulatorProps) {
             Simulador de Impacto
           </CardTitle>
           <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
-            Predicción IA
+            PredicciÃ³n IA
           </Badge>
         </div>
-        <CardDescription>Proyecta cómo cambiarán tus niveles antes de actuar.</CardDescription>
+        <CardDescription>Proyecta cÃ³mo cambiarÃ¡n tus niveles antes de actuar.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="flex gap-2">
@@ -127,7 +127,7 @@ export default function ImpactSimulator({ userData }: ImpactSimulatorProps) {
           </label>
           <Select value={selectedId} onValueChange={setSelectedId}>
             <SelectTrigger className="h-9">
-              <SelectValue placeholder="Elige una opción..." />
+              <SelectValue placeholder="Elige una opciÃ³n..." />
             </SelectTrigger>
             <SelectContent>
               {options.map((opt) => (
@@ -154,7 +154,7 @@ export default function ImpactSimulator({ userData }: ImpactSimulatorProps) {
           />
           <MetricRow
             icon={<BatteryCharging size={14} className="text-green-600" />}
-            label="ENERGÍA"
+            label="ENERGÃA"
             current={currentStats.energia}
             next={projection.energia}
             diff={energyDiff}
@@ -169,7 +169,7 @@ export default function ImpactSimulator({ userData }: ImpactSimulatorProps) {
               Aplicar impacto al sistema
             </>
           ) : (
-            'Elige una opción para proyectar'
+            'Elige una opciÃ³n para proyectar'
           )}
         </Button>
       </CardFooter>
@@ -218,3 +218,4 @@ function MetricRow({
     </div>
   );
 }
+

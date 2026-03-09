@@ -60,7 +60,7 @@ export default function EditVariableForm({ entity: variable, closeDialog, areas 
   const form = useForm<EditVariableFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: isEditMode ? {
-      ...variable,
+      ...(variable as any),
     } : {
         var_nombre: '',
         area_id: areas?.[0]?.area_id,
