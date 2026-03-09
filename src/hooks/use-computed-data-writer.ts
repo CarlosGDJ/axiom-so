@@ -21,6 +21,7 @@ import {
   ComputedDailyScore,
 } from '@/lib/types';
 import { computeClinicalModelV2 } from '@/lib/model-v2-clinical';
+import { computeAreaScoreAtTime } from '@/lib/area-scoring';
 import { subDays, parseISO, differenceInHours, format } from 'date-fns';
 
 const DECAY_K: Record<string, number> = {
@@ -776,32 +777,19 @@ export function useComputedDataWriter() {
       const areaVars = variables.filter(v => v.area_id === area.area_id);
       const areaVarIds = new Set(areaVars.map(v => v.var_id));
       const areaEvents = safeEvents.filter(e => areaVarIds.has(e.var_id));
-
-      const weightedImpact = areaEvents.reduce((acc, event) => {
-        const variable = variableById.get(event.var_id);
-        if (!variable) return acc;
-        const hoursAgo = Math.max(0, differenceInHours(now, parseISO(event.fecha)));
-        const recencyWeight = Math.exp(-0.08 * (hoursAgo / 24));
-        const impact = variable.polaridad * variable.impacto_base * (event.intensidad / 5);
-        return acc + (impact * recencyWeight);
-      }, 0);
-
-      let areaScore = Math.round(clamp(70 + (weightedImpact * 2)));
-      if (nextState === 'CRITICO') areaScore = Math.min(areaScore, 49);
-      if (nextState === 'RIESGO') areaScore = Math.min(areaScore, 74);
-
-      const riskThreshold = (area.umbral_riesgo ?? 7) * 10;
-      const criticalThreshold = (area.umbral_critico ?? 4) * 10;
-      const areaState: OverallState =
-        areaScore < criticalThreshold ? 'CRITICO' :
-        areaScore < riskThreshold ? 'RIESGO' :
-        'OK';
+      const areaCalc = computeAreaScoreAtTime({
+        area,
+        events: areaEvents,
+        variableById,
+        at: now,
+        globalState: nextState,
+      });
 
       batch.set(doc(firestore, `users/${user.uid}/computed_areas`, area.area_id), {
         id: area.area_id,
         area_id: area.area_id,
-        score_7d: areaScore,
-        estado: areaState,
+        score_7d: areaCalc.score,
+        estado: areaCalc.state,
       });
     });
 
