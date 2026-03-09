@@ -71,7 +71,7 @@ export default function EditDebtForm({ entity: debt, closeDialog }: EditDebtForm
   const form = useForm<EditDebtFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: isEditMode ? {
-      ...debt,
+      ...(debt as any),
       fecha_inicio: debt.fecha_inicio ? new Date(debt.fecha_inicio) : new Date(),
     } : {
       nombre: '',

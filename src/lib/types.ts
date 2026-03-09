@@ -1,7 +1,7 @@
-
+﻿
 import type { ColumnDef } from '@tanstack/react-table';
 export type OverallState = 'OK' | 'RIESGO' | 'CRITICO';
-export type LifeAreaName = 'Salud física' | 'Salud mental' | 'Emoción/Regulación' | 'Carrera/Estudios' | 'Finanzas' | 'Relaciones' | 'Entorno/Orden' | 'Dopamina/Ocio' | 'Creatividad/Proyectos' | 'Propósito/Espiritualidad';
+export type LifeAreaName = 'Salud fÃ­sica' | 'Salud mental' | 'EmociÃ³n/RegulaciÃ³n' | 'Carrera/Estudios' | 'Finanzas' | 'Relaciones' | 'Entorno/Orden' | 'Dopamina/Ocio' | 'Creatividad/Proyectos' | 'PropÃ³sito/Espiritualidad';
 
 
 export interface UserProfile {
@@ -81,7 +81,7 @@ export interface Variable {
   var_id: string;
   var_nombre: string;
   area_id: string;
-  tipo: 'Física' | 'Mental' | 'Emocional' | 'Social' | 'Financiera' | 'Entorno' | 'Conductual';
+  tipo: 'FÃ­sica' | 'Física' | 'Mental' | 'Emocional' | 'Social' | 'Financiera' | 'Entorno' | 'Conductual';
   polaridad: 1 | -1;
   impacto_base: number;
   curva: 'Lineal' | 'Umbral' | 'Exponencial';
@@ -204,7 +204,7 @@ export interface Transaction {
     transaccion_id: string;
     fecha: string; // ISO String
     tipo: 'Ingreso' | 'Gasto';
-    categoria: 'Vivienda' | 'Alimentación' | 'Transporte' | 'Salud y Bienestar' | 'Ocio y Suscripciones' | 'Desarrollo Personal' | 'Compras' | 'Deudas' | 'Regalos y Donaciones' | 'Otros Gastos' | 'Nómina' | 'Freelance/Negocio' | 'Ingresos Pasivos' | 'Regalos' | 'Otros Ingresos';
+    categoria: 'Vivienda' | 'AlimentaciÃ³n' | 'Transporte' | 'Salud y Bienestar' | 'Ocio y Suscripciones' | 'Desarrollo Personal' | 'Compras' | 'Deudas' | 'Regalos y Donaciones' | 'Otros Gastos' | 'NÃ³mina' | 'Freelance/Negocio' | 'Ingresos Pasivos' | 'Regalos' | 'Otros Ingresos';
     monto: number;
     impulsivo: boolean;
     var_id: string;
@@ -217,7 +217,7 @@ export interface Debt {
     id: string;
     debt_id: string;
     nombre: string;
-    tipo: 'Hipoteca' | 'Préstamo personal' | 'Tarjeta' | 'Línea crédito' | 'Otro';
+    tipo: 'Hipoteca' | 'PrÃ©stamo personal' | 'Préstamo personal' | 'Tarjeta' | 'LÃ­nea crÃ©dito' | 'Línea crédito' | 'Otro';
     principal_inicial: number;
     interes_tae: number;
     plazo_total_meses: number;
@@ -225,7 +225,7 @@ export interface Debt {
     saldo_actual: number;
     saldo_pendiente: number;
     fecha_inicio: string;
-    tipo_amortizacion: 'Francés' | 'Alemán' | 'Revolving' | 'Otro';
+    tipo_amortizacion: 'FrancÃ©s' | 'AlemÃ¡n' | 'Revolving' | 'Otro';
     comision_amortizacion: number;
     permite_amortizacion: boolean;
     opcion_amortizacion: 'Reducir cuota' | 'Reducir plazo' | 'Ambos';
@@ -296,7 +296,7 @@ export interface RPGStats {
     cortisol: number;
     foco: number;
     energia: number;
-    sueño: number;
+    sueno: number;
     conexion_social: number;
     carga_dopaminergica: number;
     player_score: number;
@@ -436,3 +436,4 @@ export interface UserData {
     estimated_unlock_time: number;
 }
 export { ColumnDef };
+
