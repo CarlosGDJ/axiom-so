@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { HeartPulse } from 'lucide-react';
 
 const WELLNESS_MESSAGES = [
@@ -15,13 +15,12 @@ const WELLNESS_MESSAGES = [
 ];
 
 export default function DashboardLoading() {
-  const initialIndex = useMemo(
-    () => Math.floor(Math.random() * WELLNESS_MESSAGES.length),
-    [],
-  );
-  const [messageIndex, setMessageIndex] = useState(initialIndex);
+  // Keep first render deterministic to avoid SSR/CSR hydration mismatch.
+  const [messageIndex, setMessageIndex] = useState(0);
 
   useEffect(() => {
+    setMessageIndex(Math.floor(Math.random() * WELLNESS_MESSAGES.length));
+
     const timer = setInterval(() => {
       setMessageIndex((prev) => (prev + 1) % WELLNESS_MESSAGES.length);
     }, 2600);

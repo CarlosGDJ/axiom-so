@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Auth, User, onAuthStateChanged } from 'firebase/auth';
+import { useState, useEffect, useRef } from 'react';
+import { Auth, User, onIdTokenChanged } from 'firebase/auth';
 
 // Return type for useUser() - specific to user auth state
 export interface UserHookResult {
@@ -23,6 +23,7 @@ export const useAuthUser = (auth: Auth | null): UserHookResult => {
     isUserLoading: true,
     userError: null,
   });
+  const pendingNullCommitRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!auth) {
@@ -34,25 +35,90 @@ export const useAuthUser = (auth: Auth | null): UserHookResult => {
       return;
     }
 
-    // Start with a loading state
-    setUserAuthState({ user: null, isUserLoading: true, userError: null });
+    // Immediate rehydration from Auth cache/session before async listener emits.
+    const cachedUser = auth.currentUser || null;
+    if (cachedUser) {
+      setUserAuthState({
+        user: cachedUser,
+        isUserLoading: false,
+        userError: null,
+      });
+    }
 
-    const unsubscribe = onAuthStateChanged(
+    // Keep previous user while refreshing auth state to avoid transient UI drops.
+    setUserAuthState((prev) => ({ ...prev, isUserLoading: true, userError: null }));
+
+    if (pendingNullCommitRef.current) {
+      clearTimeout(pendingNullCommitRef.current);
+      pendingNullCommitRef.current = null;
+    }
+
+    const unsubscribe = onIdTokenChanged(
       auth,
       (firebaseUser) => {
-        setUserAuthState({
-          user: firebaseUser,
-          isUserLoading: false,
-          userError: null,
+        if (pendingNullCommitRef.current) {
+          clearTimeout(pendingNullCommitRef.current);
+          pendingNullCommitRef.current = null;
+        }
+
+        const resolvedUser = firebaseUser || auth.currentUser || null;
+
+        if (resolvedUser) {
+          setUserAuthState({
+            user: resolvedUser,
+            isUserLoading: false,
+            userError: null,
+          });
+          return;
+        }
+
+        // If null arrives after having a user, treat it as potentially transient (token/network hiccup).
+        setUserAuthState((prev) => {
+          if (!prev.user) {
+            return { user: null, isUserLoading: false, userError: null };
+          }
+          return { ...prev, isUserLoading: true, userError: null };
         });
+
+        pendingNullCommitRef.current = setTimeout(() => {
+          const currentUser = auth.currentUser || null;
+          if (currentUser) {
+            setUserAuthState({
+              user: currentUser,
+              isUserLoading: false,
+              userError: null,
+            });
+            return;
+          }
+          setUserAuthState({
+            user: null,
+            isUserLoading: false,
+            userError: null,
+          });
+        }, 15000);
       },
       (error) => {
-        console.error("useAuthUser: onAuthStateChanged error:", error);
-        setUserAuthState({ user: null, isUserLoading: false, userError: error });
+        console.error("useAuthUser: onIdTokenChanged error:", error);
+
+        // Try to recover using current cached user before declaring session loss.
+        const currentUser = auth.currentUser || null;
+        if (currentUser) {
+          setUserAuthState({ user: currentUser, isUserLoading: false, userError: error });
+          return;
+        }
+
+        // Preserve last known user when auth listener errors are transient.
+        setUserAuthState((prev) => ({ user: prev.user, isUserLoading: false, userError: error }));
       }
     );
 
-    return () => unsubscribe();
+    return () => {
+      if (pendingNullCommitRef.current) {
+        clearTimeout(pendingNullCommitRef.current);
+        pendingNullCommitRef.current = null;
+      }
+      unsubscribe();
+    };
   }, [auth]); // Dependency on the auth instance
 
   return { ...userAuthState, auth };

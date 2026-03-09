@@ -22,7 +22,7 @@ import { Zap } from 'lucide-react';
 
 export function AppHeader() {
   const { user, auth } = useUser();
-  const { data: userData } = useUserData();
+  const { data: userData, isLoading: isUserDataLoading } = useUserData();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -58,10 +58,11 @@ export function AppHeader() {
     }
   };
 
-  const avatarSrc = userData?.userProfile?.axiomAvatarDataUrl || user?.photoURL;
+  const avatarSrc = userData?.userProfile?.axiomAvatarDataUrl || userData?.userProfile?.photoURL || user?.photoURL;
 
   // Global Progression Logic
   const { systemLevel, globalProgress } = useMemo(() => {
+    if (isUserDataLoading) return { systemLevel: '...', globalProgress: 0 };
     const skills = userData?.skills || [];
     if (skills.length === 0) return { systemLevel: 0, globalProgress: 0 };
 
@@ -75,7 +76,7 @@ export function AppHeader() {
         systemLevel: level,
         globalProgress: (totalProgress / skills.length) * 100
     };
-  }, [userData?.skills]);
+  }, [userData?.skills, isUserDataLoading]);
 
   return (
     <header className="relative sticky top-0 z-10 flex h-16 shrink-0 items-center gap-4 border-b bg-background/80 px-4 backdrop-blur-sm lg:px-6">

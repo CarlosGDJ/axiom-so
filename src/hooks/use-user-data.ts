@@ -76,7 +76,8 @@ const DEFAULT_STATS: RPGStats = {
 };
 
 export function useUserData(dateRange?: DateRange) {
-  const { user } = useUser();
+  const { user, auth } = useUser();
+  const effectiveUser = user || auth?.currentUser || null;
   const firestore = useFirestore();
 
   const getQueryConstraints = () => {
@@ -96,83 +97,83 @@ export function useUserData(dateRange?: DateRange) {
 
 
   // --- RAW DATA FETCHING ---
-  const userProfileRef = useMemoFirebase(() => (user ? doc(firestore, `users/${user.uid}`) : null), [firestore, user]);
+  const userProfileRef = useMemoFirebase(() => (effectiveUser ? doc(firestore, `users/${effectiveUser.uid}`) : null), [firestore, effectiveUser]);
   const { data: userProfile, isLoading: isLoadingProfile } = useDoc<UserProfile>(userProfileRef);
 
-  const playerProfileRef = useMemoFirebase(() => (user ? doc(firestore, `users/${user.uid}/playerProfile`, 'main-profile') : null), [firestore, user]);
+  const playerProfileRef = useMemoFirebase(() => (effectiveUser ? doc(firestore, `users/${effectiveUser.uid}/playerProfile`, 'main-profile') : null), [firestore, effectiveUser]);
   const { data: playerProfile, isLoading: isLoadingPlayerProfile } = useDoc<PlayerProfile>(playerProfileRef);
   
-  const areasRef = useMemoFirebase(() => (user ? collection(firestore, `users/${user.uid}/areas`) : null), [firestore, user]);
+  const areasRef = useMemoFirebase(() => (effectiveUser ? collection(firestore, `users/${effectiveUser.uid}/areas`) : null), [firestore, effectiveUser]);
   const { data: rawAreas, isLoading: isLoadingAreas } = useCollection<Area>(areasRef);
 
-  const hormonesRef = useMemoFirebase(() => (user ? collection(firestore, `users/${user.uid}/hormones`) : null), [firestore, user]);
+  const hormonesRef = useMemoFirebase(() => (effectiveUser ? collection(firestore, `users/${effectiveUser.uid}/hormones`) : null), [firestore, effectiveUser]);
   const { data: rawHormones, isLoading: isLoadingHormones } = useCollection<Hormone>(hormonesRef);
   
-  const variablesRef = useMemoFirebase(() => (user ? collection(firestore, `users/${user.uid}/variables`) : null), [firestore, user]);
+  const variablesRef = useMemoFirebase(() => (effectiveUser ? collection(firestore, `users/${effectiveUser.uid}/variables`) : null), [firestore, effectiveUser]);
   const { data: rawVariables, isLoading: isLoadingVariables } = useCollection<Variable>(variablesRef);
 
-  const impactMatrixRef = useMemoFirebase(() => (user ? collection(firestore, `users/${user.uid}/impactMatrix`) : null), [firestore, user]);
+  const impactMatrixRef = useMemoFirebase(() => (effectiveUser ? collection(firestore, `users/${effectiveUser.uid}/impactMatrix`) : null), [firestore, effectiveUser]);
   const { data: rawImpactMatrix, isLoading: isLoadingImpactMatrix } = useCollection<ImpactMatrix>(impactMatrixRef);
 
-  const skillsRef = useMemoFirebase(() => (user ? collection(firestore, `users/${user.uid}/skills`) : null), [firestore, user]);
+  const skillsRef = useMemoFirebase(() => (effectiveUser ? collection(firestore, `users/${effectiveUser.uid}/skills`) : null), [firestore, effectiveUser]);
   const { data: rawSkills, isLoading: isLoadingSkills } = useCollection<Skill>(skillsRef);
 
-  const systemsRef = useMemoFirebase(() => (user ? collection(firestore, `users/${user.uid}/systems`) : null), [firestore, user]);
+  const systemsRef = useMemoFirebase(() => (effectiveUser ? collection(firestore, `users/${effectiveUser.uid}/systems`) : null), [firestore, effectiveUser]);
   const { data: rawSystems, isLoading: isLoadingSystems } = useCollection<System>(systemsRef);
 
-  const habitsRef = useMemoFirebase(() => (user ? collection(firestore, `users/${user.uid}/habits`) : null), [firestore, user]);
+  const habitsRef = useMemoFirebase(() => (effectiveUser ? collection(firestore, `users/${effectiveUser.uid}/habits`) : null), [firestore, effectiveUser]);
   const { data: rawHabits, isLoading: isLoadingHabits } = useCollection<Habit>(habitsRef);
   
-  const milestonesRef = useMemoFirebase(() => (user ? collection(firestore, `users/${user.uid}/milestones`) : null), [firestore, user]);
+  const milestonesRef = useMemoFirebase(() => (effectiveUser ? collection(firestore, `users/${effectiveUser.uid}/milestones`) : null), [firestore, effectiveUser]);
   const { data: rawMilestones, isLoading: isLoadingMilestones } = useCollection<Milestone>(milestonesRef);
 
-  const protocolsRef = useMemoFirebase(() => (user ? collection(firestore, `users/${user.uid}/protocols`) : null), [firestore, user]);
+  const protocolsRef = useMemoFirebase(() => (effectiveUser ? collection(firestore, `users/${effectiveUser.uid}/protocols`) : null), [firestore, effectiveUser]);
   const { data: rawProtocols, isLoading: isLoadingProtocols } = useCollection<Protocol>(protocolsRef);
 
-  const rawStatesRef = useMemoFirebase(() => (user ? collection(firestore, `users/${user.uid}/states`) : null), [firestore, user]);
+  const rawStatesRef = useMemoFirebase(() => (effectiveUser ? collection(firestore, `users/${effectiveUser.uid}/states`) : null), [firestore, effectiveUser]);
   const { data: rawStates, isLoading: isLoadingStates } = useCollection<State>(rawStatesRef);
 
-  const transactionsQuery = useMemoFirebase(() => (user ? query(collection(firestore, `users/${user.uid}/transactions`), ...getQueryConstraints()) : null), [firestore, user, dateRange]);
+  const transactionsQuery = useMemoFirebase(() => (effectiveUser ? query(collection(firestore, `users/${effectiveUser.uid}/transactions`), ...getQueryConstraints()) : null), [firestore, effectiveUser, dateRange]);
   const { data: transactions, isLoading: isLoadingTransactions } = useCollection<Transaction>(transactionsQuery);
 
-  const allTransactionsQuery = useMemoFirebase(() => (user ? query(collection(firestore, `users/${user.uid}/transactions`)) : null), [firestore, user]);
+  const allTransactionsQuery = useMemoFirebase(() => (effectiveUser ? query(collection(firestore, `users/${effectiveUser.uid}/transactions`)) : null), [firestore, effectiveUser]);
   const { data: allTransactions, isLoading: isLoadingAllTransactions } = useCollection<Transaction>(allTransactionsQuery);
 
-  const debtTransactionsQuery = useMemoFirebase(() => (user ? query(collection(firestore, `users/${user.uid}/transactions`), where('categoria', '==', 'Deudas')) : null), [firestore, user]);
+  const debtTransactionsQuery = useMemoFirebase(() => (effectiveUser ? query(collection(firestore, `users/${effectiveUser.uid}/transactions`), where('categoria', '==', 'Deudas')) : null), [firestore, effectiveUser]);
   const { data: debtTransactions, isLoading: isLoadingDebtTransactions } = useCollection<Transaction>(debtTransactionsQuery);
 
-  const interactionsQuery = useMemoFirebase(() => (user ? query(collection(firestore, `users/${user.uid}/interactions`), ...getQueryConstraints()) : null), [firestore, user, dateRange]);
+  const interactionsQuery = useMemoFirebase(() => (effectiveUser ? query(collection(firestore, `users/${effectiveUser.uid}/interactions`), ...getQueryConstraints()) : null), [firestore, effectiveUser, dateRange]);
   const { data: interactions, isLoading: isLoadingInteractions } = useCollection<Interaction>(interactionsQuery);
 
-  const eventsQuery = useMemoFirebase(() => (user ? query(collection(firestore, `users/${user.uid}/events`), ...getQueryConstraints()) : null), [firestore, user, dateRange]);
+  const eventsQuery = useMemoFirebase(() => (effectiveUser ? query(collection(firestore, `users/${effectiveUser.uid}/events`), ...getQueryConstraints()) : null), [firestore, effectiveUser, dateRange]);
   const { data: events, isLoading: isLoadingEvents } = useCollection<Event>(eventsQuery);
   
-  const relationsRef = useMemoFirebase(() => (user ? collection(firestore, `users/${user.uid}/relations`) : null), [firestore, user]);
+  const relationsRef = useMemoFirebase(() => (effectiveUser ? collection(firestore, `users/${effectiveUser.uid}/relations`) : null), [firestore, effectiveUser]);
   const { data: relations, isLoading: isLoadingRelations } = useCollection<Relation>(relationsRef);
 
-  const accountsRef = useMemoFirebase(() => (user ? collection(firestore, `users/${user.uid}/accounts`) : null), [firestore, user]);
+  const accountsRef = useMemoFirebase(() => (effectiveUser ? collection(firestore, `users/${effectiveUser.uid}/accounts`) : null), [firestore, effectiveUser]);
   const { data: accounts, isLoading: isLoadingAccounts } = useCollection<Account>(accountsRef);
 
-  const debtsRef = useMemoFirebase(() => (user ? collection(firestore, `users/${user.uid}/debts`) : null), [firestore, user]);
+  const debtsRef = useMemoFirebase(() => (effectiveUser ? collection(firestore, `users/${effectiveUser.uid}/debts`) : null), [firestore, effectiveUser]);
   const { data: rawDebts, isLoading: isLoadingDebts } = useCollection<Debt>(debtsRef);
   
   // --- COMPUTED DATA FETCHING ---
-  const computedGlobalStateRef = useMemoFirebase(() => (user ? doc(firestore, `users/${user.uid}/computed_global_state`, 'latest') : null), [firestore, user]);
+  const computedGlobalStateRef = useMemoFirebase(() => (effectiveUser ? doc(firestore, `users/${effectiveUser.uid}/computed_global_state`, 'latest') : null), [firestore, effectiveUser]);
   const { data: computedGlobalState, isLoading: isLoadingGlobalState } = useDoc<ComputedGlobalState>(computedGlobalStateRef);
 
-  const computedAreasRef = useMemoFirebase(() => (user ? collection(firestore, `users/${user.uid}/computed_areas`) : null), [firestore, user]);
+  const computedAreasRef = useMemoFirebase(() => (effectiveUser ? collection(firestore, `users/${effectiveUser.uid}/computed_areas`) : null), [firestore, effectiveUser]);
   const { data: computedAreas, isLoading: isLoadingComputedAreas } = useCollection<ComputedArea>(computedAreasRef);
 
-  const computedHormonesRef = useMemoFirebase(() => (user ? collection(firestore, `users/${user.uid}/computed_hormones`) : null), [firestore, user]);
+  const computedHormonesRef = useMemoFirebase(() => (effectiveUser ? collection(firestore, `users/${effectiveUser.uid}/computed_hormones`) : null), [firestore, effectiveUser]);
   const { data: computedHormones, isLoading: isLoadingComputedHormones } = useCollection<ComputedHormone>(computedHormonesRef);
 
   const computedDailyScoresQuery = useMemoFirebase(() => {
-    if (!user) return null;
+    if (!effectiveUser) return null;
     const constraints = getQueryConstraints().length > 0
         ? getQueryConstraints()
         : [orderBy('fecha', 'desc'), limit(7)];
-    return query(collection(firestore, `users/${user.uid}/computed_daily_score`), ...constraints);
-  }, [firestore, user, dateRange]);
+    return query(collection(firestore, `users/${effectiveUser.uid}/computed_daily_score`), ...constraints);
+  }, [firestore, effectiveUser, dateRange]);
   const { data: computedDailyScores, isLoading: isLoadingComputedDailyScores } = useCollection<ComputedDailyScore>(computedDailyScoresQuery);
 
 
@@ -203,16 +204,16 @@ export function useUserData(dateRange?: DateRange) {
     isLoadingStates;
 
   const currentData: UserData | null = useMemo(() => {
-    if (!user) {
+    if (!effectiveUser) {
       return null;
     }
 
     const safeUserProfile: UserProfile = userProfile || {
-      id: user.uid,
-      uid: user.uid,
-      email: user.email,
-      displayName: user.displayName,
-      photoURL: user.photoURL,
+      id: effectiveUser.uid,
+      uid: effectiveUser.uid,
+      email: effectiveUser.email,
+      displayName: effectiveUser.displayName,
+      photoURL: effectiveUser.photoURL,
       axiomAvatarDataUrl: '',
       createdAt: new Date().toISOString(),
     };
@@ -395,7 +396,7 @@ export function useUserData(dateRange?: DateRange) {
       lock_reason: computedGlobalState?.lock_reason || '',
       estimated_unlock_time: computedGlobalState?.estimated_unlock_time || 0,
     };
-  }, [isLoading, user, userProfile, playerProfile, rawAreas, rawHormones, rawVariables, transactions, allTransactions, debtTransactions, interactions, events, relations, accounts, rawDebts, computedGlobalState, computedAreas, computedHormones, computedDailyScores, rawImpactMatrix, rawSkills, rawSystems, rawHabits, rawMilestones, rawProtocols, rawStates]);
+  }, [isLoading, effectiveUser, userProfile, playerProfile, rawAreas, rawHormones, rawVariables, transactions, allTransactions, debtTransactions, interactions, events, relations, accounts, rawDebts, computedGlobalState, computedAreas, computedHormones, computedDailyScores, rawImpactMatrix, rawSkills, rawSystems, rawHabits, rawMilestones, rawProtocols, rawStates]);
 
   return { data: currentData, isLoading };
 }

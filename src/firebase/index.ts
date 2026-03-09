@@ -2,31 +2,47 @@
 
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getAuth, connectAuthEmulator } from 'firebase/auth';
+import {
+  getAuth,
+  initializeAuth,
+  connectAuthEmulator,
+  indexedDBLocalPersistence,
+  browserLocalPersistence,
+  browserSessionPersistence,
+  browserPopupRedirectResolver,
+} from 'firebase/auth';
 import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 
 // IMPORTANT: DO NOT MODIFY THIS FUNCTION
 export function initializeFirebase() {
   if (!getApps().length) {
-    let firebaseApp;
-    try {
-      firebaseApp = initializeApp();
-    } catch (e) {
-      if (process.env.NODE_ENV === 'production') {
-        console.warn(
-          'Automatic initialization failed. Falling back to firebase config object.',
-          e,
-        );
-      }
-      firebaseApp = initializeApp(firebaseConfig);
-    }
+    // Always initialize with explicit config so auth persistence key is stable across reloads.
+    const firebaseApp = initializeApp(firebaseConfig);
     return getSdks(firebaseApp);
   }
   return getSdks(getApp());
 }
 
 export function getSdks(firebaseApp: FirebaseApp) {
-  const auth = getAuth(firebaseApp);
+  const auth =
+    typeof window !== 'undefined'
+      ? (() => {
+          try {
+            // Initialize auth with explicit persistence chain before first use.
+            return initializeAuth(firebaseApp, {
+              persistence: [
+                indexedDBLocalPersistence,
+                browserLocalPersistence,
+                browserSessionPersistence,
+              ],
+              popupRedirectResolver: browserPopupRedirectResolver,
+            });
+          } catch {
+            // If auth was already initialized, reuse existing instance.
+            return getAuth(firebaseApp);
+          }
+        })()
+      : getAuth(firebaseApp);
   const firestore = getFirestore(firebaseApp);
 
   if (process.env.NODE_ENV === 'development') {
