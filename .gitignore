@@ -53,3 +53,7 @@ firebase-data/
 studio-*-firebase-adminsdk-*.json
 prod-backup.json
 .modified
+.idx/
+app_out.txt
+uid-events.json
+uids.json
