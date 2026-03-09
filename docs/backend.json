@@ -1,0 +1,550 @@
+
+{
+  "entities": {
+    "UserProfile": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UserProfile",
+      "type": "object",
+      "description": "Represents a user's profile.",
+      "properties": {
+        "uid": { "type": "string", "description": "The user's unique ID." },
+        "email": { "type": "string", "description": "The user's email address." },
+        "displayName": { "type": "string", "description": "The user's display name." },
+        "photoURL": { "type": "string", "description": "URL of the user's profile picture." },
+        "axiomAvatarDataUrl": { "type": "string", "description": "Data URL of the user's AI-generated avatar." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "The timestamp of when the user profile was created." }
+      },
+      "required": ["uid", "email", "displayName", "photoURL", "createdAt"]
+    },
+    "PlayerProfile": {
+      "title": "PlayerProfile",
+      "type": "object",
+      "description": "Represents the player's core physiological and psychological parameters.",
+      "properties": {
+        "age": { "type": "number" },
+        "weight_kg": { "type": "number" },
+        "height_cm": { "type": "number" },
+        "facet_mind_introverted": { "type": "number", "description": "Mind Facet: 0-100" },
+        "facet_mind_extraverted": { "type": "number", "description": "Mind Facet: 0-100" },
+        "facet_energy_intuitive": { "type": "number", "description": "Energy Facet: 0-100" },
+        "facet_energy_observant": { "type": "number", "description": "Energy Facet: 0-100" },
+        "facet_nature_thinking": { "type": "number", "description": "Nature Facet: 0-100" },
+        "facet_nature_feeling": { "type": "number", "description": "Nature Facet: 0-100" },
+        "facet_tactics_judging": { "type": "number", "description": "Tactics Facet: 0-100" },
+        "facet_tactics_prospecting": { "type": "number", "description": "Tactics Facet: 0-100" },
+        "facet_identity_assertive": { "type": "number", "description": "Identity Facet: 0-100" },
+        "facet_identity_turbulent": { "type": "number", "description": "Identity Facet: 0-100" },
+        "personality_openness": { "type": "number", "description": "Big Five: Openness to experience (0-100)" },
+        "personality_conscientiousness": { "type": "number", "description": "Big Five: Conscientiousness (0-100)" },
+        "personality_extraversion": { "type": "number", "description": "Big Five: Extraversion (0-100)" },
+        "personality_agreeableness": { "type": "number", "description": "Big Five: Agreeableness (0-100)" },
+        "personality_neuroticism": { "type": "number", "description": "Big Five: Neuroticism (0-100)" },
+        "sensitivity_stress": { "type": "number", "description": "Multiplier for stress impact (default 1.0)" },
+        "sensitivity_dopamine": { "type": "number", "description": "Multiplier for dopamine impact (default 1.0)" },
+        "sensitivity_sleep": { "type": "number", "description": "Multiplier for sleep impact (default 1.0)" },
+        "sensitivity_emotional": { "type": "number", "description": "Multiplier for emotional impact (default 1.0)" },
+        "sensitivity_environmental": { "type": "number", "description": "Multiplier for environmental impact (default 1.0)" },
+        "sensitivity_pressure": { "type": "number", "description": "Multiplier for pressure impact (default 1.0)" },
+        "mbti_type": { "type": "string", "description": "MBTI personality type" },
+        "enneagram_type": { "type": "string", "description": "Enneagram personality type" }
+      },
+      "required": [
+        "age", "weight_kg", "height_cm",
+        "facet_mind_introverted", "facet_mind_extraverted",
+        "facet_energy_intuitive", "facet_energy_observant",
+        "facet_nature_thinking", "facet_nature_feeling",
+        "facet_tactics_judging", "facet_tactics_prospecting",
+        "facet_identity_assertive", "facet_identity_turbulent",
+        "personality_openness", "personality_conscientiousness",
+        "personality_extraversion", "personality_agreeableness",
+        "personality_neuroticism",
+        "sensitivity_stress", "sensitivity_dopamine", "sensitivity_sleep", "sensitivity_emotional", "sensitivity_environmental", "sensitivity_pressure"
+      ]
+    },
+    "Area": {
+      "title": "Area",
+      "type": "object",
+      "description": "Represents a life area.",
+      "properties": {
+        "area_id": { "type": "string" },
+        "area_nombre": { "type": "string" },
+        "peso_estrategico": { "type": "number" },
+        "prioridad": { "type": "string", "enum": ["Alta", "Media", "Baja"] },
+        "estado": { "type": "string", "enum": ["OK", "RIESGO", "CRITICO"] },
+        "objetivo_12s": { "type": "string" },
+        "kpi_principal": { "type": "string" },
+        "umbral_riesgo": { "type": "number" },
+        "umbral_critico": { "type": "number" },
+        "ultima_revision": { "type": "string", "format": "date-time" },
+        "notas": { "type": "string" }
+      },
+      "required": ["area_id", "area_nombre", "peso_estrategico", "prioridad", "estado", "objetivo_12s", "kpi_principal", "umbral_riesgo", "umbral_critico", "ultima_revision"]
+    },
+    "Hormone": {
+      "title": "Hormone",
+      "type": "object",
+      "description": "Represents a hormone or neurotransmitter as a key biomarker.",
+      "properties": {
+        "hormone_id": { "type": "string", "description": "Unique identifier for the hormone (e.g., 'CORTISOL')." },
+        "name": { "type": "string", "description": "Display name of the hormone (e.g., 'Cortisol')." },
+        "current_level": { "type": "number", "description": "The current calculated level of the hormone." },
+        "baseline": { "type": "number", "description": "The user's normal baseline level for this hormone." },
+        "optimal_range": { "type": "string", "description": "Optimal range for the hormone, e.g., '40-60'." },
+        "half_life_hours": { "type": "number", "description": "Estimated time in hours for the hormone level to reduce by half." }
+      },
+      "required": ["hormone_id", "name", "current_level", "baseline", "optimal_range", "half_life_hours"]
+    },
+    "Variable": {
+      "title": "Variable",
+      "type": "object",
+      "description": "Represents vital variables.",
+      "properties": {
+        "var_id": { "type": "string" },
+        "var_nombre": { "type": "string" },
+        "area_id": { "type": "string" },
+        "tipo": { "type": "string", "enum": ["Física", "Mental", "Emocional", "Social", "Financiera", "Entorno", "Conductual"] },
+        "polaridad": { "type": "number", "enum": [1, -1] },
+        "impacto_base": { "type": "number" },
+        "curva": { "type": "string", "enum": ["Lineal", "Umbral", "Exponencial"] },
+        "delay_dias": { "type": "number" },
+        "duracion_dias": { "type": "number" },
+        "umbral_riesgo": { "type": "number" },
+        "controlabilidad": { "type": "string", "enum": ["Alta", "Media", "Baja"] },
+        "activo": { "type": "boolean" }
+      },
+      "required": ["var_id", "var_nombre", "area_id", "tipo", "polaridad", "impacto_base", "curva", "delay_dias", "duracion_dias", "umbral_riesgo", "controlabilidad", "activo"]
+    },
+    "State": {
+      "title": "State",
+      "type": "object",
+      "description": "Represents user states.",
+      "properties": {
+        "estado_id": { "type": "string", "enum": ["OK", "RIESGO", "CRITICO"] },
+        "condicion": { "type": "string" },
+        "restricciones": { "type": "string" },
+        "prioridad": { "type": "string" }
+      },
+      "required": ["estado_id", "condicion", "restricciones", "prioridad"]
+    },
+    "Protocol": {
+      "title": "Protocol",
+      "type": "object",
+      "description": "Represents user protocols.",
+      "properties": {
+        "protocolo_id": { "type": "string" },
+        "nombre": { "type": "string" },
+        "estado_disparador": { "type": "string", "enum": ["OK", "RIESGO", "CRITICO"] },
+        "pasos": { "type": "string" },
+        "duracion_min": { "type": "number" }
+      },
+      "required": ["protocolo_id", "nombre", "estado_disparador", "pasos", "duracion_min"]
+    },
+    "Event": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Event",
+      "type": "object",
+      "description": "Represents a recorded event.",
+      "properties": {
+        "evento_id": { "type": "string" },
+        "fecha": { "type": "string", "format": "date-time" },
+        "var_id": { "type": "string" },
+        "intensidad": { "type": "number" },
+        "duracion_min": { "type": "number" },
+        "contexto": { "type": "string" },
+        "impulsivo": { "type": "boolean" },
+        "persona_id": { "type": "string" },
+        "monto": { "type": "number" },
+        "tipo": { "type": "string", "enum": ["Variable", "Protocolo"] },
+        "milestone_id": { "type": "string" }
+      },
+      "required": ["evento_id", "fecha", "var_id", "intensidad"]
+    },
+    "Skill": {
+      "title": "Skill",
+      "type": "object",
+      "description": "Represents user skills.",
+      "properties": {
+        "habilidad_id": { "type": "string" },
+        "nombre": { "type": "string" },
+        "area_id": { "type": "string" },
+        "nivel_actual": { "type": "number" },
+        "nivel_objetivo": { "type": "number" },
+        "estado": { "type": "string", "enum": ["Activa", "Pausa"] },
+        "kpi": { "type": "string" }
+      },
+      "required": ["habilidad_id", "nombre", "area_id", "nivel_actual", "nivel_objetivo", "estado", "kpi"]
+    },
+    "System": {
+      "title": "System",
+      "type": "object",
+      "description": "Represents user systems.",
+      "properties": {
+        "sistema_id": { "type": "string" },
+        "habilidad_id": { "type": "string" },
+        "objetivo": { "type": "string" },
+        "frecuencia": { "type": "string", "enum": ["Diaria", "3xSemana", "Semanal", "Mensual"] },
+        "estado": { "type": "string", "enum": ["Activo", "Pausa"] },
+        "protocolo_fallo": { "type": "string" }
+      },
+      "required": ["sistema_id", "habilidad_id", "objetivo", "frecuencia", "estado", "protocolo_fallo"]
+    },
+    "Habit": {
+      "title": "Habit",
+      "type": "object",
+      "description": "Represents user habits.",
+      "properties": {
+        "habito_id": { "type": "string" },
+        "sistema_id": { "type": "string" },
+        "var_id": { "type": "string" },
+        "frecuencia": { "type": "string", "enum": ["Diaria", "3xSemana", "Semanal", "Mensual"] },
+        "duracion_min": { "type": "number" },
+        "minimo_viable": { "type": "boolean" },
+        "description": { "type": "string", "description": "A short, descriptive text about the habit." }
+      },
+      "required": ["habito_id", "sistema_id", "var_id", "frecuencia", "duracion_min", "minimo_viable"]
+    },
+    "Milestone": {
+      "title": "Milestone",
+      "type": "object",
+      "description": "Represents a specific, measurable milestone towards a skill or system.",
+      "properties": {
+        "milestone_id": { "type": "string" },
+        "nombre": { "type": "string" },
+        "skill_id": { "type": "string", "description": "ID of the related skill." },
+        "system_id": { "type": "string", "description": "ID of the related system." },
+        "fecha_objetivo": { "type": "string", "format": "date-time" },
+        "estado": { "type": "string", "enum": ["Pendiente", "Completado", "Omitido"], "description": "The current status of the milestone. Recurring tasks are always 'Pendiente' until manually omitted." },
+        "fecha_completado": { "type": "string", "format": "date-time" },
+        "notas": { "type": "string" },
+        "milestone_type": { "type": "string", "enum": ["single", "recurring"], "description": "Type of milestone: one-off or recurring task." },
+        "progress_count": { "type": "number", "description": "Current progress count for recurring milestones." },
+        "target_count": { "type": "number", "description": "Target count for recurring milestones." }
+      },
+      "required": ["milestone_id", "nombre", "estado", "milestone_type"]
+    },
+    "Relation": {
+      "title": "Relation",
+      "type": "object",
+      "description": "Represents user relations.",
+      "properties": {
+        "persona_id": { "type": "string" },
+        "nombre": { "type": "string" },
+        "rol": { "type": "string", "enum": ["Familia", "Amigo", "Pareja", "Trabajo", "Mentor", "Conocido"] },
+        "energia_neta": { "type": "number" },
+        "respeto": { "type": "number" },
+        "frecuencia": { "type": "string", "enum": ["Diaria", "Semanal", "Mensual", "Ocasional"] }
+      },
+      "required": ["persona_id", "nombre", "rol", "energia_neta", "respeto", "frecuencia"]
+    },
+    "Interaction": {
+      "title": "Interaction",
+      "type": "object",
+      "description": "Represents a user interaction, capturing its impact on personal energy and perceived respect.",
+      "properties": {
+        "interaccion_id": { "type": "string" },
+        "fecha": { "type": "string", "format": "date-time" },
+        "persona_id": { "type": "string" },
+        "energia_resultante": { "type": "number", "enum": [-1, 0, 1], "description": "How the user felt after the interaction: -1 (Drained), 0 (Neutral), +1 (Energized)." },
+        "respeto_percibido": { "type": "number", "enum": [-1, 0, 1], "description": "Whether the user felt respected: -1 (Disrespected), 0 (Neutral), +1 (Respected)." },
+        "contexto": { "type": "string" }
+      },
+      "required": ["interaccion_id", "fecha", "persona_id", "energia_resultante", "respeto_percibido"]
+    },
+    "Account": {
+      "title": "Account",
+      "type": "object",
+      "description": "Represents user accounts.",
+      "properties": {
+        "cuenta_id": { "type": "string" },
+        "tipo": { "type": "string", "enum": ["Banco", "Efectivo", "Inversion", "Otro"] },
+        "saldo": { "type": "number" }
+      },
+      "required": ["cuenta_id", "tipo"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "type": "object",
+      "description": "Represents user transactions.",
+      "properties": {
+        "transaccion_id": { "type": "string" },
+        "fecha": { "type": "string", "format": "date-time" },
+        "tipo": { "type": "string", "enum": ["Ingreso", "Gasto"] },
+        "categoria": {
+          "type": "string",
+          "enum": [
+            "Vivienda", "Alimentación", "Transporte", "Salud y Bienestar",
+            "Ocio y Suscripciones", "Desarrollo Personal", "Compras", "Deudas",
+            "Regalos y Donaciones", "Otros Gastos",
+            "Nómina", "Freelance/Negocio", "Ingresos Pasivos", "Regalos", "Otros Ingresos"
+          ]
+        },
+        "monto": { "type": "number" },
+        "impulsivo": { "type": "boolean" },
+        "var_id": { "type": "string" },
+        "cuenta_id": { "type": "string" },
+        "deuda_id": { "type": "string" },
+        "notas": { "type": "string" }
+      },
+      "required": ["transaccion_id", "fecha", "tipo", "categoria", "monto"]
+    },
+    "Debt": {
+      "title": "Debt",
+      "type": "object",
+      "description": "Represents user debts with detailed contractual and strategic information.",
+      "properties": {
+        "debt_id": { "type": "string", "description": "Unique identifier for the debt." },
+        "nombre": { "type": "string", "description": "Descriptive name for the debt (e.g., 'Préstamo coche')." },
+        "tipo": { "type": "string", "enum": ["Hipoteca", "Préstamo personal", "Tarjeta", "Línea crédito", "Otro"] },
+        "principal_inicial": { "type": "number", "description": "Initial principal amount of the debt in euros." },
+        "interes_tae": { "type": "number", "description": "Annual Percentage Rate (APR) of the debt." },
+        "plazo_total_meses": { "type": "number", "description": "Total term of the debt in months." },
+        "cuota_mensual": { "type": "number", "description": "Monthly payment amount in euros." },
+        "saldo_actual": { "type": "number", "description": "Current outstanding balance of the debt." },
+        "fecha_inicio": { "type": "string", "format": "date-time", "description": "Start date of the debt." },
+        "tipo_amortizacion": { "type": "string", "enum": ["Francés", "Alemán", "Revolving", "Otro"], "description": "Amortization system type." },
+        "comision_amortizacion": { "type": "number", "description": "Early repayment fee, either as a percentage or a fixed amount." },
+        "permite_amortizacion": { "type": "boolean", "description": "Whether early repayment is allowed." },
+        "opcion_amortizacion": { "type": "string", "enum": ["Reducir cuota", "Reducir plazo", "Ambos"], "description": "Options available for early repayment." },
+        "prioridad_manual": { "type": "string", "enum": ["Alta", "Media", "Baja"], "description": "User-defined manual priority." },
+        "estres_psicologico": { "type": "string", "enum": ["Alto", "Medio", "Bajo"], "description": "User-perceived psychological stress level of the debt." },
+        "porcentaje_pagado": { "type": "number", "description": "Calculated percentage of the debt that has been paid off." },
+        "estado_deuda": { "type": "string", "enum": ["Activa", "Casi liquidada", "Liquidada"], "description": "Calculated status of the debt." }
+      },
+      "required": [
+        "debt_id", "nombre", "tipo", "principal_inicial", "interes_tae", "plazo_total_meses", "cuota_mensual", "saldo_actual", "fecha_inicio", "tipo_amortizacion", "permite_amortizacion", "prioridad_manual", "estres_psicologico"
+      ]
+    },
+    "Notification": {
+      "title": "Notification",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "type": { "type": "string", "enum": ["info", "warning", "success", "error"] },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "link": { "type": "string" }
+      },
+      "required": ["title", "message", "type", "read", "createdAt"]
+    },
+    "ImpactMatrix": {
+      "title": "ImpactMatrix",
+      "type": "object",
+      "description": "Maps the impact of a Variable onto a Hormone.",
+      "properties": {
+        "matrix_id": { "type": "string" },
+        "var_id": { "type": "string", "description": "The ID of the causing Variable." },
+        "hormone_id": { "type": "string", "description": "The ID of the affected Hormone." },
+        "effect_size": { "type": "number", "description": "The magnitude of the impact, can be positive or negative." },
+        "duration_hours": { "type": "number", "description": "How long the effectspike lasts in hours." }
+      },
+      "required": ["matrix_id", "var_id", "hormone_id", "effect_size", "duration_hours"]
+    },
+    "ComputedGlobalState": {
+      "title": "ComputedGlobalState",
+      "type": "object",
+      "description": "Stores the calculated overall state of the user.",
+      "properties": {
+        "estado_global": { "type": "string", "enum": ["OK", "RIESGO", "CRITICO"] },
+        "reason_codes": { "type": "array", "items": { "type": "string" } },
+        "dominant_drain_vars_7d": { "type": "array", "items": { "type": "string" } },
+        "dominant_gain_vars_7d": { "type": "array", "items": { "type": "string" } },
+        "explanation": {
+          "type": "object",
+          "properties": {
+            "primary_cause": { "type": "string" },
+            "secondary_causes": { "type": "array", "items": { "type": "string" } },
+            "modifiers": { "type": "array", "items": { "type": "string" } }
+          },
+          "required": ["primary_cause", "secondary_causes", "modifiers"]
+        },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["estado_global", "reason_codes", "dominant_drain_vars_7d", "dominant_gain_vars_7d", "explanation", "updatedAt"]
+    },
+    "ComputedArea": {
+      "title": "ComputedArea",
+      "type": "object",
+      "description": "Stores the calculated state of a life area.",
+      "properties": {
+        "area_id": { "type": "string" },
+        "score_7d": { "type": "number" },
+        "estado": { "type": "string", "enum": ["OK", "RIESGO", "CRITICO"] }
+      },
+      "required": ["area_id", "score_7d", "estado"]
+    },
+    "ComputedHormone": {
+      "title": "ComputedHormone",
+      "type": "object",
+      "description": "Stores the calculated state of a hormone.",
+      "properties": {
+        "hormone_id": { "type": "string" },
+        "current_level": { "type": "number" },
+        "delta_24h": { "type": "number" }
+      },
+      "required": ["hormone_id", "current_level", "delta_24h"]
+    },
+    "ComputedDailyScore": {
+      "title": "ComputedDailyScore",
+      "type": "object",
+      "description": "Stores the calculated daily wellness score.",
+      "properties": {
+        "fecha": { "type": "string", "format": "date" },
+        "score_total": { "type": "number" }
+      },
+      "required": ["fecha", "score_total"]
+    },
+    "WeeklySnapshot": {
+      "title": "WeeklySnapshot",
+      "type": "object",
+      "description": "Stores a weekly snapshot of the user's state.",
+      "properties": {
+        "snapshot_id": { "type": "string" },
+        "fecha": { "type": "string", "format": "date-time" },
+        "estado_global": { "type": "string", "enum": ["OK", "RIESGO", "CRITICO"] },
+        "scores_por_area": { "type": "array", "items": { "type": "object", "properties": { "area_id": { "type": "string" }, "score": { "type": "number" }, "estado": { "type": "string" } } } },
+        "niveles_hormonales": { "type": "array", "items": { "type": "object", "properties": { "hormone_id": { "type": "string" }, "level": { "type": "number" } } } },
+        "dominantes": { "type": "object", "properties": { "drain": { "type": "array", "items": { "type": "string" } }, "gain": { "type": "array", "items": { "type": "string" } } } }
+      },
+      "required": ["snapshot_id", "fecha", "estado_global", "scores_por_area", "niveles_hormonales", "dominantes"]
+    },
+    "Kpi": {
+      "title": "Kpi",
+      "type": "object",
+      "description": "Represents key performance indicators.",
+      "properties": {
+        "metric_id": { "type": "string" },
+        "descripcion": { "type": "string" },
+        "formula": { "type": "string" },
+        "valor_actual": { "type": "string" },
+        "target": { "type": "string" },
+        "status": { "type": "string", "enum": ["OK", "Riesgo"] }
+      },
+      "required": ["metric_id", "descripcion", "formula", "valor_actual", "target", "status"]
+    },
+    "DashboardConfig": {
+      "title": "DashboardConfig",
+      "type": "object",
+      "description": "Represents dashboard configuration.",
+      "properties": {
+        "key": { "type": "string" },
+        "value": { "type": "string" }
+      },
+      "required": ["key", "value"]
+    }
+  },
+  "auth": {
+    "providers": [
+      "google.com"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": { "entityName": "UserProfile", "schema": { "$ref": "#/entities/UserProfile" }, "description": "Root collection for user-specific data." }
+      },
+      {
+        "path": "/users/{userId}/playerProfile/{profileId}",
+        "definition": { "entityName": "PlayerProfile", "schema": { "$ref": "#/entities/PlayerProfile" }, "description": "The user's core physiological and psychological parameters." }
+      },
+      {
+        "path": "/users/{userId}/areas/{areaId}",
+        "definition": { "entityName": "Area", "schema": { "$ref": "#/entities/Area" }, "description": "User's life areas." }
+      },
+      {
+        "path": "/users/{userId}/hormones/{hormoneId}",
+        "definition": { "entityName": "Hormone", "schema": { "$ref": "#/entities/Hormone" }, "description": "User's hormone levels and biomarkers." }
+      },
+      {
+        "path": "/users/{userId}/variables/{variableId}",
+        "definition": { "entityName": "Variable", "schema": { "$ref": "#/entities/Variable" }, "description": "User's vital variables." }
+      },
+      {
+        "path": "/users/{userId}/states/{stateId}",
+        "definition": { "entityName": "State", "schema": { "$ref": "#/entities/State" }, "description": "User's states." }
+      },
+      {
+        "path": "/users/{userId}/protocols/{protocolId}",
+        "definition": { "entityName": "Protocol", "schema": { "$ref": "#/entities/Protocol" }, "description": "User's protocols." }
+      },
+      {
+        "path": "/users/{userId}/events/{eventId}",
+        "definition": { "entityName": "Event", "schema": { "$ref": "#/entities/Event" }, "description": "User's events." }
+      },
+      {
+        "path": "/users/{userId}/skills/{skillId}",
+        "definition": { "entityName": "Skill", "schema": { "$ref": "#/entities/Skill" }, "description": "User's skills." }
+      },
+      {
+        "path": "/users/{userId}/systems/{systemId}",
+        "definition": { "entityName": "System", "schema": { "$ref": "#/entities/System" }, "description": "User's systems." }
+      },
+      {
+        "path": "/users/{userId}/habits/{habitId}",
+        "definition": { "entityName": "Habit", "schema": { "$ref": "#/entities/Habit" }, "description": "User's habits." }
+      },
+      {
+        "path": "/users/{userId}/milestones/{milestoneId}",
+        "definition": { "entityName": "Milestone", "schema": { "$ref": "#/entities/Milestone" }, "description": "User's milestones for skills and systems." }
+      },
+      {
+        "path": "/users/{userId}/relations/{relationId}",
+        "definition": { "entityName": "Relation", "schema": { "$ref": "#/entities/Relation" }, "description": "User's relations." }
+      },
+      {
+        "path": "/users/{userId}/interactions/{interactionId}",
+        "definition": { "entityName": "Interaction", "schema": { "$ref": "#/entities/Interaction" }, "description": "User's interactions." }
+      },
+      {
+        "path": "/users/{userId}/accounts/{accountId}",
+        "definition": { "entityName": "Account", "schema": { "$ref": "#/entities/Account" }, "description": "User's accounts." }
+      },
+      {
+        "path": "/users/{userId}/transactions/{transactionId}",
+        "definition": { "entityName": "Transaction", "schema": { "$ref": "#/entities/Transaction" }, "description": "User's transactions." }
+      },
+      {
+        "path": "/users/{userId}/debts/{debtId}",
+        "definition": { "entityName": "Debt", "schema": { "$ref": "#/entities/Debt" }, "description": "User's debts." }
+      },
+      {
+        "path": "/users/{userId}/notifications/{notificationId}",
+        "definition": { "entityName": "Notification", "schema": { "$ref": "#/entities/Notification" }, "description": "User's notifications." }
+      },
+      {
+        "path": "/users/{userId}/impactMatrix/{matrixId}",
+        "definition": { "entityName": "ImpactMatrix", "schema": { "$ref": "#/entities/ImpactMatrix" }, "description": "User's impact matrix." }
+      },
+      {
+        "path": "/users/{userId}/kpis/{kpiId}",
+        "definition": { "entityName": "Kpi", "schema": { "$ref": "#/entities/Kpi" }, "description": "User's KPIs." }
+      },
+      {
+        "path": "/users/{userId}/dashboardConfig/{configId}",
+        "definition": { "entityName": "DashboardConfig", "schema": { "$ref": "#/entities/DashboardConfig" }, "description": "User's dashboard configuration." }
+      },
+      {
+        "path": "/users/{userId}/computed_global_state/{stateId}",
+        "definition": { "entityName": "ComputedGlobalState", "schema": { "$ref": "#/entities/ComputedGlobalState" }, "description": "Stores the calculated overall state of the user." }
+      },
+      {
+        "path": "/users/{userId}/computed_areas/{areaId}",
+        "definition": { "entityName": "ComputedArea", "schema": { "$ref": "#/entities/ComputedArea" }, "description": "Stores the calculated state of a life area." }
+      },
+      {
+        "path": "/users/{userId}/computed_hormones/{hormoneId}",
+        "definition": { "entityName": "ComputedHormone", "schema": { "$ref": "#/entities/ComputedHormone" }, "description": "Stores the calculated state of a hormone." }
+      },
+      {
+        "path": "/users/{userId}/computed_daily_score/{scoreId}",
+        "definition": { "entityName": "ComputedDailyScore", "schema": { "$ref": "#/entities/ComputedDailyScore" }, "description": "Stores the calculated daily wellness score." }
+      },
+      {
+        "path": "/users/{userId}/weeklySnapshots/{snapshotId}",
+        "definition": { "entityName": "WeeklySnapshot", "schema": { "$ref": "#/entities/WeeklySnapshot" }, "description": "Stores a weekly snapshot of the user's state." }
+      }
+    ]
+  }
+}

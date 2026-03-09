@@ -1,0 +1,406 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useUser, useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
+import { useRouter } from 'next/navigation';
+import { BrainCircuit, Loader2, Sparkles, ChevronRight, ChevronLeft, ShieldCheck, HeartPulse, User, Zap, Activity } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { Progress } from '@/components/ui/progress';
+import { Slider } from '@/components/ui/slider';
+import { mbtiTypes, enneagramTypes, areaPresets, variablePresets, protocolPresets, hormonePresets } from '@/lib/seed-data';
+import { mapMbtiToFacets, mapEnneagramToFacets, mapFacetsToBigFive } from '@/lib/personality-mapper';
+import { getAIOnboardingSetup } from '@/lib/actions';
+import { writeBatch, doc, collection, query, limit, getDoc, getDocs } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
+import type { PlayerProfile, Area } from '@/lib/types';
+
+export default function OnboardingPage() {
+  const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
+  const router = useRouter();
+  const { toast } = useToast();
+  
+  const [step, setStep] = useState(1);
+  const [isProcessing, setIsAiProcessing] = useState(false);
+  const totalSteps = 5;
+
+  const [formData, setFormData] = useState({
+    age: 30,
+    weight: 75,
+    height: 180,
+    mbti: 'none',
+    enneagram: 'none',
+    sensitivities: {
+        stress: 5,
+        dopamine: 5,
+        sleep: 5,
+        emotional: 5,
+        environmental: 5,
+        pressure: 5,
+    },
+    challenges: '',
+    goals: [] as string[],
+  });
+
+  const playerProfileRef = useMemoFirebase(() => user ? doc(firestore, `users/${user.uid}/playerProfile/main-profile`) : null, [user, firestore]);
+  const { data: existingProfile, isLoading: isProfileLoading, error: profileError } = useDoc<PlayerProfile>(playerProfileRef);
+  const areasProbeRef = useMemoFirebase(
+    () => (user ? query(collection(firestore, `users/${user.uid}/areas`), limit(1)) : null),
+    [user, firestore]
+  );
+  const { data: existingAreas, isLoading: isAreasProbeLoading, error: areasProbeError } = useCollection<Area>(areasProbeRef);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    if (!isUserLoading && !user) {
+      router.replace('/login');
+    }
+
+    if (isUserLoading || !user || isProfileLoading || isAreasProbeLoading || profileError || areasProbeError) {
+      return () => {
+        isCancelled = true;
+      };
+    }
+
+    const hasAnyArea = (existingAreas?.length || 0) > 0;
+    if (existingProfile || hasAnyArea) {
+      router.replace('/dashboard');
+      return () => {
+        isCancelled = true;
+      };
+    }
+
+    // Double-check to prevent showing onboarding due to transient empty snapshots.
+    const verifyAndRedirect = async () => {
+      try {
+        const [profileSnap, areasSnap] = await Promise.all([
+          getDoc(doc(firestore, `users/${user.uid}/playerProfile`, 'main-profile')),
+          getDocs(query(collection(firestore, `users/${user.uid}/areas`), limit(1))),
+        ]);
+        if (isCancelled) return;
+        if (profileSnap.exists() || !areasSnap.empty) {
+          router.replace('/dashboard');
+        }
+      } catch {
+        // Keep onboarding page if verification fails; avoid forced redirects on errors.
+      }
+    };
+
+    verifyAndRedirect();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [user, isUserLoading, existingProfile, existingAreas, isProfileLoading, isAreasProbeLoading, profileError, areasProbeError, firestore, router]);
+
+  const handleNext = () => setStep(s => Math.min(totalSteps, s + 1));
+  const handlePrev = () => setStep(s => Math.max(1, s - 1));
+
+  const toggleGoal = (goal: string) => {
+    setFormData(prev => ({
+        ...prev,
+        goals: prev.goals.includes(goal) 
+            ? prev.goals.filter(g => g !== goal) 
+            : [...prev.goals, goal]
+    }));
+  };
+
+  const handleCompleteOnboarding = async () => {
+    if (!user || !firestore) return;
+    
+    setIsAiProcessing(true);
+    try {
+        const setup = await getAIOnboardingSetup({
+            physicalStats: { age: formData.age, weight: formData.weight, height: formData.height },
+            personality: { mbti: formData.mbti, enneagram: formData.enneagram },
+            sensitivityScores: formData.sensitivities,
+            challenges: formData.challenges,
+            goals: formData.goals
+        });
+
+        const batch = writeBatch(firestore);
+
+        // 1. Personality Mapping
+        const mbtiFacets = formData.mbti !== 'none' ? mapMbtiToFacets(formData.mbti) : null;
+        const enneagramFacets = formData.enneagram !== 'none' ? mapEnneagramToFacets(formData.enneagram) : null;
+        
+        let finalFacets = {
+            facet_mind_introverted: 50, facet_energy_intuitive: 50,
+            facet_nature_thinking: 50, facet_tactics_judging: 50,
+            facet_identity_assertive: 50,
+        };
+
+        if (mbtiFacets && enneagramFacets) {
+            finalFacets = {
+                facet_mind_introverted: Math.round((mbtiFacets.mind.introverted + enneagramFacets.mind.introverted) / 2),
+                facet_energy_intuitive: Math.round((mbtiFacets.energy.intuitive + enneagramFacets.energy.intuitive) / 2),
+                facet_nature_thinking: Math.round((mbtiFacets.nature.thinking + enneagramFacets.nature.thinking) / 2),
+                facet_tactics_judging: Math.round((mbtiFacets.tactics.judging + enneagramFacets.tactics.judging) / 2),
+                facet_identity_assertive: Math.round((mbtiFacets.identity.assertive + enneagramFacets.identity.assertive) / 2),
+            };
+        } else if (mbtiFacets) {
+            finalFacets = {
+                facet_mind_introverted: mbtiFacets.mind.introverted,
+                facet_energy_intuitive: mbtiFacets.energy.intuitive,
+                facet_nature_thinking: mbtiFacets.nature.thinking,
+                facet_tactics_judging: mbtiFacets.tactics.judging,
+                facet_identity_assertive: mbtiFacets.identity.assertive,
+            };
+        }
+
+        const bigFive = mapFacetsToBigFive({
+            mind: { extraverted: 100 - finalFacets.facet_mind_introverted },
+            energy: { intuitive: finalFacets.facet_energy_intuitive },
+            nature: { feeling: 100 - finalFacets.facet_nature_thinking },
+            tactics: { judging: finalFacets.facet_tactics_judging },
+            identity: { turbulent: 100 - finalFacets.facet_identity_assertive },
+        });
+
+        // 2. Create Player Profile
+        const profileRef = doc(firestore, `users/${user.uid}/playerProfile/main-profile`);
+        batch.set(profileRef, {
+            age: formData.age,
+            weight_kg: formData.weight,
+            height_cm: formData.height,
+            mbti_type: formData.mbti,
+            enneagram_type: formData.enneagram,
+            ...finalFacets,
+            facet_mind_extraverted: 100 - finalFacets.facet_mind_introverted,
+            facet_energy_observant: 100 - finalFacets.facet_energy_intuitive,
+            facet_nature_feeling: 100 - finalFacets.facet_nature_thinking,
+            facet_tactics_prospecting: 100 - finalFacets.facet_tactics_judging,
+            facet_identity_turbulent: 100 - finalFacets.facet_identity_assertive,
+            ...bigFive,
+            ...setup.sensitivities,
+        });
+
+        // 3. Personalized Hormones (Adjusted by age)
+        const ageFactor = Math.max(0, formData.age - 30);
+        hormonePresets.forEach(preset => {
+            let baseline = preset.baseline;
+            if (preset.hormone_id === 'CORTISOL') baseline *= (1 + ageFactor * 0.005);
+            if (preset.hormone_id === 'MELATONINA') baseline *= (1 - ageFactor * 0.01);
+            
+            const finalBaseline = Math.round(Math.max(10, Math.min(90, baseline)));
+            batch.set(doc(collection(firestore, `users/${user.uid}/hormones`)), {
+                ...preset,
+                baseline: finalBaseline,
+                current_level: finalBaseline
+            });
+        });
+
+        // 4. Adjust Areas
+        areaPresets.forEach(area => {
+            const adjusted = setup.startingAreaStates.find(s => s.area_id === area.area_id);
+            batch.set(doc(collection(firestore, `users/${user.uid}/areas`)), {
+                ...area,
+                estado: adjusted?.status || 'OK'
+            });
+        });
+
+        // 5. Create Recommended Skills/Systems/Habits
+        setup.recommendedSkills.forEach(skillRec => {
+            const skillId = `SKILL_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+            batch.set(doc(collection(firestore, `users/${user.uid}/skills`)), {
+                habilidad_id: skillId,
+                nombre: skillRec.nombre,
+                area_id: skillRec.area_id,
+                nivel_actual: 3,
+                nivel_objetivo: 7,
+                estado: 'Activa',
+                kpi: skillRec.kpi
+            });
+
+            const systemRec = setup.recommendedSystems.find(s => s.habilidad_name === skillRec.nombre);
+            if (systemRec) {
+                const systemId = `SYS_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+                batch.set(doc(collection(firestore, `users/${user.uid}/systems`)), {
+                    sistema_id: systemId,
+                    habilidad_id: skillId,
+                    objetivo: systemRec.objetivo,
+                    frecuencia: systemRec.frecuencia,
+                    estado: 'Activo',
+                    protocolo_fallo: 'P_RESET_5'
+                });
+
+                setup.recommendedHabits.forEach(habitRec => {
+                    if (habitRec.system_objective === systemRec.objetivo) {
+                        batch.set(doc(collection(firestore, `users/${user.uid}/habits`)), {
+                            habito_id: `HB_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                            sistema_id: systemId,
+                            var_id: habitRec.var_id,
+                            frecuencia: habitRec.frecuencia,
+                            duracion_min: habitRec.duracion_min,
+                            minimo_viable: habitRec.minimo_viable,
+                            description: habitRec.description
+                        });
+                    }
+                });
+            }
+        });
+
+        // 6. Essentials
+        protocolPresets.forEach(p => batch.set(doc(collection(firestore, `users/${user.uid}/protocols`)), p));
+        variablePresets.forEach(v => batch.set(doc(collection(firestore, `users/${user.uid}/variables`)), v));
+
+        await batch.commit();
+        toast({ title: "¡Sistema Calibrado!", description: "Tu bioperfil ha sido sincronizado con éxito." });
+        setTimeout(() => router.push('/dashboard'), 500);
+    } catch (error) {
+        console.error(error);
+        toast({ variant: "destructive", title: "Falla en la Calibración", description: "Ocurrió un error al procesar tus datos." });
+    } finally {
+        setIsAiProcessing(false);
+    }
+  };
+
+  if (isProcessing) {
+    return (
+        <div className="flex flex-col items-center justify-center min-h-screen bg-background p-6 text-center space-y-8 animate-in fade-in duration-1000">
+            <div className="relative">
+                <BrainCircuit className="h-24 w-24 text-primary animate-pulse" />
+                <Sparkles className="absolute -top-4 -right-4 h-12 w-12 text-yellow-400 animate-bounce" />
+            </div>
+            <div className="space-y-4 max-w-md">
+                <h1 className="text-4xl font-extrabold tracking-tighter">Sincronizando Núcleo Axiom</h1>
+                <p className="text-muted-foreground text-lg leading-tight">La IA está calculando tus facetas de personalidad y ajustando tus sensibilidades biológicas...</p>
+                <div className="pt-4 space-y-2">
+                    <div className="flex justify-between text-xs font-mono uppercase tracking-widest text-muted-foreground">
+                        <span>Configurando Algoritmos</span>
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                    </div>
+                    <Progress value={85} className="h-1" />
+                </div>
+            </div>
+        </div>
+    );
+  }
+
+  if (isUserLoading || isProfileLoading || isAreasProbeLoading) return null;
+  if (profileError || areasProbeError) return null;
+  if (user && (existingProfile || (existingAreas?.length || 0) > 0)) return null;
+
+  const SensitivitySlider = ({ label, icon: Icon, value, name, description }: { label: string, icon: any, value: number, name: keyof typeof formData.sensitivities, description: string }) => (
+    <div className="space-y-4 p-4 rounded-lg bg-muted/50 border border-border">
+        <div className="flex items-center gap-3">
+            <div className="p-2 bg-primary/10 rounded-md text-primary"><Icon size={18}/></div>
+            <div>
+                <Label className="text-sm font-bold">{label}: {value}</Label>
+                <p className="text-[10px] text-muted-foreground leading-tight">{description}</p>
+            </div>
+        </div>
+        <Slider 
+            min={1} max={10} step={1} value={[value]} 
+            onValueChange={v => setFormData({ ...formData, sensitivities: { ...formData.sensitivities, [name]: v[0] } })} 
+        />
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-muted/30 flex flex-col items-center justify-center p-4">
+      <div className="w-full max-w-2xl space-y-8">
+        <header className="flex flex-col items-center text-center space-y-2">
+            <div className="bg-primary/10 p-3 rounded-full mb-2"><BrainCircuit className="h-10 w-10 text-primary" /></div>
+            <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">Calibración Axiom</h1>
+            <p className="text-muted-foreground max-w-sm">Configura tu bioperfil para una optimización precisa.</p>
+            <div className="flex gap-1 mt-4">
+                {[1, 2, 3, 4, 5].map(i => (
+                    <div key={i} className={cn("h-1.5 w-8 rounded-full transition-colors", step >= i ? "bg-primary" : "bg-muted-foreground/20")} />
+                ))}
+            </div>
+        </header>
+
+        <Card className="shadow-xl border-2">
+            <CardContent className="p-8">
+                {step === 1 && (
+                    <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+                        <div className="flex items-center gap-3 mb-2"><HeartPulse className="text-primary" /><h2 className="text-xl font-bold">Datos Fisiológicos</h2></div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="space-y-2"><Label>Edad</Label><Input type="number" value={formData.age} onChange={e => setFormData({...formData, age: Number(e.target.value)})} /></div>
+                            <div className="space-y-2"><Label>Peso (kg)</Label><Input type="number" value={formData.weight} onChange={e => setFormData({...formData, weight: Number(e.target.value)})} /></div>
+                            <div className="space-y-2"><Label>Altura (cm)</Label><Input type="number" value={formData.height} onChange={e => setFormData({...formData, height: Number(e.target.value)})} /></div>
+                        </div>
+                    </div>
+                )}
+
+                {step === 2 && (
+                    <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+                        <div className="flex items-center gap-3 mb-2"><User className="text-primary" /><h2 className="text-xl font-bold">Arquetipos</h2></div>
+                        <p className="text-sm text-muted-foreground">Esto mapeará tus 10 facetas de personalidad automáticamente.</p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2"><Label>MBTI</Label><Select value={formData.mbti} onValueChange={v => setFormData({...formData, mbti: v})}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="none">No lo sé</SelectItem>{mbtiTypes.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent></Select></div>
+                            <div className="space-y-2"><Label>Eneagrama</Label><Select value={formData.enneagram} onValueChange={v => setFormData({...formData, enneagram: v})}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="none">No lo sé</SelectItem>{enneagramTypes.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent></Select></div>
+                        </div>
+                    </div>
+                )}
+
+                {step === 3 && (
+                    <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+                        <div className="flex items-center gap-3 mb-2"><Zap className="text-primary" /><h2 className="text-xl font-bold">Test de Sensibilidad</h2></div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <SensitivitySlider label="Resiliencia al Estrés" icon={Activity} value={formData.sensitivities.stress} name="stress" description="1: Indiferente, 10: Bloqueo total ante plazos." />
+                            <ControlDopaSlider value={formData.sensitivities.dopamine} onChange={v => setFormData({...formData, sensitivities: {...formData.sensitivities, dopamine: v}})} />
+                            <SensitivitySlider label="Sensibilidad al Sueño" icon={HeartPulse} value={formData.sensitivities.sleep} name="sleep" description="1: Funciono con 4h, 10: Humor arruinado si duermo <7h." />
+                            <SensitivitySlider label="Orden del Entorno" icon={BrainCircuit} value={formData.sensitivities.environmental} name="environmental" description="1: El caos no me afecta, 10: El desorden me irrita." />
+                        </div>
+                    </div>
+                )}
+
+                {step === 4 && (
+                    <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+                        <div className="flex items-center gap-3 mb-2"><Sparkles className="text-primary" /><h2 className="text-xl font-bold">Desafíos</h2></div>
+                        <div className="space-y-2">
+                            <Label>¿Qué es lo que más te está frenando ahora mismo?</Label>
+                            <Textarea placeholder="Sé sincero. La IA calibrará tus puntos débiles..." className="min-h-[150px] resize-none" value={formData.challenges} onChange={e => setFormData({...formData, challenges: e.target.value})} />
+                        </div>
+                    </div>
+                )}
+
+                {step === 5 && (
+                    <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+                        <div className="flex items-center gap-3 mb-2"><ShieldCheck className="text-primary" /><h2 className="text-xl font-bold">Objetivos</h2></div>
+                        <div className="grid grid-cols-2 gap-3">
+                            {['Salud Física', 'Salud Mental', 'Finanzas', 'Carrera', 'Disciplina', 'Relaciones'].map(goal => (
+                                <Button key={goal} variant={formData.goals.includes(goal) ? "default" : "outline"} className="h-12 justify-start font-medium" onClick={() => toggleGoal(goal)}>
+                                    {formData.goals.includes(goal) && <ShieldCheck className="mr-2 h-4 w-4" />}{goal}
+                                </Button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </CardContent>
+            <CardFooter className="p-8 pt-0 flex justify-between">
+                <Button variant="ghost" onClick={handlePrev} disabled={step === 1}><ChevronLeft className="mr-2 h-4 w-4" /> Atrás</Button>
+                {step < totalSteps ? (
+                    <Button onClick={handleNext}>Siguiente <ChevronRight className="ml-2 h-4 w-4" /></Button>
+                ) : (
+                    <Button onClick={handleCompleteOnboarding} disabled={formData.goals.length === 0 || formData.challenges.length < 10}>Finalizar y Calibrar <Sparkles className="ml-2 h-4 w-4" /></Button>
+                )}
+            </CardFooter>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function ControlDopaSlider({ value, onChange }: { value: number, onChange: (v: number) => void }) {
+    return (
+        <div className="space-y-4 p-4 rounded-lg bg-muted/50 border border-border">
+            <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary/10 rounded-md text-primary"><Zap size={18}/></div>
+                <div>
+                    <Label className="text-sm font-bold">Control de Dopamina: {value}</Label>
+                    <p className="text-[10px] text-muted-foreground leading-tight">1: Sin móvil hasta las 10am, 10: Miro redes al abrir los ojos.</p>
+                </div>
+            </div>
+            <Slider min={1} max={10} step={1} value={[value]} onValueChange={v => onChange(v[0])} />
+        </div>
+    );
+}
