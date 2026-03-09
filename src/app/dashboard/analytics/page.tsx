@@ -53,6 +53,7 @@ import AreaTrendChart from '@/components/app/charts/area-trend-chart';
 import AreaStatusMatrixChart from '@/components/app/charts/area-status-matrix-chart';
 import AreaContributionChart from '@/components/app/charts/area-contribution-chart';
 import AreaWaterfallChart from '@/components/app/charts/area-waterfall-chart';
+import AreaDecayTimelineChart from '@/components/app/charts/area-decay-timeline-chart';
 import HormoneCurveChart from '@/components/app/charts/hormone-curve-chart';
 import HormoneTriggersChart from '@/components/app/charts/hormone-triggers-chart';
 import VariableRankingChart from '@/components/app/charts/variable-ranking-chart';
@@ -81,6 +82,7 @@ import CorrelationScatterChart from '@/components/app/charts/correlation-scatter
 import DashboardLoading from '../loading';
 import NavigationReady from '@/components/app/navigation-ready';
 import type { ScoreByArea, DailyScore } from '@/lib/types';
+import { computeAreaEventContributionAtTime, computeAreaScoreAtTime } from '@/lib/area-scoring';
 
 
 const tabsConfig = [
@@ -382,34 +384,33 @@ export default function AnalyticsPage() {
   }, [eventsInDateRange, userData?.variables]);
 
   const areaTrendData = useMemo(() => {
-    if (!userData?.variables || !selectedAreaForCharts) return [];
+    if (!userData?.variables || !userData?.areas || !selectedAreaForCharts) return [];
     const range = dateRange ?? { from: subDays(new Date(), 6), to: new Date() };
     if (!range.from) return [];
 
     const trend: DailyScore[] = [];
     const start = startOfDay(range.from);
     const end = range.to ? endOfDay(range.to) : endOfDay(new Date());
+    const selectedArea = userData.areas.find(a => a.area_id === selectedAreaForCharts);
+    if (!selectedArea) return [];
 
     const areaVariables = userData.variables.filter(v => v.area_id === selectedAreaForCharts);
-    const areaVariableIds = areaVariables.map(v => v.var_id);
+    const areaVariableIds = new Set(areaVariables.map(v => v.var_id));
+    const variableById = new Map(areaVariables.map(v => [v.var_id, v]));
+    const eventsForArea = eventsInDateRange.filter(e => areaVariableIds.has(e.var_id));
 
     for (let d = start; d <= end; d = addDays(d, 1)) {
-        const dayStr = format(d, 'yyyy-MM-dd', { locale: es });
-        const dayEvents = eventsInDateRange.filter(e => {
-            return areaVariableIds.includes(e.var_id) && isSameDay(new Date(e.fecha), d);
-        });
-        
-        let dailyImpact = 0;
-        dayEvents.forEach(event => {
-            const variable = areaVariables.find(v => v.var_id === event.var_id);
-            if (variable) dailyImpact += variable.polaridad * variable.impacto_base * (event.intensidad / 5);
-        });
-        
-        const score = Math.round(Math.max(0, Math.min(100, 80 + dailyImpact)));
-        trend.push({ date: dayStr, score, movingAverage: score });
+      const dayStr = format(d, 'yyyy-MM-dd', { locale: es });
+      const areaScore = computeAreaScoreAtTime({
+        area: selectedArea,
+        events: eventsForArea,
+        variableById,
+        at: endOfDay(d),
+      });
+      trend.push({ date: dayStr, score: areaScore.score, movingAverage: areaScore.score });
     }
     return trend;
-  }, [eventsInDateRange, userData?.variables, dateRange, selectedAreaForCharts]);
+  }, [eventsInDateRange, userData?.variables, userData?.areas, dateRange, selectedAreaForCharts]);
 
   const areaStatusMatrixData = useMemo(() => {
       if (!userData?.areas || !userData.variables) return [];
@@ -422,26 +423,21 @@ export default function AnalyticsPage() {
 
       userData.areas.forEach(area => {
           const areaVariables = userData.variables.filter(v => v.area_id === area.area_id);
-          const areaVariableIds = areaVariables.map(v => v.var_id);
+          const areaVariableIds = new Set(areaVariables.map(v => v.var_id));
+          const variableById = new Map(areaVariables.map(v => [v.var_id, v]));
+          const eventsForArea = eventsInDateRange.filter(e => areaVariableIds.has(e.var_id));
           
           const dailyStates: { date: string; state: 'OK' | 'RIESGO' | 'CRITICO' }[] = [];
 
           for (let d = start; d <= end; d = addDays(d, 1)) {
               const dayStr = format(d, 'yyyy-MM-dd', { locale: es });
-              const dayEvents = eventsInDateRange.filter(e => areaVariableIds.includes(e.var_id) && isSameDay(new Date(e.fecha), d));
-
-              let score = 80;
-              dayEvents.forEach(event => {
-                  const variable = areaVariables.find(v => v.var_id === event.var_id);
-                  if (variable) score += variable.polaridad * variable.impacto_base * (event.intensidad / 5);
+              const areaScore = computeAreaScoreAtTime({
+                area,
+                events: eventsForArea,
+                variableById,
+                at: endOfDay(d),
               });
-              const finalScore = Math.round(Math.max(0, Math.min(100, score)));
-              
-              let state: 'OK' | 'RIESGO' | 'CRITICO' = 'OK';
-              if (finalScore < 50) state = 'CRITICO';
-              else if (finalScore < 75) state = 'RIESGO';
-
-              dailyStates.push({ date: dayStr, state });
+              dailyStates.push({ date: dayStr, state: areaScore.state });
           }
           matrix.push({ id: area.area_id, area: area.area_nombre, dailyStates });
       });
@@ -452,19 +448,20 @@ export default function AnalyticsPage() {
     if (!userData?.variables || !selectedAreaForCharts) return { positive: 0, negative: 0 };
     
     const areaVariables = userData.variables.filter(v => v.area_id === selectedAreaForCharts);
-    const areaVariableIds = areaVariables.map(v => v.var_id);
-
-    const eventsForArea = eventsInDateRange.filter(e => areaVariableIds.includes(e.var_id));
+    const areaVariableIds = new Set(areaVariables.map(v => v.var_id));
+    const variableById = new Map(areaVariables.map(v => [v.var_id, v]));
+    const now = new Date();
+    const eventsForArea = eventsInDateRange.filter(e => areaVariableIds.has(e.var_id));
 
     return eventsForArea.reduce((acc, event) => {
-        const variable = areaVariables.find(v => v.var_id === event.var_id);
+        const variable = variableById.get(event.var_id);
         if (!variable) return acc;
 
-        const impact = variable.impacto_base * (event.intensidad / 5);
-        if (variable.polaridad === 1) {
+        const impact = computeAreaEventContributionAtTime(event, variable, now);
+        if (impact > 0) {
             acc.positive += impact;
         } else {
-            acc.negative -= impact; 
+            acc.negative += impact;
         }
         return acc;
     }, { positive: 0, negative: 0 });
@@ -476,20 +473,23 @@ export default function AnalyticsPage() {
     const data: { name: string, value: number, offset: number, type: 'start' | 'increase' | 'decrease' | 'total' }[] = [];
     const areaVariables = userData.variables.filter(v => v.area_id === selectedAreaForCharts);
     const areaVariableIds = new Set(areaVariables.map(v => v.var_id));
+    const variableById = new Map(areaVariables.map(v => [v.var_id, v]));
+    const now = new Date();
     
     const eventsForArea = eventsInDateRange
         .filter(e => areaVariableIds.has(e.var_id))
         .sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
 
-    let runningTotal = 80;
+    let runningTotal = 70;
 
     data.push({ name: 'Partida', value: runningTotal, offset: 0, type: 'start' });
 
     eventsForArea.forEach((event) => {
-      const variable = areaVariables.find(v => v.var_id === event.var_id);
+      const variable = variableById.get(event.var_id);
       if (!variable) return;
 
-      const impact = variable.polaridad * variable.impacto_base * (event.intensidad / 5);
+      const impact = computeAreaEventContributionAtTime(event, variable, now);
+      if (Math.abs(impact) < 0.05) return;
       
       if (impact > 0) {
         data.push({ name: `${variable.var_nombre.substring(0, 10)}...`, value: impact, offset: runningTotal, type: 'increase' });
@@ -502,6 +502,42 @@ export default function AnalyticsPage() {
     data.push({ name: 'Final', value: Math.max(0, Math.min(100, runningTotal)), offset: 0, type: 'total' });
     return data;
   }, [eventsInDateRange, userData?.variables, selectedAreaForCharts]);
+
+  const areaDecayTimelineData = useMemo(() => {
+    if (!userData?.variables || !selectedAreaForCharts) return [];
+    const range = dateRange ?? { from: subDays(new Date(), 6), to: new Date() };
+    if (!range.from) return [];
+
+    const start = startOfDay(range.from);
+    const end = range.to ? endOfDay(range.to) : endOfDay(new Date());
+    const areaVariables = userData.variables.filter(v => v.area_id === selectedAreaForCharts);
+    const variableById = new Map(areaVariables.map(v => [v.var_id, v]));
+    const areaVarIds = new Set(areaVariables.map(v => v.var_id));
+    const eventsForArea = eventsInDateRange.filter(e => areaVarIds.has(e.var_id));
+    const rows: Array<{ date: string; net: number; positive: number; negative: number }> = [];
+
+    for (let d = start; d <= end; d = addDays(d, 1)) {
+      const at = endOfDay(d);
+      let positive = 0;
+      let negative = 0;
+
+      eventsForArea.forEach((event) => {
+        const variable = variableById.get(event.var_id);
+        if (!variable) return;
+        const impact = computeAreaEventContributionAtTime(event, variable, at);
+        if (impact > 0) positive += impact;
+        else negative += impact;
+      });
+
+      rows.push({
+        date: format(d, 'yyyy-MM-dd', { locale: es }),
+        net: Math.round((positive + negative) * 100) / 100,
+        positive: Math.round(positive * 100) / 100,
+        negative: Math.round(negative * 100) / 100,
+      });
+    }
+    return rows;
+  }, [userData?.variables, selectedAreaForCharts, dateRange, eventsInDateRange]);
 
   const hormoneAnalysisData = useMemo(() => {
     if (!selectedHormoneId || !userData || !dateRange?.from || !userData.impactMatrix) return null;
@@ -1076,6 +1112,9 @@ export default function AnalyticsPage() {
                         </div>
                         <div className="mt-6">
                             <AreaWaterfallChart data={areaWaterfallData} />
+                        </div>
+                        <div className="mt-6">
+                            <AreaDecayTimelineChart data={areaDecayTimelineData} />
                         </div>
                     </TabsContent>
                     <TabsContent value="hormones" className="space-y-6">
