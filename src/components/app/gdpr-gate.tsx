@@ -217,9 +217,11 @@ export function GdprGate({ children }: { children: React.ReactNode }) {
     );
   }
 
+  // Do not mount children until consent is confirmed — otherwise dashboard hooks
+  // run while the modal is blocking and the onboarding redirect fires at the wrong time.
   return (
     <>
-      {children}
+      {status === 'accepted' && children}
       {mounted && status === 'required' && createPortal(
         <GdprConsentModal onAccept={handleAccept} />,
         document.body,

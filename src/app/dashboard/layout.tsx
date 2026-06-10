@@ -12,7 +12,7 @@ import { useUserData } from '@/hooks/use-user-data';
 import { DashboardNavigationLoadingProvider } from '@/components/app/dashboard-navigation-loading';
 import { GdprGate } from '@/components/app/gdpr-gate';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ShieldX, Unlock, Zap, Loader2, WifiOff } from 'lucide-react';
+import { ShieldX, Unlock, Loader2, WifiOff } from 'lucide-react';
 import { useOnlineStatus } from '@/hooks/use-online-status';
 import { DemoBanner } from '@/components/app/demo-banner';
 import { PwaInit } from '@/components/app/pwa-init';
@@ -22,7 +22,7 @@ import { Button } from '@/components/ui/button';
 import { useFirestore, useUser, addDocumentNonBlocking, useMemoFirebase, useDoc, useCollection } from '@/firebase';
 import { TourProvider } from '@/components/app/tour/tour-context';
 import { TourOverlay } from '@/components/app/tour/tour-overlay';
-import { collection, doc, query, limit, getDoc, getDocs } from 'firebase/firestore';
+import { collection, doc, query, limit } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import type { PlayerProfile, Area } from '@/lib/types';
 
@@ -101,44 +101,18 @@ export default function DashboardLayout({
 
   // Onboarding Redirect Logic
   useEffect(() => {
-    let isCancelled = false;
+    // Wait until auth and both Firestore reads have settled.
+    if (isUserLoading || !user || isProfileLoading || isAreasProbeLoading) return;
 
-    // Never redirect while auth/data are still settling or if reads are in error state.
-    if (isUserLoading || !user || isProfileLoading || isAreasProbeLoading || profileError || areasProbeError) {
-      return () => {
-        isCancelled = true;
-      };
-    }
+    // If either read errored out, we can't determine if onboarding is needed — stay put.
+    if (profileError || areasProbeError) return;
 
+    // Both reads resolved successfully: no profile + no areas means new user.
     const hasAnyArea = (areasProbe?.length || 0) > 0;
-    if (playerProfile || hasAnyArea) {
-      return () => {
-        isCancelled = true;
-      };
+    if (!playerProfile && !hasAnyArea) {
+      router.replace('/onboarding');
     }
-
-    // Double-check against Firestore before redirecting to avoid false onboarding on transient snapshots.
-    const verifyAndRedirect = async () => {
-      try {
-        const [profileSnap, areasSnap] = await Promise.all([
-          getDoc(doc(firestore, `users/${user.uid}/playerProfile`, 'main-profile')),
-          getDocs(query(collection(firestore, `users/${user.uid}/areas`), limit(1))),
-        ]);
-        if (isCancelled) return;
-        if (!profileSnap.exists() && areasSnap.empty) {
-          router.replace('/onboarding');
-        }
-      } catch (e) {
-        console.warn('[DashboardLayout] verifyAndRedirect failed — keeping user on dashboard:', e);
-      }
-    };
-
-    verifyAndRedirect();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [user, isUserLoading, isProfileLoading, isAreasProbeLoading, playerProfile, areasProbe, profileError, areasProbeError, firestore, router]);
+  }, [user, isUserLoading, isProfileLoading, isAreasProbeLoading, playerProfile, areasProbe, profileError, areasProbeError, router]);
 
   // Pass pre-fetched data so useComputedDataWriter skips 14 duplicate listeners.
   const { writerPrefetch } = useUserData();
