@@ -405,7 +405,7 @@ export function QuickLogFab() {
       )}
 
       {/* Speed dial */}
-      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2.5">
+      <div data-tour="quick-log" className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2.5">
 
         {/* Standard actions */}
         {SPEED_DIAL_ACTIONS.map((action, i) => {

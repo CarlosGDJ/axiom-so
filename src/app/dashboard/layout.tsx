@@ -20,6 +20,8 @@ import { QuickLogFab } from '@/components/app/quick-log-fab';
 import { NotificationPrompt } from '@/components/app/notification-prompt';
 import { Button } from '@/components/ui/button';
 import { useFirestore, useUser, addDocumentNonBlocking, useMemoFirebase, useDoc, useCollection } from '@/firebase';
+import { TourProvider } from '@/components/app/tour/tour-context';
+import { TourOverlay } from '@/components/app/tour/tour-overlay';
 import { collection, doc, query, limit, getDoc, getDocs } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import type { PlayerProfile, Area } from '@/lib/types';
@@ -144,11 +146,14 @@ export default function DashboardLayout({
   useSmartNotifications();
 
   return (
-    <GdprGate>
-      <DashboardNavigationLoadingProvider>
-        <DashboardLayoutInner>{children}</DashboardLayoutInner>
-      </DashboardNavigationLoadingProvider>
-    </GdprGate>
+    <TourProvider>
+      <GdprGate>
+        <DashboardNavigationLoadingProvider>
+          <DashboardLayoutInner>{children}</DashboardLayoutInner>
+        </DashboardNavigationLoadingProvider>
+      </GdprGate>
+      <TourOverlay />
+    </TourProvider>
   );
 }
 

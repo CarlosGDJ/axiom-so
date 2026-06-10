@@ -84,17 +84,19 @@ export default function DashboardPage() {
       <NavigationReady />
 
       {/* ── HUD biométrico ── */}
-      <BiostatsHudStrip
-        rpgStats={userData.rpg_stats}
-        overallState={userData.overallState}
-        scoreVelocity={userData.kpis.scoreVelocity}
-      />
+      <div data-tour="hud">
+        <BiostatsHudStrip
+          rpgStats={userData.rpg_stats}
+          overallState={userData.overallState}
+          scoreVelocity={userData.kpis.scoreVelocity}
+        />
+      </div>
 
       {/* ── Fecha + acceso rápido ── */}
       <TodayStrip userData={userData} />
 
       {/* ── Estado del sistema + Motor KAIROS ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5" data-tour="overview">
         <div className="transition-all duration-200 hover:-translate-y-1 hover:drop-shadow-lg rounded-xl">
           <OverviewCard
             overallState={userData.overallState}

@@ -3,7 +3,7 @@
 import {
   BrainCircuit, LayoutDashboard, LineChart, Database, User, Settings,
   Repeat, ShieldAlert, AlertCircle, Wallet, MessageSquare, Zap, Flame,
-  Compass, LayoutGrid, Moon, Palette, GraduationCap, Dumbbell, Users, SunMoon,
+  Compass, LayoutGrid, Moon, Palette, GraduationCap, Dumbbell, Users, SunMoon, HelpCircle,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -23,12 +23,14 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { usePathname } from 'next/navigation';
 import { useUserData } from '@/hooks/use-user-data';
+import { useTour } from '@/components/app/tour/tour-context';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 export function AppSidebarNav() {
   const pathname = usePathname();
   const { data: userData } = useUserData();
   const { setOpenMobile } = useSidebar();
+  const { startTour } = useTour();
   const isCriticalMode = userData?.overallState === 'CRITICO';
 
   const handleLinkClick = (e: React.MouseEvent, disabled: boolean) => {
@@ -116,7 +118,7 @@ export function AppSidebarNav() {
         <SidebarSeparator />
 
         {/* ── Áreas de vida ── */}
-        <SidebarGroup>
+        <SidebarGroup data-tour="areas-nav">
           <SidebarGroupLabel>Áreas de vida</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -159,10 +161,10 @@ export function AppSidebarNav() {
           <SidebarGroupLabel>Herramientas</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              <NavItem href="/dashboard/analytics" icon={LineChart} label="Analíticas" />
+              <div data-tour="analytics-nav"><NavItem href="/dashboard/analytics" icon={LineChart} label="Analíticas" /></div>
               <NavItem href="/dashboard/simulator" icon={Zap} label="Simulador" />
               <NavItem href="/dashboard/meditation" icon={SunMoon} label="Meditación" />
-              <NavItem href="/dashboard/chat" icon={MessageSquare} label="Chat con IA" />
+              <div data-tour="chat-nav"><NavItem href="/dashboard/chat" icon={MessageSquare} label="Chat con IA" /></div>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -204,6 +206,12 @@ export function AppSidebarNav() {
                 <Settings />
                 <span>Ajustes</span>
               </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton onClick={() => { setOpenMobile(false); startTour(); }}>
+              <HelpCircle />
+              <span>Guía de la app</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
