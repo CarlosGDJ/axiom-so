@@ -381,7 +381,10 @@ export default function OnboardingPage() {
                 {step < totalSteps ? (
                     <Button onClick={handleNext}>Siguiente <ChevronRight className="ml-2 h-4 w-4" /></Button>
                 ) : (
-                    <Button onClick={handleCompleteOnboarding} disabled={formData.goals.length === 0 || formData.challenges.length < 10}>Finalizar y Calibrar <Sparkles className="ml-2 h-4 w-4" /></Button>
+                    <div className="flex flex-col items-end gap-1">
+                      <Button onClick={handleCompleteOnboarding} disabled={formData.goals.length === 0}>Finalizar y Calibrar <Sparkles className="ml-2 h-4 w-4" /></Button>
+                      {formData.goals.length === 0 && <p className="text-xs text-muted-foreground">Selecciona al menos un objetivo</p>}
+                    </div>
                 )}
             </CardFooter>
         </Card>
