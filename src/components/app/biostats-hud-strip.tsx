@@ -47,9 +47,9 @@ export default function BiostatsHudStrip({ rpgStats, scoreVelocity }: BiostatsHu
   const velCfg = scoreVelocity ? VELOCITY_CONFIG[scoreVelocity.direction] : null;
 
   return (
-    <div className="rounded-xl border bg-card/80 backdrop-blur-sm px-5 py-4 space-y-4">
+    <div className="rounded-xl border bg-card/80 backdrop-blur-sm px-3 sm:px-5 py-4 space-y-4">
       {/* 6 bio-stats */}
-      <div className="grid grid-cols-3 sm:grid-cols-6 gap-x-4 gap-y-3">
+      <div className="grid grid-cols-3 sm:grid-cols-6 gap-x-2 sm:gap-x-4 gap-y-3">
         {STATS.map(({ key, label, icon: Icon, invert }) => {
           const value = Math.round((rpgStats as any)[key] ?? 0);
           const level = getLevel(value, invert);
@@ -61,7 +61,7 @@ export default function BiostatsHudStrip({ rpgStats, scoreVelocity }: BiostatsHu
             <div key={key} className="space-y-1.5 min-w-0">
               <div className="flex items-center gap-1">
                 <Icon className={cn('h-3 w-3 shrink-0', styles.text)} />
-                <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground truncate">
+                <span className="text-[9px] font-bold uppercase tracking-normal sm:tracking-wider text-muted-foreground truncate">
                   {label}
                 </span>
               </div>
