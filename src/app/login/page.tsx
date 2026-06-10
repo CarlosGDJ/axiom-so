@@ -6,7 +6,7 @@ import { GoogleAuthProvider, createUserWithEmailAndPassword, signInWithEmailAndP
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { BrainCircuit, AlertTriangle, ShieldAlert, FlaskConical, Loader2 } from 'lucide-react';
-import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const DEMO_EMAIL    = 'demo@axiom.app';
@@ -75,24 +75,19 @@ export default function LoginPage() {
     try {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
-      await setDoc(doc(firestore, 'users', user.uid), {
+
+      // Fire-and-forget — don't block navigation on Firestore writes.
+      // OnboardingGuard in the dashboard layout handles the /onboarding redirect for new users.
+      setDoc(doc(firestore, 'users', user.uid), {
         uid: user.uid,
         email: user.email,
         displayName: user.displayName,
         photoURL: user.photoURL,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-      }, { merge: true });
+      }, { merge: true }).catch(err => console.warn('[login] user doc write failed:', err));
 
-      let hasProfile = false;
-      try {
-        const profileDoc = await getDoc(doc(firestore, `users/${user.uid}/playerProfile`, 'main-profile'));
-        hasProfile = profileDoc.exists();
-      } catch {
-        hasProfile = false;
-      }
-
-      router.push(hasProfile ? '/dashboard' : '/onboarding');
+      router.push('/dashboard');
 
     } catch (error: any) {
       isHandlingSignIn.current = false;
