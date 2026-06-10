@@ -67,6 +67,13 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
   const [currentStep, setCurrentStep] = useState(0);
 
   useEffect(() => {
+    const forceTour = sessionStorage.getItem('axiom-launch-tour');
+    if (forceTour) {
+      sessionStorage.removeItem('axiom-launch-tour');
+      localStorage.removeItem(STORAGE_KEY);
+      const t = setTimeout(() => setIsActive(true), 800);
+      return () => clearTimeout(t);
+    }
     if (!localStorage.getItem(STORAGE_KEY)) {
       const t = setTimeout(() => setIsActive(true), 1200);
       return () => clearTimeout(t);
