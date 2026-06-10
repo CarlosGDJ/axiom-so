@@ -18,7 +18,7 @@ export const DashboardLayout: FC<{ children: ReactNode }> = ({ children }) => {
       </Sidebar>
       <SidebarInset>
         <AppHeader />
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6">{children}</main>
+        <main className="flex-1 overflow-x-hidden overflow-y-auto p-3 sm:p-4 lg:p-6 w-full min-w-0">{children}</main>
         <PwaInit />
       </SidebarInset>
     </SidebarProvider>
