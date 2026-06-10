@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: axiom
+    runtime: node
+    region: frankfurt
+    branch: dev/axiom-local
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: NEXT_PUBLIC_USE_EMULATOR
+        value: false
+      - key: NEXT_PUBLIC_FIRESTORE_EMULATOR_HOST
+        value: sullen-armed-antitoxic.ngrok-free.dev
+      - key: NEXT_PUBLIC_FIRESTORE_EMULATOR_PORT
+        value: 443
+      - key: GOOGLE_GENAI_API_KEY
+        sync: false
