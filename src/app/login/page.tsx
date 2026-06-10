@@ -21,10 +21,13 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [demoLoading, setDemoLoading] = useState(false);
   const [demoStatus, setDemoStatus] = useState('');
+  const [isSigningIn, setIsSigningIn] = useState(false);
   // Prevents the auto-redirect from racing with handleGoogleSignIn's profile check
   const isHandlingSignIn = useRef(false);
 
   useEffect(() => {
+    // Only auto-redirect if we're not actively handling a sign-in —
+    // otherwise the handler itself will navigate once Firestore ops finish.
     if (!isUserLoading && user && !isHandlingSignIn.current) {
       router.push('/dashboard');
     }
@@ -64,8 +67,9 @@ export default function LoginPage() {
   };
 
   const handleGoogleSignIn = async () => {
-    if (!auth || !firestore) return;
+    if (!auth || !firestore || isSigningIn) return;
     setError(null);
+    setIsSigningIn(true);
     isHandlingSignIn.current = true;
     const provider = new GoogleAuthProvider();
     try {
@@ -85,7 +89,6 @@ export default function LoginPage() {
         const profileDoc = await getDoc(doc(firestore, `users/${user.uid}/playerProfile`, 'main-profile'));
         hasProfile = profileDoc.exists();
       } catch {
-        // Firestore unreachable — treat as new user and send to onboarding
         hasProfile = false;
       }
 
@@ -93,14 +96,13 @@ export default function LoginPage() {
 
     } catch (error: any) {
       isHandlingSignIn.current = false;
+      setIsSigningIn(false);
       if (error?.code === 'auth/popup-blocked' || error?.code === 'auth/cancelled-popup-request') {
         await signInWithRedirect(auth, provider);
         return;
       }
       if (error.code === 'auth/operation-not-allowed') {
-        setError(
-          'El inicio de sesión con Google no está habilitado para este proyecto. Por favor, habilítalo en la consola de Firebase.'
-        );
+        setError('El inicio de sesión con Google no está habilitado para este proyecto. Por favor, habilítalo en la consola de Firebase.');
       } else {
         setError('Ocurrió un error inesperado durante el inicio de sesión. Por favor, inténtalo de nuevo.');
         console.error('Error during Google sign-in:', error);
@@ -108,8 +110,10 @@ export default function LoginPage() {
     }
   };
 
-  if (isUserLoading || user) {
-    return <div>Cargando...</div>;
+  // Show blank screen during initial auth check or when redirecting an existing session.
+  // Do NOT block the UI when we're actively handling a new sign-in — errors must be visible.
+  if (isUserLoading || (user && !isSigningIn)) {
+    return <div className="flex h-screen w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
 
   return (
@@ -132,8 +136,11 @@ export default function LoginPage() {
         )}
 
         <div className="w-full space-y-4">
-            <Button onClick={handleGoogleSignIn} className="w-full h-12 text-lg shadow-lg" size="lg">
-                Iniciar sesión con Google
+            <Button onClick={handleGoogleSignIn} disabled={isSigningIn} className="w-full h-12 text-lg shadow-lg" size="lg">
+                {isSigningIn
+                  ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Iniciando sesión...</>
+                  : 'Iniciar sesión con Google'
+                }
             </Button>
 
             {IS_AUTH_EMULATOR && (
