@@ -31,9 +31,9 @@ export default function OnboardingPage() {
   const totalSteps = 5;
 
   const [formData, setFormData] = useState({
-    age: 30,
-    weight: 75,
-    height: 180,
+    age: '30',
+    weight: '75',
+    height: '180',
     mbti: 'none',
     enneagram: 'none',
     sensitivities: {
@@ -100,6 +100,9 @@ export default function OnboardingPage() {
     };
   }, [user, isUserLoading, existingProfile, existingAreas, isProfileLoading, isAreasProbeLoading, profileError, areasProbeError, firestore, router]);
 
+  const physioValid = Number(formData.age) > 0 && Number(formData.weight) > 0 && Number(formData.height) > 0
+    && formData.age !== '' && formData.weight !== '' && formData.height !== '';
+
   const handleNext = () => setStep(s => Math.min(totalSteps, s + 1));
   const handlePrev = () => setStep(s => Math.max(1, s - 1));
 
@@ -118,7 +121,7 @@ export default function OnboardingPage() {
     setIsAiProcessing(true);
     try {
         const setup = await getAIOnboardingSetup({
-            physicalStats: { age: formData.age, weight: formData.weight, height: formData.height },
+            physicalStats: { age: Number(formData.age), weight: Number(formData.weight), height: Number(formData.height) },
             personality: { mbti: formData.mbti, enneagram: formData.enneagram },
             sensitivityScores: formData.sensitivities,
             challenges: formData.challenges,
@@ -166,9 +169,9 @@ export default function OnboardingPage() {
         // 2. Create Player Profile
         const profileRef = doc(firestore, `users/${user.uid}/playerProfile/main-profile`);
         batch.set(profileRef, {
-            age: formData.age,
-            weight_kg: formData.weight,
-            height_cm: formData.height,
+            age: Number(formData.age),
+            weight_kg: Number(formData.weight),
+            height_cm: Number(formData.height),
             mbti_type: formData.mbti,
             enneagram_type: formData.enneagram,
             ...finalFacets,
@@ -182,7 +185,7 @@ export default function OnboardingPage() {
         });
 
         // 3. Personalized Hormones (Adjusted by age)
-        const ageFactor = Math.max(0, formData.age - 30);
+        const ageFactor = Math.max(0, Number(formData.age) - 30);
         hormonePresets.forEach(preset => {
             let baseline = preset.baseline;
             if (preset.hormone_id === 'CORTISOL') baseline *= (1 + ageFactor * 0.005);
@@ -324,9 +327,9 @@ export default function OnboardingPage() {
                     <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
                         <div className="flex items-center gap-3 mb-2"><HeartPulse className="text-primary" /><h2 className="text-xl font-bold">Datos Fisiológicos</h2></div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <div className="space-y-2"><Label>Edad</Label><Input type="number" value={formData.age} onChange={e => setFormData({...formData, age: Number(e.target.value)})} /></div>
-                            <div className="space-y-2"><Label>Peso (kg)</Label><Input type="number" value={formData.weight} onChange={e => setFormData({...formData, weight: Number(e.target.value)})} /></div>
-                            <div className="space-y-2"><Label>Altura (cm)</Label><Input type="number" value={formData.height} onChange={e => setFormData({...formData, height: Number(e.target.value)})} /></div>
+                            <div className="space-y-2"><Label>Edad</Label><Input type="number" min={1} placeholder="30" value={formData.age} onChange={e => setFormData({...formData, age: e.target.value})} /></div>
+                            <div className="space-y-2"><Label>Peso (kg)</Label><Input type="number" min={1} placeholder="75" value={formData.weight} onChange={e => setFormData({...formData, weight: e.target.value})} /></div>
+                            <div className="space-y-2"><Label>Altura (cm)</Label><Input type="number" min={1} placeholder="180" value={formData.height} onChange={e => setFormData({...formData, height: e.target.value})} /></div>
                         </div>
                     </div>
                 )}
@@ -380,7 +383,7 @@ export default function OnboardingPage() {
             <CardFooter className="p-8 pt-0 flex justify-between">
                 <Button variant="ghost" onClick={handlePrev} disabled={step === 1}><ChevronLeft className="mr-2 h-4 w-4" /> Atrás</Button>
                 {step < totalSteps ? (
-                    <Button onClick={handleNext}>Siguiente <ChevronRight className="ml-2 h-4 w-4" /></Button>
+                    <Button onClick={handleNext} disabled={step === 1 && !physioValid}>Siguiente <ChevronRight className="ml-2 h-4 w-4" /></Button>
                 ) : (
                     <div className="flex flex-col items-end gap-1">
                       <Button onClick={handleCompleteOnboarding} disabled={formData.goals.length === 0}>Finalizar y Calibrar <Sparkles className="ml-2 h-4 w-4" /></Button>
