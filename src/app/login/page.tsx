@@ -11,7 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const DEMO_EMAIL    = 'demo@axiom.app';
 const DEMO_PASSWORD = 'axiom-demo-2024';
-const IS_DEV        = process.env.NODE_ENV === 'development';
+const IS_AUTH_EMULATOR = process.env.NEXT_PUBLIC_USE_EMULATOR === 'true';
 
 export default function LoginPage() {
   const { user, isUserLoading } = useUser();
@@ -128,7 +128,7 @@ export default function LoginPage() {
                 Iniciar sesión con Google
             </Button>
 
-            {IS_DEV && (
+            {IS_AUTH_EMULATOR && (
               <Button
                 onClick={handleDemoSignIn}
                 disabled={demoLoading}

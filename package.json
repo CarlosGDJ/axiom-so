@@ -15,7 +15,8 @@
         "emulator:core": "npx -y firebase-tools emulators:start --project demo-sandbox --import=./firebase-data --export-on-exit=./firebase-data --only firestore,auth,storage",
         "test": "vitest run",
         "test:watch": "vitest",
-        "test:coverage": "vitest run --coverage"
+        "test:coverage": "vitest run --coverage",
+        "tunnel:demo": "node scripts/tunnel-demo.mjs"
     },
     "dependencies": {
         "@babel/runtime": "^7.29.2",
