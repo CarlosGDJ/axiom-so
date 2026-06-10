@@ -71,11 +71,12 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
     if (forceTour) {
       sessionStorage.removeItem('axiom-launch-tour');
       localStorage.removeItem(STORAGE_KEY);
-      const t = setTimeout(() => setIsActive(true), 800);
+      // Wait long enough for the dashboard to fully render on slow mobile connections
+      const t = setTimeout(() => setIsActive(true), 2500);
       return () => clearTimeout(t);
     }
     if (!localStorage.getItem(STORAGE_KEY)) {
-      const t = setTimeout(() => setIsActive(true), 1200);
+      const t = setTimeout(() => setIsActive(true), 2500);
       return () => clearTimeout(t);
     }
   }, []);

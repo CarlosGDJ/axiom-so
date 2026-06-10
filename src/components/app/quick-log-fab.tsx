@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
 import {
   Plus, X, Zap, CheckCircle2, Smile, DollarSign, Users,
   Mic, MicOff, Search, Clock, ShieldAlert, Sparkles, Loader2, Trash2, AlertCircle,
@@ -110,17 +110,12 @@ function useVoiceInput(onResult: (text: string) => void) {
 // ── Searchable Variable Picker ───────────────────────────────────────────────
 interface VarPickerProps {
   variables: Variable[];
+  isLoading?: boolean;
   onSelect: (v: Variable) => void;
 }
 
-function VarPicker({ variables, onSelect }: VarPickerProps) {
+function VarPicker({ variables, isLoading, onSelect }: VarPickerProps) {
   const [query, setQuery] = useState('');
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    // Auto-focus the search on mount
-    inputRef.current?.focus();
-  }, []);
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase().trim();
@@ -135,7 +130,6 @@ function VarPicker({ variables, onSelect }: VarPickerProps) {
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
         <Input
-          ref={inputRef}
           placeholder="Buscar variable..."
           value={query}
           onChange={e => setQuery(e.target.value)}
@@ -143,7 +137,18 @@ function VarPicker({ variables, onSelect }: VarPickerProps) {
         />
       </div>
       <div className="max-h-52 overflow-y-auto rounded-md border bg-background divide-y divide-border">
-        {filtered.length === 0 && (
+        {isLoading && (
+          <div className="flex items-center justify-center gap-2 py-6 text-xs text-muted-foreground">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            Cargando variables…
+          </div>
+        )}
+        {!isLoading && variables.length === 0 && (
+          <p className="text-xs text-muted-foreground text-center py-6">
+            Completa la calibración inicial para ver tus variables.
+          </p>
+        )}
+        {!isLoading && variables.length > 0 && filtered.length === 0 && (
           <p className="text-xs text-muted-foreground text-center py-6">Sin resultados para "{query}"</p>
         )}
         {positive.length > 0 && (
@@ -190,7 +195,7 @@ export function QuickLogFab() {
   const [note, setNote]                 = useState('');
   const [impulsivo, setImpulsivo]       = useState(false);
 
-  const { data: userData }  = useUserData();
+  const { data: userData, isLoading: isUserDataLoading } = useUserData();
   const { user }            = useUser();
   const firestore           = useFirestore();
   const { toast }           = useToast();
@@ -522,7 +527,7 @@ export function QuickLogFab() {
             )}
 
             {/* ── Separator ── */}
-            {!selectedVar && (
+            {!selectedVar && contextualChips.length > 0 && (
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-border" />
@@ -537,7 +542,7 @@ export function QuickLogFab() {
 
             {/* ── Variable picker / Selected variable ── */}
             {!selectedVar ? (
-              <VarPicker variables={allActiveVars} onSelect={setSelectedVar} />
+              <VarPicker variables={allActiveVars} isLoading={isUserDataLoading} onSelect={setSelectedVar} />
             ) : (
               <div className="space-y-4">
                 {/* Selected variable header */}
