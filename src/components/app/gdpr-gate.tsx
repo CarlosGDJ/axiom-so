@@ -2,14 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useUser, useFirestore, setDocumentNonBlocking } from '@/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { useUser, useFirestore } from '@/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { useAuth } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { BrainCircuit, ShieldCheck, Heart, Wallet, Users, Activity, AlertTriangle } from 'lucide-react';
+import { BrainCircuit, ShieldCheck, Heart, Wallet, Users, Activity, AlertTriangle, Loader2 } from 'lucide-react';
 import { PrivacyPolicyDialog, PRIVACY_POLICY_VERSION } from './privacy-policy-dialog';
 import { cn } from '@/lib/utils';
 
@@ -26,15 +26,17 @@ const DATA_CATEGORIES = [
   { icon: Users,     label: 'Datos relacionales',           color: 'text-violet-500', description: 'Relaciones personales e interacciones sociales.' },
 ];
 
-function GdprConsentModal({ onAccept }: { onAccept: () => void }) {
-  const { user } = useUser();
+function GdprConsentModal({ onAccept }: { onAccept: () => Promise<void> }) {
   const auth = useAuth();
   const [checked, setChecked] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
+  const [isAccepting, setIsAccepting] = useState(false);
 
-  const handleAccept = () => {
-    if (!checked) return;
-    onAccept();
+  const handleAccept = async () => {
+    if (!checked || isAccepting) return;
+    setIsAccepting(true);
+    await onAccept();
+    setIsAccepting(false);
   };
 
   const handleReject = async () => {
@@ -138,11 +140,13 @@ function GdprConsentModal({ onAccept }: { onAccept: () => void }) {
           <div className="flex flex-col gap-2">
             <Button
               className="w-full"
-              disabled={!checked}
+              disabled={!checked || isAccepting}
               onClick={handleAccept}
             >
-              <ShieldCheck className="mr-2 h-4 w-4" />
-              Acepto y quiero continuar
+              {isAccepting
+                ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Guardando...</>
+                : <><ShieldCheck className="mr-2 h-4 w-4" />Acepto y quiero continuar</>
+              }
             </Button>
             <button
               onClick={handleReject}
@@ -192,17 +196,19 @@ export function GdprGate({ children }: { children: React.ReactNode }) {
     });
   }, [user, isUserLoading, firestore]);
 
-  const handleAccept = () => {
+  const handleAccept = async () => {
     if (!user) return;
     const record: GdprConsentRecord = {
       accepted: true,
       timestamp: new Date().toISOString(),
       version: PRIVACY_POLICY_VERSION,
     };
-    setDocumentNonBlocking(
-      doc(firestore, `users/${user.uid}/settings/gdpr_consent`),
-      record,
-    );
+    try {
+      await setDoc(doc(firestore, `users/${user.uid}/settings/gdpr_consent`), record);
+    } catch (err) {
+      console.error('[GdprGate] Failed to persist consent:', err);
+      // Accept locally even if the write fails — user still consented in this session
+    }
     setStatus('accepted');
   };
 

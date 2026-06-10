@@ -80,11 +80,8 @@ function GlobalCrisisBanner() {
   );
 }
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+// Checks for an existing profile AFTER GDPR consent — only mounted inside GdprGate children.
+function OnboardingGuard({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const router = useRouter();
@@ -99,21 +96,23 @@ export default function DashboardLayout({
   );
   const { data: areasProbe, isLoading: isAreasProbeLoading, error: areasProbeError } = useCollection<Area>(areasProbeRef);
 
-  // Onboarding Redirect Logic
   useEffect(() => {
-    // Wait until auth and both Firestore reads have settled.
     if (isUserLoading || !user || isProfileLoading || isAreasProbeLoading) return;
-
-    // If either read errored out, we can't determine if onboarding is needed — stay put.
     if (profileError || areasProbeError) return;
-
-    // Both reads resolved successfully: no profile + no areas means new user.
     const hasAnyArea = (areasProbe?.length || 0) > 0;
     if (!playerProfile && !hasAnyArea) {
       router.replace('/onboarding');
     }
   }, [user, isUserLoading, isProfileLoading, isAreasProbeLoading, playerProfile, areasProbe, profileError, areasProbeError, router]);
 
+  return <>{children}</>;
+}
+
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   // Pass pre-fetched data so useComputedDataWriter skips 14 duplicate listeners.
   const { writerPrefetch } = useUserData();
   useComputedDataWriter(writerPrefetch);
@@ -122,9 +121,11 @@ export default function DashboardLayout({
   return (
     <TourProvider>
       <GdprGate>
-        <DashboardNavigationLoadingProvider>
-          <DashboardLayoutInner>{children}</DashboardLayoutInner>
-        </DashboardNavigationLoadingProvider>
+        <OnboardingGuard>
+          <DashboardNavigationLoadingProvider>
+            <DashboardLayoutInner>{children}</DashboardLayoutInner>
+          </DashboardNavigationLoadingProvider>
+        </OnboardingGuard>
       </GdprGate>
       <TourOverlay />
     </TourProvider>
