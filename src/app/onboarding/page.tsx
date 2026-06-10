@@ -267,18 +267,18 @@ export default function OnboardingPage() {
 
   if (isProcessing) {
     return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-background p-6 text-center space-y-8 animate-in fade-in duration-1000">
-            <div className="relative">
+        <div className="flex flex-col items-center justify-center min-h-dvh bg-background px-8 py-12 text-center space-y-8 overflow-hidden animate-in fade-in duration-1000">
+            <div className="relative shrink-0">
                 <BrainCircuit className="h-24 w-24 text-primary animate-pulse" />
-                <Sparkles className="absolute -top-4 -right-4 h-12 w-12 text-yellow-400 animate-bounce" />
+                <Sparkles className="absolute -top-4 -right-4 h-10 w-10 text-yellow-400 animate-bounce" />
             </div>
-            <div className="space-y-4 max-w-md">
+            <div className="space-y-4 w-full max-w-md">
                 <h1 className="text-4xl font-extrabold tracking-tighter">Sincronizando Núcleo Axiom</h1>
                 <p className="text-muted-foreground text-lg leading-tight">La IA está calculando tus facetas de personalidad y ajustando tus sensibilidades biológicas...</p>
                 <div className="pt-4 space-y-2">
-                    <div className="flex justify-between text-xs font-mono uppercase tracking-widest text-muted-foreground">
+                    <div className="flex items-center justify-between text-xs font-mono uppercase tracking-widest text-muted-foreground">
                         <span>Configurando Algoritmos</span>
-                        <Loader2 className="h-3 w-3 animate-spin" />
+                        <Loader2 className="h-3 w-3 animate-spin shrink-0" />
                     </div>
                     <Progress value={85} className="h-1" />
                 </div>
