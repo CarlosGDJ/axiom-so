@@ -255,6 +255,7 @@ export default function OnboardingPage() {
 
         await batch.commit();
         toast({ title: "¡Sistema Calibrado!", description: "Tu bioperfil ha sido sincronizado con éxito." });
+        localStorage.setItem(`axiom_onboarding_done_${user.uid}`, 'true');
         sessionStorage.setItem('axiom-launch-tour', '1');
         setTimeout(() => router.push('/dashboard'), 500);
     } catch (error) {

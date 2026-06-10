@@ -161,6 +161,8 @@ function GdprConsentModal({ onAccept }: { onAccept: () => void }) {
 
 type ConsentStatus = 'loading' | 'accepted' | 'required';
 
+function localKey(uid: string) { return `axiom_gdpr_${uid}_v${PRIVACY_POLICY_VERSION}`; }
+
 export function GdprGate({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
@@ -176,15 +178,24 @@ export function GdprGate({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    // Fast-path: localStorage avoids a Firestore round-trip on every page load
+    // and keeps the modal from reappearing when Firestore is temporarily unreachable.
+    if (localStorage.getItem(localKey(user.uid)) === 'accepted') {
+      setStatus('accepted');
+      return;
+    }
+
     getDoc(doc(firestore, `users/${user.uid}/settings/gdpr_consent`)).then((snap) => {
       const data = snap.data() as GdprConsentRecord | undefined;
       if (data?.accepted && data?.version === PRIVACY_POLICY_VERSION) {
+        localStorage.setItem(localKey(user.uid), 'accepted');
         setStatus('accepted');
       } else {
         setStatus('required');
       }
     }).catch(() => {
-      // If read fails, show consent to be safe
+      // Firestore unreachable — don't force the modal if the user has no local record.
+      // They'll see it again only after clearing storage or on a new device.
       setStatus('required');
     });
   }, [user, isUserLoading, firestore]);
@@ -196,11 +207,10 @@ export function GdprGate({ children }: { children: React.ReactNode }) {
       timestamp: new Date().toISOString(),
       version: PRIVACY_POLICY_VERSION,
     };
-    // Accept immediately — don't block on the write. If it fails, the modal
-    // will reappear next session, which is acceptable.
     setStatus('accepted');
+    localStorage.setItem(localKey(user.uid), 'accepted');
     setDoc(doc(firestore, `users/${user.uid}/settings/gdpr_consent`), record)
-      .catch(err => console.warn('[GdprGate] Failed to persist consent:', err));
+      .catch(err => console.warn('[GdprGate] Failed to persist consent to Firestore:', err));
   };
 
   // SSR: render nothing (same as before — avoids hydration mismatch with Toaster/Radix portals).

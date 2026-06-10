@@ -81,6 +81,8 @@ function GlobalCrisisBanner() {
   );
 }
 
+function onboardingDoneKey(uid: string) { return `axiom_onboarding_done_${uid}`; }
+
 // Checks for an existing profile AFTER GDPR consent — only mounted inside GdprGate children.
 function OnboardingGuard({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
@@ -100,9 +102,15 @@ function OnboardingGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isUserLoading || !user || isProfileLoading || isAreasProbeLoading) return;
     if (profileError || areasProbeError) return;
+    // Fast-path: if onboarding was completed in this browser, don't redirect even
+    // when Firestore returns empty (e.g. offline mode or emulator data loss).
+    if (localStorage.getItem(onboardingDoneKey(user.uid)) === 'true') return;
     const hasAnyArea = (areasProbe?.length || 0) > 0;
     if (!playerProfile && !hasAnyArea) {
       router.replace('/onboarding');
+    } else if (playerProfile || hasAnyArea) {
+      // Profile exists in Firestore — persist the flag so future loads skip the check.
+      localStorage.setItem(onboardingDoneKey(user.uid), 'true');
     }
   }, [user, isUserLoading, isProfileLoading, isAreasProbeLoading, playerProfile, areasProbe, profileError, areasProbeError, router]);
 
