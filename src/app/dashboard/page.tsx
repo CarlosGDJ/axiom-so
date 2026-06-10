@@ -97,7 +97,7 @@ export default function DashboardPage() {
 
       {/* ── Estado del sistema + Motor KAIROS ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5" data-tour="overview">
-        <div className="transition-all duration-200 hover:-translate-y-1 hover:drop-shadow-lg rounded-xl">
+        <div className="min-w-0 overflow-hidden transition-all duration-200 hover:-translate-y-1 hover:drop-shadow-lg rounded-xl">
           <OverviewCard
             overallState={userData.overallState}
             dominantVariables={userData.dominantVariables}
@@ -105,7 +105,7 @@ export default function DashboardPage() {
             userData={userData}
           />
         </div>
-        <div className="transition-all duration-200 hover:-translate-y-1 hover:drop-shadow-lg rounded-xl">
+        <div className="min-w-0 overflow-hidden transition-all duration-200 hover:-translate-y-1 hover:drop-shadow-lg rounded-xl">
           <KairosLivePanel userData={userData} />
         </div>
       </div>
@@ -126,8 +126,8 @@ export default function DashboardPage() {
 
       {/* ── Resumen semanal + Proyección hormonal ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <WeeklySummaryCard userData={userData} />
-        <HormonalForecastCard userData={userData} />
+        <div className="min-w-0 overflow-hidden"><WeeklySummaryCard userData={userData} /></div>
+        <div className="min-w-0 overflow-hidden"><HormonalForecastCard userData={userData} /></div>
       </div>
 
       {/* ── Tendencia 30 días ── */}
@@ -135,10 +135,10 @@ export default function DashboardPage() {
 
       {/* ── Áreas de vida + Finanzas ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <div className="transition-all duration-200 hover:-translate-y-1 hover:drop-shadow-lg rounded-xl">
+        <div className="min-w-0 overflow-hidden transition-all duration-200 hover:-translate-y-1 hover:drop-shadow-lg rounded-xl">
           <ScoreByAreaChart data={userData.kpis.scoresByArea || []} />
         </div>
-        <div className="transition-all duration-200 hover:-translate-y-1 hover:drop-shadow-lg rounded-xl">
+        <div className="min-w-0 overflow-hidden transition-all duration-200 hover:-translate-y-1 hover:drop-shadow-lg rounded-xl">
           <FinancesKpiCard monthlyFinancials={userData.kpis.monthlyFinancials} />
         </div>
       </div>

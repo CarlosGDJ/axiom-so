@@ -49,7 +49,7 @@ export default function BiostatsHudStrip({ rpgStats, scoreVelocity }: BiostatsHu
   return (
     <div className="rounded-xl border bg-card/80 backdrop-blur-sm px-3 sm:px-5 py-4 space-y-4">
       {/* 6 bio-stats */}
-      <div className="grid grid-cols-3 sm:grid-cols-6 gap-x-2 sm:gap-x-4 gap-y-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-x-3 sm:gap-x-4 gap-y-3">
         {STATS.map(({ key, label, icon: Icon, invert }) => {
           const value = Math.round((rpgStats as any)[key] ?? 0);
           const level = getLevel(value, invert);
