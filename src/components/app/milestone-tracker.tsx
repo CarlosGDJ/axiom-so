@@ -19,9 +19,14 @@ interface MilestoneTrackerProps {
   milestones: Milestone[];
   skills: Skill[];
   systems: System[];
+  streakMultiplier?: number;
 }
 
-export default function MilestoneTracker({ milestones, skills, systems }: MilestoneTrackerProps) {
+export default function MilestoneTracker({ milestones, skills, systems, streakMultiplier = 1 }: MilestoneTrackerProps) {
+  const baseXpLabel = (base: number) =>
+    streakMultiplier > 1
+      ? `+${Math.round(base * streakMultiplier)} XP ×${streakMultiplier}`
+      : `+${base} XP`;
   const { user } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
@@ -38,7 +43,7 @@ export default function MilestoneTracker({ milestones, skills, systems }: Milest
     if (milestone.milestone_type === 'recurring') {
         const newProgress = (milestone.progress_count || 0) + 1;
         const isCompleted = milestone.target_count && newProgress >= milestone.target_count;
-        
+
         xpGained = 10;
         updateData = { progress_count: newProgress };
 
@@ -46,14 +51,24 @@ export default function MilestoneTracker({ milestones, skills, systems }: Milest
             updateData.estado = 'Completado';
             updateData.fecha_completado = new Date().toISOString();
             xpGained += 100;
-            toast({ title: "¡Hito Completado!", description: `Has alcanzado el objetivo de "${milestone.nombre}". +110 XP`});
-        } else {
-            toast({ title: "Progreso Registrado", description: `+10 XP para tu habilidad.`});
         }
     } else {
         updateData = { estado: 'Completado', fecha_completado: new Date().toISOString() };
         xpGained = 50;
-        toast({ title: "¡Hito Completado!", description: `Has marcado "${milestone.nombre}" como completado. +50 XP`});
+    }
+
+    const effectiveXP = Math.round(xpGained * streakMultiplier);
+    const boosted = streakMultiplier > 1;
+
+    if (milestone.milestone_type === 'recurring') {
+        const isCompleted = milestone.target_count && ((milestone.progress_count || 0) + 1) >= milestone.target_count;
+        if (isCompleted) {
+            toast({ title: "¡Hito Completado!", description: `"${milestone.nombre}" alcanzado. +${effectiveXP} XP${boosted ? ` (×${streakMultiplier} racha)` : ''}`});
+        } else {
+            toast({ title: "Progreso Registrado", description: `+${effectiveXP} XP${boosted ? ` (×${streakMultiplier} racha)` : ''}`});
+        }
+    } else {
+        toast({ title: "¡Hito Completado!", description: `"${milestone.nombre}" completado. +${effectiveXP} XP${boosted ? ` (×${streakMultiplier} racha)` : ''}`});
     }
 
     // Update Milestone
@@ -62,7 +77,7 @@ export default function MilestoneTracker({ milestones, skills, systems }: Milest
     // Update Skill XP and Level
     if (skill) {
         const skillRef = doc(firestore, `users/${user.uid}/skills`, skill.id);
-        const newXP = (skill.xp || 0) + xpGained;
+        const newXP = (skill.xp || 0) + effectiveXP;
         const xpNeeded = skill.nivel_actual * 200;
         
         if (newXP >= xpNeeded) {
@@ -167,7 +182,7 @@ export default function MilestoneTracker({ milestones, skills, systems }: Milest
                 </div>
               ) : (
                 <div className="py-4 flex items-center justify-center bg-muted/20 rounded-lg border border-dashed text-xs text-muted-foreground font-medium uppercase tracking-widest gap-2">
-                    <Zap size={14} className="text-yellow-500" /> +50 XP al completar
+                    <Zap size={14} className="text-yellow-500" /> {baseXpLabel(50)} al completar
                 </div>
               )}
               
@@ -184,9 +199,9 @@ export default function MilestoneTracker({ milestones, skills, systems }: Milest
                 onClick={() => handleUpdateProgress(milestone)}
               >
                 {isRecurring ? (
-                    <><Plus className="h-4 w-4 mr-2" /> Avanzar (+10 XP)</>
+                    <><Plus className="h-4 w-4 mr-2" /> Avanzar ({baseXpLabel(10)})</>
                 ) : (
-                    <><Check className="h-4 w-4 mr-2" /> Completar (+50 XP)</>
+                    <><Check className="h-4 w-4 mr-2" /> Completar ({baseXpLabel(50)})</>
                 )}
               </Button>
               

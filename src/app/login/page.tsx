@@ -2,12 +2,16 @@
 
 import { useUser, useAuth, useFirestore } from '@/firebase';
 import { Button } from '@/components/ui/button';
-import { GoogleAuthProvider, signInWithPopup, signInWithRedirect } from 'firebase/auth';
+import { GoogleAuthProvider, createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, signInWithRedirect } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { BrainCircuit, AlertTriangle, ShieldAlert } from 'lucide-react';
+import { BrainCircuit, AlertTriangle, ShieldAlert, FlaskConical, Loader2 } from 'lucide-react';
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+
+const DEMO_EMAIL    = 'demo@axiom.app';
+const DEMO_PASSWORD = 'axiom-demo-2024';
+const IS_DEV        = process.env.NODE_ENV === 'development';
 
 export default function LoginPage() {
   const { user, isUserLoading } = useUser();
@@ -15,12 +19,47 @@ export default function LoginPage() {
   const firestore = useFirestore();
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  const [demoLoading, setDemoLoading] = useState(false);
+  const [demoStatus, setDemoStatus] = useState('');
 
   useEffect(() => {
     if (!isUserLoading && user) {
       router.push('/dashboard');
     }
   }, [user, isUserLoading, router]);
+
+  const handleDemoSignIn = async () => {
+    if (!auth || !firestore || demoLoading) return;
+    setError(null);
+    setDemoLoading(true);
+    setDemoStatus('Conectando...');
+    try {
+      await signInWithEmailAndPassword(auth, DEMO_EMAIL, DEMO_PASSWORD);
+      router.push('/dashboard');
+    } catch (err: any) {
+      if (err?.code === 'auth/user-not-found' || err?.code === 'auth/invalid-credential') {
+        // First-time setup: create user + seed data
+        try {
+          setDemoStatus('Creando cuenta demo...');
+          const result = await createUserWithEmailAndPassword(auth, DEMO_EMAIL, DEMO_PASSWORD);
+          setDemoStatus('Generando 60 días de datos...');
+          const { seedDemoUserFirestore } = await import('@/lib/demo-seed-client');
+          await seedDemoUserFirestore(result.user.uid, firestore);
+          setDemoStatus('¡Listo!');
+          router.push('/dashboard');
+        } catch (seedErr: any) {
+          setError('Error inicializando la demo. Asegúrate de que el emulador Firebase está activo.');
+          console.error('Demo seed error:', seedErr);
+        }
+      } else {
+        setError('Error al entrar en la demo. Comprueba que el emulador Firebase está corriendo.');
+        console.error('Demo sign-in error:', err);
+      }
+    } finally {
+      setDemoLoading(false);
+      setDemoStatus('');
+    }
+  };
 
   const handleGoogleSignIn = async () => {
     if (!auth || !firestore) return;
@@ -88,7 +127,22 @@ export default function LoginPage() {
             <Button onClick={handleGoogleSignIn} className="w-full h-12 text-lg shadow-lg" size="lg">
                 Iniciar sesión con Google
             </Button>
-            
+
+            {IS_DEV && (
+              <Button
+                onClick={handleDemoSignIn}
+                disabled={demoLoading}
+                variant="outline"
+                className="w-full h-11 text-base border-dashed border-2"
+                size="lg"
+              >
+                {demoLoading
+                  ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{demoStatus || 'Iniciando...'}</>
+                  : <><FlaskConical className="mr-2 h-4 w-4" />Explorar con cuenta demo</>
+                }
+              </Button>
+            )}
+
             <div className="bg-muted/40 rounded-xl p-4 border border-border text-center space-y-2">
                 <div className="flex items-center justify-center gap-2 text-amber-600 dark:text-amber-400 font-bold text-xs uppercase tracking-widest">
                     <ShieldAlert size={14} />

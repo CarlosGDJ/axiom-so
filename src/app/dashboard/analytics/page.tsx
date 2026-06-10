@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 import { useState, useEffect, useMemo } from 'react';
 import { useUserData } from '@/hooks/use-user-data';
 import { DateRange } from 'react-day-picker';
@@ -17,8 +17,6 @@ import {
   DollarSign,
   Users,
   Zap,
-  ChevronLeft,
-  ChevronRight,
   Landmark,
   CreditCard,
   LineChart,
@@ -30,6 +28,7 @@ import {
 } from 'lucide-react';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from '@/components/ui/button';
 import { DateRangePicker } from '@/components/app/date-range-picker';
@@ -77,41 +76,70 @@ import AccountBalanceChart from '@/components/app/charts/account-balance-chart';
 import DebtBalanceChart from '@/components/app/charts/debt-balance-chart';
 import RelationMatrixChart from '@/components/app/charts/relation-matrix-chart';
 import CorrelationScatterChart from '@/components/app/charts/correlation-scatter-chart';
+import MultiAreaTimelineChart from '@/components/app/charts/multi-area-timeline-chart';
 
 
-import DashboardLoading from '../loading';
+import AreaPageSkeleton from '@/components/app/area-page-skeleton';
 import NavigationReady from '@/components/app/navigation-ready';
 import type { ScoreByArea, DailyScore } from '@/lib/types';
 import { computeAreaEventContributionAtTime, computeAreaScoreAtTime } from '@/lib/area-scoring';
+import { computeDynamicCorrelations, computeAreaCrossCorrelations } from '@/lib/correlations';
 
 
-const tabsConfig = [
-    { value: 'general', label: 'General', icon: LineChart },
-    { value: 'patrones', label: 'Patrones', icon: Binary },
-    { value: 'areas', label: 'Áreas', icon: Compass },
-    { value: 'hormones', label: 'Hormonas', icon: Gauge },
-    { value: 'variables', label: 'Variables', icon: Activity },
-    { value: 'impactMatrix', label: 'Matriz de Impacto', icon: Zap },
-    { value: 'skills', label: 'Habilidades', icon: Star },
-    { value: 'systems', label: 'Sistemas', icon: Milestone },
-    { value: 'habits', label: 'Hábitos', icon: Repeat },
-    { value: 'protocols', label: 'Protocolos', icon: BookText },
-    { value: 'states', label: 'Estados', icon: Shield },
-    { value: 'events', label: 'Eventos', icon: Calendar },
-    { value: 'transactions', label: 'Transacciones', icon: DollarSign },
-    { value: 'interactions', label: 'Interacciones', icon: Users },
-    { value: 'relations', label: 'Relaciones', icon: Users },
-    { value: 'accounts', label: 'Cuentas', icon: Landmark },
-    { value: 'debts', label: 'Deudas', icon: CreditCard },
+const TAB_GROUPS = [
+    {
+        value: 'resumen',
+        label: 'Resumen',
+        icon: LineChart,
+        tabs: [
+            { value: 'general',  label: 'General',  icon: LineChart },
+            { value: 'patrones', label: 'Patrones', icon: Binary },
+        ],
+    },
+    {
+        value: 'biologia',
+        label: 'Biología',
+        icon: Gauge,
+        tabs: [
+            { value: 'areas',        label: 'Áreas',           icon: Compass },
+            { value: 'variables',    label: 'Variables',        icon: Activity },
+            { value: 'hormones',     label: 'Hormonas',         icon: Gauge },
+            { value: 'impactMatrix', label: 'Matriz Impacto',   icon: Zap },
+        ],
+    },
+    {
+        value: 'desarrollo',
+        label: 'Desarrollo',
+        icon: Star,
+        tabs: [
+            { value: 'skills',     label: 'Habilidades', icon: Star },
+            { value: 'systems',    label: 'Sistemas',    icon: Milestone },
+            { value: 'habits',     label: 'Hábitos',     icon: Repeat },
+            { value: 'protocols',  label: 'Protocolos',  icon: BookText },
+            { value: 'states',     label: 'Estados',     icon: Shield },
+            { value: 'events',     label: 'Eventos',     icon: Calendar },
+        ],
+    },
+    {
+        value: 'finanzas',
+        label: 'Finanzas',
+        icon: DollarSign,
+        tabs: [
+            { value: 'transactions', label: 'Transacciones', icon: DollarSign },
+            { value: 'accounts',     label: 'Cuentas',       icon: Landmark },
+            { value: 'debts',        label: 'Deudas',        icon: CreditCard },
+        ],
+    },
+    {
+        value: 'social',
+        label: 'Social',
+        icon: Users,
+        tabs: [
+            { value: 'interactions', label: 'Interacciones', icon: Users },
+            { value: 'relations',    label: 'Relaciones',    icon: Users },
+        ],
+    },
 ];
-
-const getTabsPerPage = (width: number) => {
-    if (width < 768) return 4;
-    if (width < 1024) return 5;
-    if (width < 1280) return 6;
-    if (width < 1536) return 7;
-    return 8;
-};
 
 export default function AnalyticsPage() {
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
@@ -149,80 +177,33 @@ export default function AnalyticsPage() {
   // Base filtered data (only by date)
   const eventsInDateRange = useMemo(() => {
     if (!userData?.events) return [];
-    return userData.events;
-  }, [userData?.events]);
-  
-  // Cross-Correlation Data Calculation
-  const correlationData = useMemo(() => {
-    if (!userData) return { sleepFocus: [], stressSpending: [], dopamineDiscipline: [] };
-
-    const { events, transactions, variables } = userData;
-    const variablesById = Object.fromEntries((variables || []).map(v => [v.var_id, v]));
-    const days = Array.from({ length: 31 }, (_, i) => subDays(new Date(), i));
-    
-    const sleepFocus: any[] = [];
-    const stressSpending: any[] = [];
-    const dopamineDiscipline: any[] = [];
-
-    days.forEach(day => {
-        const dayStr = format(day, 'yyyy-MM-dd');
-        const dayEvents = events.filter(e => isSameDay(parseISO(e.fecha), day));
-        const dayTransactions = transactions.filter(t => isSameDay(parseISO(t.fecha), day));
-        
-        // 1. Sleep vs Focus
-        const sleepEvent = dayEvents.find(e => e.var_id.toUpperCase().includes('SUE'));
-        const deepWorkSessions = dayEvents.filter(e => e.var_id === 'DEEP_WORK').length;
-        if (sleepEvent) {
-            sleepFocus.push({
-                x: sleepEvent.intensidad,
-                y: deepWorkSessions,
-                date: dayStr,
-                label: sleepEvent.contexto
-            });
-        }
-
-        // 2. Stress vs Impulsive Spending
-        const stressEvent = dayEvents.find(e => e.var_id === 'ESTRES' || e.var_id === 'REACTIVIDAD');
-        const impulsiveSpend = dayTransactions
-            .filter(t => t.impulsivo)
-            .reduce((sum, t) => sum + Math.abs(t.monto), 0);
-        
-        if (stressEvent || impulsiveSpend > 0) {
-            stressSpending.push({
-                x: stressEvent?.intensidad || 0,
-                y: impulsiveSpend,
-                date: dayStr,
-                label: stressEvent?.contexto
-            });
-        }
-
-        // 3. Dopamine vs Discipline
-        const dopamineEvent = dayEvents.find(e => e.var_id === 'DOPA_RAP');
-        const dayImpact = dayEvents.reduce((acc, e) => {
-            const variable = variablesById[e.var_id];
-            if (!variable) return acc;
-            return acc + (variable.polaridad * variable.impacto_base * (e.intensidad / 5));
-        }, 0);
-        const disciplineScore = Math.round(Math.max(0, Math.min(100, 60 + (dayImpact * 2))));
-        
-        if (dopamineEvent) {
-            dopamineDiscipline.push({
-                x: dopamineEvent.intensidad,
-                y: disciplineScore,
-                date: dayStr
-            });
-        }
+    if (!dateRange?.from) return userData.events;
+    const from = startOfDay(dateRange.from);
+    const to = endOfDay(dateRange.to ?? dateRange.from);
+    return userData.events.filter(e => {
+      const d = parseISO(e.fecha);
+      return d >= from && d <= to;
     });
-
-    return { sleepFocus, stressSpending, dopamineDiscipline };
-  }, [userData]);
+  }, [userData?.events, dateRange]);
+  
+  // Dynamic Pearson correlation computation across all variable pairs
+  const topCorrelations = useMemo(() => {
+    if (!userData?.events || !userData?.variables) return [];
+    return computeDynamicCorrelations(userData.events, userData.variables, 30, 3, 5);
+  }, [userData?.events, userData?.variables]);
 
   // Locally filtered data for Transactions tab
   const filteredFinancials = useMemo(() => {
     if (!userData?.transactions) return { totalIncome: 0, totalExpenses: 0 };
-    
+    const from = dateRange?.from ? startOfDay(dateRange.from) : null;
+    const to = dateRange?.to ? endOfDay(dateRange.to) : dateRange?.from ? endOfDay(dateRange.from) : null;
+
     const filtered = userData.transactions.filter(t => {
       if (impulsiveOnlyForTransactions && !t.impulsivo) return false;
+      if (from && to) {
+        const d = parseISO(t.fecha);
+        return d >= from && d <= to;
+      }
       return true;
     });
 
@@ -231,24 +212,30 @@ export default function AnalyticsPage() {
       else if (t.tipo === 'Gasto') acc.totalExpenses += Math.abs(t.monto);
       return acc;
     }, { totalIncome: 0, totalExpenses: 0 });
-  }, [userData?.transactions, impulsiveOnlyForTransactions]);
+  }, [userData?.transactions, impulsiveOnlyForTransactions, dateRange]);
 
   // Locally filtered data for Interactions tab
   const filteredInteractions = useMemo(() => {
     if (!userData?.interactions) return [];
+    const from = dateRange?.from ? startOfDay(dateRange.from) : null;
+    const to = dateRange?.to ? endOfDay(dateRange.to) : dateRange?.from ? endOfDay(dateRange.from) : null;
     return userData.interactions.filter(interaction => {
       if (modeForInteractions === 'positive') return interaction.energia_resultante > 0;
       if (modeForInteractions === 'negative') return interaction.energia_resultante < 0;
+      if (from && to) {
+        const d = parseISO(interaction.fecha);
+        return d >= from && d <= to;
+      }
       return true;
     });
-  }, [userData?.interactions, modeForInteractions]);
+  }, [userData?.interactions, modeForInteractions, dateRange]);
 
   // Locally filtered data for Variables tab
   const filteredEventsForVariables = useMemo(() => {
-    if (!userData?.events || !userData.variables) return [];
+    if (!eventsInDateRange || !userData?.variables) return [];
     const variablesById = Object.fromEntries(userData.variables.map(v => [v.var_id, v]));
 
-    return userData.events.filter(event => {
+    return eventsInDateRange.filter(event => {
       if (impulsiveOnlyForVariables && !event.impulsivo) return false;
       if (event.intensidad < minIntensityForVariables) return false;
 
@@ -260,7 +247,7 @@ export default function AnalyticsPage() {
 
       return true;
     });
-  }, [userData?.events, userData?.variables, modeForVariables, minIntensityForVariables, impulsiveOnlyForVariables]);
+  }, [eventsInDateRange, userData?.variables, modeForVariables, minIntensityForVariables, impulsiveOnlyForVariables]);
 
 
   const scoresByArea: ScoreByArea[] = useMemo(() => {
@@ -538,6 +525,47 @@ export default function AnalyticsPage() {
     }
     return rows;
   }, [userData?.variables, selectedAreaForCharts, dateRange, eventsInDateRange]);
+
+  // All-area score timeline: one row per day, score per area
+  const allAreasTrendData = useMemo(() => {
+    if (!userData?.variables || !userData?.areas) return [];
+    const range = dateRange ?? { from: subDays(new Date(), 6), to: new Date() };
+    if (!range.from) return [];
+
+    const start = startOfDay(range.from);
+    const end = range.to ? endOfDay(range.to) : endOfDay(new Date());
+
+    const areaData = userData.areas.map(area => {
+      const areaVariables = userData.variables.filter(v => v.area_id === area.area_id);
+      const areaVariableIds = new Set(areaVariables.map(v => v.var_id));
+      const variableById = new Map(areaVariables.map(v => [v.var_id, v]));
+      const eventsForArea = eventsInDateRange.filter(e => areaVariableIds.has(e.var_id));
+      return { area, variableById, eventsForArea };
+    });
+
+    const rows: { date: string; [key: string]: number | string }[] = [];
+    for (let d = start; d <= end; d = addDays(d, 1)) {
+      const dayStr = format(d, 'yyyy-MM-dd', { locale: es });
+      const row: { date: string; [key: string]: number | string } = { date: dayStr };
+      for (const { area, variableById, eventsForArea } of areaData) {
+        const result = computeAreaScoreAtTime({
+          area,
+          events: eventsForArea,
+          variableById,
+          at: endOfDay(d),
+        });
+        row[area.area_id] = result.score;
+      }
+      rows.push(row);
+    }
+    return rows;
+  }, [userData?.areas, userData?.variables, eventsInDateRange, dateRange]);
+
+  // Pearson correlations between pairs of area score timelines
+  const topAreaCorrelations = useMemo(() => {
+    if (!userData?.areas || allAreasTrendData.length < 5) return [];
+    return computeAreaCrossCorrelations(allAreasTrendData, userData.areas, 6);
+  }, [allAreasTrendData, userData?.areas]);
 
   const hormoneAnalysisData = useMemo(() => {
     if (!selectedHormoneId || !userData || !dateRange?.from || !userData.impactMatrix) return null;
@@ -965,35 +993,23 @@ export default function AnalyticsPage() {
   }, [userData?.relations]);
 
 
-  const [activeTab, setActiveTab] = useState('general');
-  const [inactiveTabsStartIndex, setInactiveTabsStartIndex] = useState(0);
-  const [tabsPerPage, setTabsPerPage] = useState(8);
+  const [activeGroup, setActiveGroup] = useState('resumen');
+  const [activeSubTab, setActiveSubTab] = useState<Record<string, string>>({
+    resumen: 'general',
+    biologia: 'areas',
+    desarrollo: 'skills',
+    finanzas: 'transactions',
+    social: 'interactions',
+  });
 
-  useEffect(() => {
-    const handleResize = () => { setTabsPerPage(getTabsPerPage(window.innerWidth)); };
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  const currentSubTab = activeSubTab[activeGroup] ?? TAB_GROUPS.find(g => g.value === activeGroup)?.tabs[0]?.value ?? '';
 
-  const handleTabChange = (newTab: string) => { setActiveTab(newTab); };
-  
-  const activeTabConfig = tabsConfig.find(tab => tab.value === activeTab);
-  const inactiveTabs = tabsConfig.filter(tab => tab.value !== activeTab);
-
-  const handlePrev = () => { setInactiveTabsStartIndex(prev => Math.max(0, prev - 1)); };
-  const handleNext = () => {
-    const newIndex = inactiveTabsStartIndex + 1;
-    if (newIndex + tabsPerPage -1 <= inactiveTabs.length) setInactiveTabsStartIndex(newIndex);
+  const handleGroupChange = (group: string) => { setActiveGroup(group); };
+  const handleSubTabChange = (sub: string) => {
+    setActiveSubTab(prev => ({ ...prev, [activeGroup]: sub }));
   };
-  
-  const visibleInactiveTabs = inactiveTabs.slice(inactiveTabsStartIndex, inactiveTabsStartIndex + tabsPerPage - 1);
-  const visibleTabs = activeTabConfig ? [activeTabConfig, ...visibleInactiveTabs] : visibleInactiveTabs;
 
-  const canGoPrev = inactiveTabsStartIndex > 0;
-  const canGoNext = inactiveTabsStartIndex + tabsPerPage -1 < inactiveTabs.length;
-
-  if (isLoading && !userData) return <DashboardLoading />;
+  if (isLoading && !userData) return <AreaPageSkeleton />;
 
   return (
     <div className="space-y-6 px-2 sm:px-3 lg:px-4">
@@ -1010,38 +1026,85 @@ export default function AnalyticsPage() {
             <DateRangePicker date={dateRange} setDate={setDateRange} />
         </div>
 
+        {userData && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="rounded-xl border bg-card p-3 space-y-0.5">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Estado</p>
+              <p className={cn('text-lg font-black tabular-nums',
+                userData.overallState === 'OK' ? 'text-green-500' :
+                userData.overallState === 'RIESGO' ? 'text-amber-500' : 'text-red-500'
+              )}>{userData.overallState}</p>
+              <p className="text-[10px] text-muted-foreground">Score {userData.rpg_stats?.player_score ?? '—'}/100</p>
+            </div>
+            <div className="rounded-xl border bg-card p-3 space-y-0.5">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Mejor área</p>
+              {(() => {
+                const best = [...(userData.kpis?.scoresByArea ?? [])].sort((a, b) => b.score - a.score)[0];
+                return best ? (
+                  <>
+                    <p className="text-sm font-bold text-green-500 truncate">{best.area}</p>
+                    <p className="text-[10px] text-muted-foreground">{best.score}/100</p>
+                  </>
+                ) : <p className="text-sm text-muted-foreground">—</p>;
+              })()}
+            </div>
+            <div className="rounded-xl border bg-card p-3 space-y-0.5">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Área crítica</p>
+              {(() => {
+                const worst = [...(userData.kpis?.scoresByArea ?? [])].sort((a, b) => a.score - b.score)[0];
+                return worst ? (
+                  <>
+                    <p className={cn('text-sm font-bold truncate', worst.score < 40 ? 'text-red-500' : 'text-amber-500')}>{worst.area}</p>
+                    <p className="text-[10px] text-muted-foreground">{worst.score}/100</p>
+                  </>
+                ) : <p className="text-sm text-muted-foreground">—</p>;
+              })()}
+            </div>
+            <div className="rounded-xl border bg-card p-3 space-y-0.5">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Eventos (rango)</p>
+              <p className="text-lg font-black tabular-nums">{eventsInDateRange.length}</p>
+              <p className="text-[10px] text-muted-foreground">{userData.dominantVariables?.length ?? 0} drenajes activos</p>
+            </div>
+          </div>
+        )}
+
         {userData ? (
-            <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
-                <div className="sm:hidden">
-                    <Select value={activeTab} onValueChange={handleTabChange}>
-                        <SelectTrigger><SelectValue placeholder="Selecciona una sección" /></SelectTrigger>
-                        <SelectContent>
-                            {tabsConfig.map(({ value, label, icon: Icon }) => (
-                                <SelectItem key={value} value={value}>
-                                    <div className="flex items-start flex-wrap">
-                                        <Icon className="mr-2 h-4 w-4" />
-                                        <span className="break-words whitespace-normal">{label}</span>
-                                    </div>
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
-                <div className="hidden sm:flex items-center space-x-1">
-                    <TabsList className="flex-grow justify-start h-auto">
-                        {visibleTabs.map(tab => (
-                            <TabsTrigger key={tab.value} value={tab.value} className="flex-1">
-                                <tab.icon className="mr-2 h-4 w-4" />
-                                {tab.label}
-                            </TabsTrigger>
-                        ))}
-                    </TabsList>
-                    <div className="flex items-center">
-                        <Button variant="ghost" size="icon" onClick={handlePrev} disabled={!canGoPrev}><ChevronLeft className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="icon" onClick={handleNext} disabled={!canGoNext}><ChevronRight className="h-4 w-4" /></Button>
-                    </div>
-                </div>
+            <Tabs value={activeGroup} onValueChange={handleGroupChange} className="space-y-4">
+                {/* Group navigation */}
+                <TabsList className="grid w-full grid-cols-5">
+                    {TAB_GROUPS.map(g => (
+                        <TabsTrigger key={g.value} value={g.value} className="gap-1.5">
+                            <g.icon className="h-4 w-4 hidden sm:block" />
+                            {g.label}
+                        </TabsTrigger>
+                    ))}
+                </TabsList>
                 <div className='w-full'>
+                {/* Each group renders its sub-tabs + content inline */}
+                {TAB_GROUPS.map(group => {
+                    if (activeGroup !== group.value) return null;
+                    return (
+                    <div key={group.value} className="space-y-4">
+                        {group.tabs.length > 1 && (
+                            <div className="flex flex-wrap gap-1.5">
+                                {group.tabs.map(tab => (
+                                    <button
+                                        key={tab.value}
+                                        onClick={() => handleSubTabChange(tab.value)}
+                                        className={cn(
+                                            'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors border',
+                                            currentSubTab === tab.value
+                                                ? 'bg-primary text-primary-foreground border-primary'
+                                                : 'bg-background text-muted-foreground border-border hover:bg-muted',
+                                        )}
+                                    >
+                                        <tab.icon className="h-3.5 w-3.5" />
+                                        {tab.label}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                        <Tabs value={currentSubTab} onValueChange={handleSubTabChange}>
                     <TabsContent value="general">
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             <DailyScoreChart data={dailyScoreTrend} />
@@ -1054,45 +1117,91 @@ export default function AnalyticsPage() {
                         </div>
                     </TabsContent>
                     <TabsContent value="patrones" className="space-y-6">
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <CorrelationScatterChart 
-                                title="Descanso vs. Productividad" 
-                                description="¿Cómo afecta la calidad de tu sueño a tu capacidad de realizar trabajo profundo?"
-                                data={correlationData.sleepFocus}
-                                xLabel="Intensidad Sueño"
-                                yLabel="Sesiones Deep Work"
-                            />
-                            <CorrelationScatterChart 
-                                title="Estrés vs. Impulsividad" 
-                                description="Correlación entre tus picos de estrés y el volumen de gastos no planificados."
-                                data={correlationData.stressSpending}
-                                xLabel="Nivel de Estrés"
-                                yLabel="Gasto Impulsivo"
-                                yUnit="€"
-                            />
-                            <CorrelationScatterChart 
-                                title="Dopamina vs. Disciplina" 
-                                description="El impacto del consumo de dopamina rápida en tu puntuación de disciplina diaria."
-                                data={correlationData.dopamineDiscipline}
-                                xLabel="Intensidad Dopa Rápida"
-                                yLabel="Puntaje Disciplina"
-                            />
-                            <Card className="flex flex-col justify-center border-dashed border-2">
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2 text-primary"><BrainCircuit className="h-5 w-5" /> Motor de Correlaciones IA</CardTitle>
-                                    <CardDescription>El sistema está analizando más variables en segundo plano.</CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <p className="text-xs text-muted-foreground leading-relaxed">
-                                        A medida que registres más interacciones sociales y transacciones, Axiom podrá detectar patrones complejos como el impacto de tu círculo social en tu salud financiera o el efecto de la dieta en tu claridad mental.
-                                    </p>
+                        <Card className="border-primary/10">
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2 text-base">
+                                    <BrainCircuit className="h-5 w-5 text-primary" />
+                                    Correlaciones entre Áreas de Vida
+                                </CardTitle>
+                                <CardDescription>
+                                    Pearson r entre puntuaciones diarias de áreas. Muestra qué áreas se deterioran o mejoran conjuntamente.
+                                </CardDescription>
+                            </CardHeader>
+                        </Card>
+                        {topAreaCorrelations.length === 0 ? (
+                            <Card>
+                                <CardContent className="pt-6">
+                                    <div className="flex flex-col items-center gap-3 py-10 text-center">
+                                        <BrainCircuit className="h-8 w-8 text-muted-foreground" />
+                                        <p className="text-sm font-medium text-muted-foreground">Sin suficientes datos</p>
+                                        <p className="max-w-sm text-xs text-muted-foreground/70">
+                                            Se necesitan al menos 5 días de datos para calcular correlaciones entre áreas. Amplía el rango de fechas.
+                                        </p>
+                                    </div>
                                 </CardContent>
                             </Card>
-                        </div>
+                        ) : (
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                {topAreaCorrelations.map((corr, i) => (
+                                    <CorrelationScatterChart
+                                        key={`area-${corr.areaIdX}-${corr.areaIdY}-${i}`}
+                                        title={`${corr.labelX} vs. ${corr.labelY}`}
+                                        description={corr.interpretation}
+                                        data={corr.data}
+                                        xLabel={corr.labelX}
+                                        yLabel={corr.labelY}
+                                        xUnit=" pts"
+                                        yUnit=" pts"
+                                        r={corr.r}
+                                        interpretation={corr.interpretation}
+                                    />
+                                ))}
+                            </div>
+                        )}
+                        <Card className="border-primary/10">
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2 text-base">
+                                    <BrainCircuit className="h-5 w-5 text-primary" />
+                                    Correlaciones entre Variables
+                                </CardTitle>
+                                <CardDescription>
+                                    Pearson r calculado sobre los últimos 30 días. Los 3 pares de variables con mayor correlación estadística.
+                                </CardDescription>
+                            </CardHeader>
+                        </Card>
+                        {topCorrelations.length === 0 ? (
+                            <Card>
+                                <CardContent className="pt-6">
+                                    <div className="flex flex-col items-center gap-3 py-10 text-center">
+                                        <BrainCircuit className="h-8 w-8 text-muted-foreground" />
+                                        <p className="text-sm font-medium text-muted-foreground">Sin suficientes datos cruzados</p>
+                                        <p className="max-w-sm text-xs text-muted-foreground/70">
+                                            Se necesitan al menos 5 días con actividad simultánea en dos o más variables para detectar correlaciones. Sigue registrando eventos.
+                                        </p>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ) : (
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                {topCorrelations.map((corr, i) => (
+                                    <CorrelationScatterChart
+                                        key={`${corr.varIdX}-${corr.varIdY}-${i}`}
+                                        title={`${corr.labelX} vs. ${corr.labelY}`}
+                                        description={corr.interpretation}
+                                        data={corr.data}
+                                        xLabel={corr.labelX}
+                                        yLabel={corr.labelY}
+                                        r={corr.r}
+                                        interpretation={corr.interpretation}
+                                    />
+                                ))}
+                            </div>
+                        )}
                     </TabsContent>
                     <TabsContent value="areas" className="space-y-6">
+                        <MultiAreaTimelineChart data={allAreasTrendData} areas={userData?.areas || []} />
                         <Card>
-                            <CardHeader><CardTitle>Filtro de Área</CardTitle><CardDescription>Selecciona un área para ver su análisis detallado.</CardDescription></CardHeader>
+                            <CardHeader><CardTitle>Análisis por Área</CardTitle><CardDescription>Selecciona un área para ver su evolución detallada, contribuciones y cascada de impactos.</CardDescription></CardHeader>
                             <CardContent>
                                 <Select value={selectedAreaForCharts ?? ''} onValueChange={(value) => setSelectedAreaForCharts(value)}>
                                     <SelectTrigger className="w-full sm:w-[280px]"><SelectValue placeholder="Selecciona un área..." /></SelectTrigger>
@@ -1298,6 +1407,10 @@ export default function AnalyticsPage() {
                     <TabsContent value="relations" className="space-y-4"><RelationMatrixChart data={relationMatrixData} /></TabsContent>
                     <TabsContent value="accounts" className="space-y-4"><AccountBalanceChart data={userData.accounts || []} /></TabsContent>
                     <TabsContent value="debts" className="space-y-4"><DebtBalanceChart data={userData.debts || []} /></TabsContent>
+                        </Tabs>
+                    </div>
+                    );
+                })}
                 </div>
             </Tabs>
         ) : (
@@ -1309,6 +1422,7 @@ export default function AnalyticsPage() {
     </div>
   );
 }
+
 
 
 

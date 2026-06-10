@@ -300,6 +300,8 @@ export interface RPGStats {
     conexion_social: number;
     carga_dopaminergica: number;
     player_score: number;
+    sleep_debt_score?: number;     // 0-100 deuda crónica acumulada 7 noches
+    systemic_resonance?: number;   // 0-100 acoplamiento sinérgico multi-eje
 }
 
 export interface ClinicalV2AxisScores {
@@ -319,6 +321,8 @@ export interface ClinicalV2ModelOutput {
     data_quality: number;
     axis_scores: ClinicalV2AxisScores;
     markers: string[];
+    /** Gradient severity for each active marker: 0 (threshold just crossed) → 1 (extreme). */
+    marker_severities: Record<string, number>;
 }
 
 export interface ComputedGlobalState {
@@ -398,11 +402,14 @@ export interface RelationshipEnergy {
     fill: string;
 }
 
+export type { ScoreVelocity, VelocityDirection } from '@/lib/velocity';
+
 export interface CalculatedKpis {
     scoresByArea: ScoreByArea[];
     dailyScoreTrend: DailyScore[];
     monthlyFinancials: MonthlyFinancials;
     relationshipEnergy: RelationshipEnergy[];
+    scoreVelocity: import('@/lib/velocity').ScoreVelocity | null;
 }
 
 export interface UserData {
@@ -434,6 +441,7 @@ export interface UserData {
     is_locked: boolean;
     lock_reason: string;
     estimated_unlock_time: number;
+    clinical_v2: ClinicalV2ModelOutput | null;
 }
 export { ColumnDef };
 

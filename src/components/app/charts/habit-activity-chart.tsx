@@ -2,6 +2,7 @@
 
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LabelList, CartesianGrid } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../ui/card';
+import ChartEmptyState from '@/components/app/chart-empty-state';
 
 interface HabitActivityData {
     name: string;
@@ -20,8 +21,13 @@ export default function HabitActivityChart({ data }: HabitActivityChartProps) {
                     <CardTitle>Actividad por Hábito</CardTitle>
                     <CardDescription>Eventos registrados por variable de hábito.</CardDescription>
                 </CardHeader>
-                <CardContent className="h-[350px] flex items-center justify-center">
-                    <p className="text-muted-foreground">Sin datos de actividad de hábitos.</p>
+                <CardContent>
+                    <ChartEmptyState
+                        icon="activity"
+                        title="Sin actividad de hábitos"
+                        message="Registra eventos vinculados a tus hábitos para ver qué tan consistente eres."
+                        minHeight="h-[350px]"
+                    />
                 </CardContent>
             </Card>
         );

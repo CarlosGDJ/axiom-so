@@ -29,7 +29,7 @@ export default function DashboardLoading() {
   }, []);
 
   return (
-    <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-4 text-center">
+    <div className="flex min-h-[60vh] items-center justify-center p-4 text-center">
       <div className="flex flex-col items-center">
         <HeartPulse className="h-16 w-16 text-primary animate-pulse" />
         <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl font-headline mt-4">

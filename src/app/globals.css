@@ -33,11 +33,11 @@ body {
     --chart-3: 340 82% 61%;
     --chart-4: 22 89% 60%;
     --chart-5: 160 60% 45%;
-    --sidebar-background: 0 0% 100%;
+    --sidebar-background: 231 20% 97%;
     --sidebar-foreground: 222.2 84% 4.9%;
     --sidebar-primary: 231 48% 48%;
     --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 0 0% 96.1%;
+    --sidebar-accent: 231 30% 90%;
     --sidebar-accent-foreground: 222.2 84% 4.9%;
     --sidebar-border: 214.3 31.8% 91.4%;
     --sidebar-ring: 231 48% 48%;
@@ -87,3 +87,21 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+@layer utilities {
+  /* Smooth scale on icon buttons */
+  .btn-icon-press {
+    @apply transition-transform duration-150 active:scale-90;
+  }
+
+  /* Pulse ring for critical state elements */
+  .ring-pulse {
+    animation: ring-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  @keyframes ring-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 hsl(var(--destructive) / 0.4); }
+    50%       { box-shadow: 0 0 0 6px hsl(var(--destructive) / 0); }
+  }
+}
+

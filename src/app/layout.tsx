@@ -4,16 +4,26 @@ import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { cn } from '@/lib/utils';
 import { FirebaseClientProvider } from '@/firebase';
+import { ThemeProvider } from 'next-themes';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
 export const metadata: Metadata = {
-  title: 'Axiom',
-  description: 'Tu sistema operativo personal para una vida mejor.',
+  title: 'Axiom — Sistema Operativo Personal',
+  description: 'Tu sistema operativo de vida. Optimiza tu bienestar, hábitos y finanzas con IA.',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Axiom',
+  },
   icons: {
-    icon: '/icon.svg',
-    shortcut: '/icon.svg',
-    apple: '/icon.svg',
+    icon: '/icon-192.svg',
+    shortcut: '/icon-192.svg',
+    apple: '/icon-192.svg',
+  },
+  other: {
+    'mobile-web-app-capable': 'yes',
   },
 };
 
@@ -31,6 +41,35 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2family=Inter:wght@400;500;600;700;800&display=swap"
           rel="stylesheet"
         />
+        {/* PWA */}
+        <meta name="theme-color" content="#0f172a" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="Axiom" />
+        <link rel="apple-touch-icon" href="/icon-192.svg" />
+        <link rel="manifest" href="/manifest.json" />
+        {process.env.NODE_ENV === 'development' && (
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `
+                if ('serviceWorker' in navigator) {
+                  navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                    for (let registration of registrations) {
+                      registration.unregister();
+                    }
+                  });
+                }
+                if ('caches' in window) {
+                  caches.keys().then(function(names) {
+                    for (let name of names) {
+                      caches.delete(name);
+                    }
+                  });
+                }
+              `
+            }}
+          />
+        )}
       </head>
       <body
         className={cn(
@@ -39,9 +78,11 @@ export default function RootLayout({
         )}
         suppressHydrationWarning
       >
-        <FirebaseClientProvider>
-          {children}
-        </FirebaseClientProvider>
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
+          <FirebaseClientProvider>
+            {children}
+          </FirebaseClientProvider>
+        </ThemeProvider>
         <Toaster />
       </body>
     </html>

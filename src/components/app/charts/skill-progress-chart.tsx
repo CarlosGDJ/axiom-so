@@ -2,6 +2,7 @@
 
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../ui/card';
+import ChartEmptyState from '@/components/app/chart-empty-state';
 import { ChartContainer, ChartLegendContent, type ChartConfig } from '@/components/ui/chart';
 import { Progress } from '@/components/ui/progress';
 import { Trophy, Star } from 'lucide-react';
@@ -62,8 +63,13 @@ export default function SkillProgressChart({ data }: SkillProgressChartProps) {
                     <CardTitle>Dominio de Habilidades</CardTitle>
                     <CardDescription>Nivel actual vs. objetivo final.</CardDescription>
                 </CardHeader>
-                <CardContent className="h-[350px] flex items-center justify-center">
-                    <p className="text-muted-foreground text-sm">No hay habilidades definidas para mostrar.</p>
+                <CardContent>
+                    <ChartEmptyState
+                        icon="data"
+                        title="Sin habilidades definidas"
+                        message="Añade habilidades en Gestión de Datos para ver tu progreso y brecha de dominio."
+                        minHeight="h-[350px]"
+                    />
                 </CardContent>
             </Card>
         );

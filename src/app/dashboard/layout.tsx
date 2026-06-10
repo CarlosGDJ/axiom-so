@@ -1,17 +1,23 @@
 
 'use client';
 
-import { Suspense, useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useState, useEffect, useLayoutEffect, useRef } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import { DashboardLayout as DashboardLayoutComponent } from '@/components/app/dashboard-layout';
 import DashboardClientLogic from '@/components/app/dashboard-client-logic';
 import DashboardLoading from './loading';
 import { useComputedDataWriter } from '@/hooks/use-computed-data-writer';
 import { useSmartNotifications } from '@/hooks/use-smart-notifications';
 import { useUserData } from '@/hooks/use-user-data';
-import { DashboardNavigationLoadingProvider, useDashboardNavigationLoading } from '@/components/app/dashboard-navigation-loading';
+import { DashboardNavigationLoadingProvider } from '@/components/app/dashboard-navigation-loading';
+import { GdprGate } from '@/components/app/gdpr-gate';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ShieldX, Unlock, Zap, Loader2 } from 'lucide-react';
+import { ShieldX, Unlock, Zap, Loader2, WifiOff } from 'lucide-react';
+import { useOnlineStatus } from '@/hooks/use-online-status';
+import { DemoBanner } from '@/components/app/demo-banner';
+import { PwaInit } from '@/components/app/pwa-init';
+import { QuickLogFab } from '@/components/app/quick-log-fab';
+import { NotificationPrompt } from '@/components/app/notification-prompt';
 import { Button } from '@/components/ui/button';
 import { useFirestore, useUser, addDocumentNonBlocking, useMemoFirebase, useDoc, useCollection } from '@/firebase';
 import { collection, doc, query, limit, getDoc, getDocs } from 'firebase/firestore';
@@ -132,35 +138,61 @@ export default function DashboardLayout({
     };
   }, [user, isUserLoading, isProfileLoading, isAreasProbeLoading, playerProfile, areasProbe, profileError, areasProbeError, firestore, router]);
 
-  // Hook background writer
-  useComputedDataWriter();
+  // Pass pre-fetched data so useComputedDataWriter skips 14 duplicate listeners.
+  const { writerPrefetch } = useUserData();
+  useComputedDataWriter(writerPrefetch);
   useSmartNotifications();
 
   return (
-    <DashboardNavigationLoadingProvider>
-      <DashboardLayoutInner>{children}</DashboardLayoutInner>
-    </DashboardNavigationLoadingProvider>
+    <GdprGate>
+      <DashboardNavigationLoadingProvider>
+        <DashboardLayoutInner>{children}</DashboardLayoutInner>
+      </DashboardNavigationLoadingProvider>
+    </GdprGate>
+  );
+}
+
+function OfflineBanner() {
+  const isOnline = useOnlineStatus();
+  if (isOnline) return null;
+  return (
+    <div className="sticky top-0 z-40 flex items-center justify-center gap-2 bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 text-xs font-medium text-amber-600 dark:text-amber-400">
+      <WifiOff className="h-3.5 w-3.5 shrink-0" />
+      <span>Sin conexión — tus registros se guardarán al reconectarte</span>
+    </div>
   );
 }
 
 function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
-  const { isNavigating } = useDashboardNavigationLoading();
+  const [entering, setEntering] = useState(false);
+  const pathname = usePathname();
+  const prevPathname = useRef(pathname);
+
+  // Page-enter animation on route change — useLayoutEffect avoids flash
+  useLayoutEffect(() => {
+    if (pathname !== prevPathname.current) {
+      prevPathname.current = pathname;
+      setEntering(true);
+      const t = setTimeout(() => setEntering(false), 300);
+      return () => clearTimeout(t);
+    }
+  }, [pathname]);
 
   return (
     <DashboardClientLogic>
       <DashboardLayoutComponent>
+        <PwaInit />
+        <OfflineBanner />
+        <DemoBanner />
+        <NotificationPrompt />
         <GlobalCrisisBanner />
-        <div className="relative">
+        <div className={entering ? 'animate-in fade-in slide-in-from-bottom-3 duration-300 fill-mode-both' : ''}>
           <Suspense fallback={<DashboardLoading />}>
             {children}
           </Suspense>
-          {isNavigating && (
-            <div className="absolute inset-0 z-40 bg-background">
-              <DashboardLoading />
-            </div>
-          )}
         </div>
       </DashboardLayoutComponent>
+      <QuickLogFab />
     </DashboardClientLogic>
   );
 }

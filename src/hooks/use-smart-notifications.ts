@@ -2,10 +2,26 @@
 
 import { useEffect, useMemo, useRef } from 'react';
 import { collection, query, doc, where, orderBy, limit } from 'firebase/firestore';
-import { useFirestore, useUser, useCollection, useMemoFirebase, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
+import { useFirestore, useUser, useCollection, useDoc, useMemoFirebase, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { useUserData } from '@/hooks/use-user-data';
 import type { Notification } from '@/lib/types';
 import { parseISO, differenceInHours } from 'date-fns';
+
+interface NotificationPrefs {
+  finance: boolean;
+  habits: boolean;
+  milestones: boolean;
+  system: boolean;
+  morning_briefing: boolean;
+}
+
+const DEFAULT_PREFS: NotificationPrefs = {
+  finance: true,
+  habits: true,
+  milestones: true,
+  system: true,
+  morning_briefing: true,
+};
 
 type Candidate = {
   dedupe_key: string;
@@ -37,6 +53,13 @@ export function useSmartNotifications() {
   const { user } = useUser();
   const firestore = useFirestore();
   const { data: userData, isLoading } = useUserData();
+
+  const prefsRef = useMemoFirebase(() => {
+    if (!user) return null;
+    return doc(firestore, `users/${user.uid}/settings/notifications`);
+  }, [user, firestore]);
+  const { data: prefsDoc } = useDoc<NotificationPrefs>(prefsRef);
+  const prefs: NotificationPrefs = useMemo(() => ({ ...DEFAULT_PREFS, ...(prefsDoc || {}) }), [prefsDoc]);
 
   const notificationsRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -248,8 +271,15 @@ export function useSmartNotifications() {
       });
     }
 
-    return output;
-  }, [userData]);
+    return output.filter((c) => {
+      if (c.category === 'finance') return prefs.finance;
+      if (c.category === 'habit') return prefs.habits;
+      if (c.category === 'milestone') return prefs.milestones;
+      if (c.category === 'state') return prefs.system;
+      if (c.dedupe_key === 'daily_directive_prompt') return prefs.morning_briefing;
+      return true;
+    });
+  }, [userData, prefs]);
 
   useEffect(() => {
     if (!user || !firestore || isLoading || !userData) return;
@@ -355,6 +385,30 @@ export function useSmartNotifications() {
       const notifRef = doc(firestore, `users/${user.uid}/notifications`, w.id);
       setDocumentNonBlocking(notifRef, w.data, { merge: true });
     });
+
+    // Disparar notificación OS para alertas urgentes nuevas (sin servidor push)
+    if (
+      typeof window !== 'undefined' &&
+      'Notification' in window &&
+      Notification.permission === 'granted' &&
+      'serviceWorker' in navigator
+    ) {
+      const urgentWrite = writes.find(w =>
+        !w.data.read &&
+        (w.data.type === 'error' || w.data.type === 'warning') &&
+        (w.data.dedupe_key?.startsWith('state_') || w.data.dedupe_key === 'finance_negative_cashflow')
+      );
+      if (urgentWrite) {
+        navigator.serviceWorker.ready.then(reg => {
+          reg.showNotification(urgentWrite.data.title, {
+            body: urgentWrite.data.message,
+            icon: '/icon-192.svg',
+            tag: urgentWrite.id,
+            data: { url: urgentWrite.data.link || '/dashboard' },
+          }).catch(() => {});
+        }).catch(() => {});
+      }
+    }
 
     lastRunRef.current = nowTs;
   }, [

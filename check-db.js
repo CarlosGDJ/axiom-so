@@ -1,31 +1,47 @@
 const admin = require('firebase-admin');
-process.env.FIRESTORE_EMULATOR_HOST = 'localhost:8080';
-const app = admin.initializeApp({ projectId: 'demo-sandbox' });
-const db = app.firestore();
 
-async function check() {
-    const usersRef = db.collection('users');
-    const snap = await usersRef.limit(1).get();
-    if (snap.empty) {
-        console.log("No users found.");
-        return;
+process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8080';
+process.env.FIREBASE_AUTH_EMULATOR_HOST = '127.0.0.1:9099';
+
+admin.initializeApp({ projectId: 'demo-sandbox' });
+const db = admin.firestore();
+
+async function run() {
+  const usersSnapshot = await db.collection('users').get();
+  for (const userDoc of usersSnapshot.docs) {
+    const uid = userDoc.id;
+    console.log(`\nUsuario: ${uid}`);
+    
+    // Check events
+    const events = await db.collection(`users/${uid}/events`).get();
+    console.log(`- events: ${events.size} documentos`);
+    for (const doc of events.docs) {
+      const data = doc.data();
+      if (!data.fecha) {
+        console.log(`  [ALERTA] Evento ${doc.id} no tiene fecha:`, data);
+      }
     }
-    const uid = snap.docs[0].id;
-    console.log(`Checking UID: ${uid}`);
-
-    const imSnap = await db.collection(`users/${uid}/impactMatrix`).get();
-    console.log(`impactMatrix collection has ${imSnap.size} documents.`);
-
-    const deepWorkImpacts = imSnap.docs.filter(d => d.data().var_id === 'DEEP_WORK');
-    console.log(`impactMatrix docs for DEEP_WORK: ${deepWorkImpacts.length}`);
-    if (deepWorkImpacts.length > 0) {
-        console.log(deepWorkImpacts[0].data());
+    
+    // Check interactions
+    const interactions = await db.collection(`users/${uid}/interactions`).get();
+    console.log(`- interactions: ${interactions.size} documentos`);
+    for (const doc of interactions.docs) {
+      const data = doc.data();
+      if (!data.fecha) {
+        console.log(`  [ALERTA] Interacción ${doc.id} no tiene fecha:`, data);
+      }
     }
 
-    const eventsSnap = await db.collection(`users/${uid}/events`).get();
-    console.log(`events collection has ${eventsSnap.size} documents.`);
-    const dwEvents = eventsSnap.docs.filter(d => d.data().var_id === 'DEEP_WORK');
-    console.log(`DEEP_WORK events: ${dwEvents.length}`);
+    // Check transactions
+    const transactions = await db.collection(`users/${uid}/transactions`).get();
+    console.log(`- transactions: ${transactions.size} documentos`);
+    for (const doc of transactions.docs) {
+      const data = doc.data();
+      if (!data.fecha) {
+        console.log(`  [ALERTA] Transacción ${doc.id} no tiene fecha:`, data);
+      }
+    }
+  }
 }
 
-check().then(() => process.exit(0)).catch(console.error);
+run().catch(console.error);

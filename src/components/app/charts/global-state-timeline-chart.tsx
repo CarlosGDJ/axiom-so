@@ -1,6 +1,7 @@
 'use client';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Cell } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../ui/card';
+import ChartEmptyState from '@/components/app/chart-empty-state';
 import { ChartContainer, ChartTooltipContent, ChartLegend, ChartLegendContent, type ChartConfig } from '@/components/ui/chart';
 
 interface TimelineData {
@@ -57,8 +58,13 @@ export default function GlobalStateTimelineChart({ data }: GlobalStateTimelineCh
                     <CardTitle>Línea de Tiempo de Estado Global</CardTitle>
                     <CardDescription>Visualiza tu estado (OK/RIESGO/CRÍTICO) para cada día del periodo seleccionado.</CardDescription>
                 </CardHeader>
-                <CardContent className="flex-grow flex items-center justify-center">
-                    <p className="text-muted-foreground">No hay datos para mostrar.</p>
+                <CardContent>
+                    <ChartEmptyState
+                        icon="line"
+                        title="Sin historial de estados"
+                        message="El sistema generará esta línea de tiempo conforme se registren datos diarios."
+                        minHeight="h-[250px]"
+                    />
                 </CardContent>
             </Card>
         )

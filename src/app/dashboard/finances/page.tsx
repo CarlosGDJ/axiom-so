@@ -53,7 +53,10 @@ import {
     CircleDollarSign,
     AlertTriangle,
     ArrowRightLeft,
-    Percent
+    Percent,
+    Snowflake,
+    Flame,
+    BarChart2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { 
@@ -78,8 +81,10 @@ import { DateRangePicker } from '@/components/app/date-range-picker';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import DashboardLoading from '../loading';
+import AreaPageSkeleton from '@/components/app/area-page-skeleton';
 import DebtSnowballStrategy from '@/components/app/debt-strategy/debt-snowball-strategy';
+import DebtAvalancheStrategy from '@/components/app/debt-strategy/debt-avalanche-strategy';
+import DebtStrategyComparison from '@/components/app/debt-strategy/debt-strategy-comparison';
 import type { DashboardConfig, Transaction } from '@/lib/types';
 import NavigationReady from '@/components/app/navigation-ready';
 import TransactionLogForm from '@/components/app/forms/transaction-log-form';
@@ -692,7 +697,7 @@ export default function FinancesPage() {
             .slice(0, 6);
     }, [stats, pocketsState]);
 
-    if (!userData) return <DashboardLoading />;
+    if (!userData) return <AreaPageSkeleton />;
 
     return (
         <div className="space-y-8 pb-20">
@@ -1088,7 +1093,7 @@ export default function FinancesPage() {
                                                     </div>
                                                     <div className="w-32">
                                                         <div className="relative">
-                                                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">?</span>
+                                                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">€</span>
                                                             <Input 
                                                                 type="number" 
                                                                 className="pl-6 h-10 font-medium text-right" 
@@ -1177,7 +1182,7 @@ export default function FinancesPage() {
                                         <BarChart data={stats.chartData}>
                                             <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.2} />
                                             <XAxis dataKey="month" axisLine={false} tickLine={false} />
-                                            <YAxis axisLine={false} tickLine={false} tickFormatter={(v) => `?${v}`} />
+                                            <YAxis axisLine={false} tickLine={false} tickFormatter={(v) => formatCurrency(Number(v || 0))} />
                                             <Tooltip cursor={{fill: 'rgba(0,0,0,0.05)'}} />
                                             <Legend />
                                             <Bar dataKey="income" name="Ingresos Totales" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} />
@@ -1398,7 +1403,7 @@ export default function FinancesPage() {
                                                             <div
                                                                 key={`cell-${dayIndex}-${hour}`}
                                                                 className="h-6 rounded-sm border border-border/30"
-                                                                title={`${day} ${String(hour).padStart(2, '0')}:00 ? ${formatCurrency(value)}`}
+                                                                title={`${day} ${String(hour).padStart(2, '0')}:00 · ${formatCurrency(value)}`}
                                                                 style={{
                                                                     backgroundColor: value === 0
                                                                         ? 'hsl(var(--muted) / 0.2)'
@@ -1521,7 +1526,7 @@ export default function FinancesPage() {
                                                         </div>
                                                         <p className="text-xs text-muted-foreground mt-1">
                                                             {format(parseISO(tx.fecha), "d MMM yyyy, HH:mm", { locale: es })}
-                                                            {tx.notas ? ` ? ${tx.notas}` : ''}
+                                                            {tx.notas ? ` · ${tx.notas}` : ''}
                                                         </p>
                                                     </div>
                                                     <div className="flex items-center gap-3">
@@ -1541,44 +1546,44 @@ export default function FinancesPage() {
                         </TabsContent>
 
                         <TabsContent value="debt" className="space-y-6">
-                            {effectiveStrategy === 'snowball' ? (
-                                <DebtSnowballStrategy 
-                                    debts={userData?.debts?.filter(d => d.estado_deuda !== 'Liquidada') || []} 
-                                    transactions={userData?.debtTransactions || []} 
-                                />
-                            ) : (
-                                <div className="max-w-2xl mx-auto py-8">
-                                    <Card className="flex flex-col shadow-lg">
-                                        <CardHeader>
-                                            <CardTitle className="text-2xl">Bola de nieve</CardTitle>
-                                            <CardDescription>
-                                            <div className="flex flex-wrap gap-2 mt-2">
-                                                <Badge variant="secondary">Prioriza: Motivación</Badge>
-                                                <Badge variant="secondary">Ideal para: Bloqueo emocional</Badge>
-                                            </div>
-                                            </CardDescription>
-                                        </CardHeader>
-                                        <CardContent className="flex-grow">
-                                            <p className="text-base">Este método se enfoca en pagar primero la deuda más pequeña, sin importar la tasa de interés. Cada vez que eliminas una deuda, ganas un impulso de motivación que te anima a seguir con la siguiente.</p>
-                                        </CardContent>
-                                        <CardFooter>
-                                            <Button 
-                                            className="w-full" 
-                                            size="lg"
-                                            onClick={() => {
-                                                if (user) {
-                                                    const configDocRef = doc(firestore, `users/${user.uid}/dashboardConfig`, 'debt_strategy');
-                                                    setDocumentNonBlocking(configDocRef, { key: 'debt_strategy', value: 'snowball' });
-                                                    setLocalStrategy('snowball');
-                                                }
-                                            }}
-                                            >
-                                            Aplicar Estrategia de Bola de Nieve
-                                            </Button>
-                                        </CardFooter>
-                                    </Card>
-                                </div>
-                            )}
+                            <Tabs defaultValue={effectiveStrategy || 'comparison'} className="space-y-4">
+                                <TabsList className="grid w-full grid-cols-3 max-w-sm">
+                                    <TabsTrigger value="comparison" className="gap-1.5 text-xs">
+                                        <BarChart2 className="h-3.5 w-3.5" /> Comparar
+                                    </TabsTrigger>
+                                    <TabsTrigger value="snowball" className="gap-1.5 text-xs">
+                                        <Snowflake className="h-3.5 w-3.5" /> Snowball
+                                    </TabsTrigger>
+                                    <TabsTrigger value="avalanche" className="gap-1.5 text-xs">
+                                        <Flame className="h-3.5 w-3.5" /> Avalanche
+                                    </TabsTrigger>
+                                </TabsList>
+                                <TabsContent value="comparison">
+                                    <DebtStrategyComparison
+                                        debts={userData?.debts?.filter(d => d.estado_deuda !== 'Liquidada') || []}
+                                        onSelect={(s: 'snowball' | 'avalanche') => {
+                                            if (user) {
+                                                const ref = doc(firestore, `users/${user.uid}/dashboardConfig`, 'debt_strategy');
+                                                setDocumentNonBlocking(ref, { key: 'debt_strategy', value: s });
+                                                setLocalStrategy(s);
+                                            }
+                                        }}
+                                        selected={effectiveStrategy ?? null}
+                                    />
+                                </TabsContent>
+                                <TabsContent value="snowball">
+                                    <DebtSnowballStrategy
+                                        debts={userData?.debts?.filter(d => d.estado_deuda !== 'Liquidada') || []}
+                                        transactions={userData?.debtTransactions || []}
+                                    />
+                                </TabsContent>
+                                <TabsContent value="avalanche">
+                                    <DebtAvalancheStrategy
+                                        debts={userData?.debts?.filter(d => d.estado_deuda !== 'Liquidada') || []}
+                                        transactions={userData?.debtTransactions || []}
+                                    />
+                                </TabsContent>
+                            </Tabs>
                         </TabsContent>
                     </>
                 )}
@@ -1673,6 +1678,7 @@ function DiagnosticItem({ label, current, previous, inverted = false }: { label:
         </div>
     );
 }
+
 
 
 

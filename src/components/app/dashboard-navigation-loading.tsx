@@ -24,11 +24,11 @@ export function DashboardNavigationLoadingProvider({ children }: { children: Rea
   const startNavigation = useCallback(() => {
     clearFallbackTimer();
     setIsNavigating(true);
-    // Fallback safety: avoid getting stuck forever if a page never reports ready.
+    // Fallback safety: clear overlay if destination page never mounts (e.g. fetch failure).
     fallbackTimerRef.current = setTimeout(() => {
       setIsNavigating(false);
       fallbackTimerRef.current = null;
-    }, 15000);
+    }, 4000);
   }, [clearFallbackTimer]);
 
   const stopNavigation = useCallback(() => {

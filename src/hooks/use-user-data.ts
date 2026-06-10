@@ -1,7 +1,7 @@
 ﻿
 'use client';
 
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, useState, useEffect } from 'react';
 import { useCollection, useDoc, useUser, useMemoFirebase } from '@/firebase';
 import {
   collection,
@@ -45,6 +45,7 @@ import type {
 } from '@/lib/types';
 import { format, startOfDay, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { computeScoreVelocity } from '@/lib/velocity';
 
 function abbreviateAreaName(name: string): string {
     if (name.includes('/')) {
@@ -171,7 +172,7 @@ export function useUserData(dateRange?: DateRange) {
     if (!effectiveUser) return null;
     const constraints = getQueryConstraints().length > 0
         ? getQueryConstraints()
-        : [orderBy('fecha', 'desc'), limit(7)];
+        : [orderBy('fecha', 'desc'), limit(50)];
     return query(collection(firestore, `users/${effectiveUser.uid}/computed_daily_score`), ...constraints);
   }, [firestore, effectiveUser, dateRange]);
   const { data: computedDailyScores, isLoading: isLoadingComputedDailyScores } = useCollection<ComputedDailyScore>(computedDailyScoresQuery);
@@ -379,6 +380,7 @@ export function useUserData(dateRange?: DateRange) {
         dailyScoreTrend,
         monthlyFinancials,
         relationshipEnergy,
+        scoreVelocity: computeScoreVelocity(dailyScoreTrend),
       },
       impactMatrix: safeImpactMatrix,
       skills: safeSkills,
@@ -389,15 +391,131 @@ export function useUserData(dateRange?: DateRange) {
       states: safeStates,
       events: safeEvents,
       overallState: resolvedOverallState,
-      dominantVariables: [], 
+      dominantVariables: computedGlobalState?.dominant_drain_vars_7d ?? [],
       explanation: computedGlobalState?.explanation || null,
       rpg_stats: resolvedRpgStats,
       is_locked: computedGlobalState?.is_locked || false,
       lock_reason: computedGlobalState?.lock_reason || '',
       estimated_unlock_time: computedGlobalState?.estimated_unlock_time || 0,
+      clinical_v2: computedGlobalState?.clinical_v2 ?? null,
     };
   }, [isLoading, effectiveUser, userProfile, playerProfile, rawAreas, rawHormones, rawVariables, transactions, allTransactions, debtTransactions, interactions, events, relations, accounts, rawDebts, computedGlobalState, computedAreas, computedHormones, computedDailyScores, rawImpactMatrix, rawSkills, rawSystems, rawHabits, rawMilestones, rawProtocols, rawStates]);
 
-  return { data: currentData, isLoading };
+  // ── Offline localStorage cache ────────────────────────────────────────────
+  const [offlineData, setOfflineData] = useState<UserData | null>(null);
+  const offlineLoadedRef = useRef(false);
+
+  useEffect(() => {
+    if (!effectiveUser || offlineLoadedRef.current) return;
+    offlineLoadedRef.current = true;
+    try {
+      const raw = localStorage.getItem(`axiom_snap_${effectiveUser.uid}`);
+      if (raw) setOfflineData(JSON.parse(raw) as UserData);
+    } catch {}
+  }, [effectiveUser?.uid]);
+
+  useEffect(() => {
+    if (!effectiveUser || !currentData) return;
+    // Save a trimmed snapshot to avoid quota issues
+    const snap = {
+      userProfile: currentData.userProfile,
+      playerProfile: currentData.playerProfile,
+      rpg_stats: currentData.rpg_stats,
+      overallState: currentData.overallState,
+      kpis: {
+        ...currentData.kpis,
+        dailyScoreTrend: (currentData.kpis.dailyScoreTrend ?? []).slice(-30),
+      },
+      areas: currentData.areas,
+      milestones: currentData.milestones,
+      events: (currentData.events ?? []).slice(-100),
+      variables: currentData.variables,
+      habits: currentData.habits,
+      skills: currentData.skills,
+      systems: currentData.systems,
+      protocols: currentData.protocols,
+      states: currentData.states,
+      // finance — trim to last 50
+      transactions: (currentData.transactions ?? []).slice(-50),
+      allTransactions: (currentData.allTransactions ?? []).slice(-50),
+      debtTransactions: (currentData.debtTransactions ?? []).slice(-30),
+      accounts: currentData.accounts,
+      debts: currentData.debts,
+      interactions: (currentData.interactions ?? []).slice(-30),
+      relations: currentData.relations,
+      // computed
+      dominantVariables: currentData.dominantVariables,
+      explanation: currentData.explanation,
+      is_locked: currentData.is_locked,
+      lock_reason: currentData.lock_reason,
+      estimated_unlock_time: currentData.estimated_unlock_time,
+      clinical_v2: currentData.clinical_v2,
+      impactMatrix: currentData.impactMatrix,
+      hormones: currentData.hormones,
+    };
+    try {
+      localStorage.setItem(`axiom_snap_${effectiveUser.uid}`, JSON.stringify(snap));
+    } catch {
+      // Quota exceeded — save minimal version
+      try {
+        const minimal = {
+          userProfile: currentData.userProfile,
+          rpg_stats: currentData.rpg_stats,
+          overallState: currentData.overallState,
+          kpis: currentData.kpis,
+          areas: currentData.areas,
+          events: [],
+          variables: currentData.variables,
+          milestones: currentData.milestones,
+          habits: currentData.habits,
+          skills: currentData.skills,
+          systems: currentData.systems,
+          protocols: currentData.protocols,
+          states: currentData.states,
+          transactions: [],
+          allTransactions: [],
+          debtTransactions: [],
+          accounts: currentData.accounts,
+          debts: currentData.debts,
+          interactions: [],
+          relations: currentData.relations,
+          dominantVariables: currentData.dominantVariables,
+          explanation: currentData.explanation,
+          is_locked: currentData.is_locked,
+          lock_reason: currentData.lock_reason,
+          estimated_unlock_time: currentData.estimated_unlock_time,
+          clinical_v2: currentData.clinical_v2,
+          impactMatrix: currentData.impactMatrix,
+          hormones: currentData.hormones,
+        };
+        localStorage.setItem(`axiom_snap_${effectiveUser.uid}`, JSON.stringify(minimal));
+      } catch {}
+    }
+  }, [currentData]);
+
+  const resolvedData = currentData ?? offlineData;
+  const resolvedLoading = isLoading && !currentData && !offlineData;
+
+  // Raw collections for useComputedDataWriter — avoids duplicate Firestore listeners.
+  const writerPrefetch = useMemo(() => {
+    if (!effectiveUser || !playerProfile || !rawAreas || !rawHormones || !rawVariables) return undefined;
+    return {
+      playerProfile,
+      areas:               rawAreas          ?? [],
+      hormones:            rawHormones       ?? [],
+      impactMatrix:        rawImpactMatrix   ?? [],
+      variables:           rawVariables      ?? [],
+      allEvents:           events            ?? [],
+      allInteractions:     interactions      ?? [],
+      relations:           relations         ?? [],
+      allTransactions:     allTransactions   ?? [],
+      protocols:           rawProtocols      ?? [],
+      milestones:          rawMilestones     ?? [],
+      computedDailyScores: computedDailyScores ?? [],
+      lastGlobalState:     computedGlobalState ?? null,
+    };
+  }, [effectiveUser, playerProfile, rawAreas, rawHormones, rawImpactMatrix, rawVariables, events, interactions, relations, allTransactions, rawProtocols, rawMilestones, computedDailyScores, computedGlobalState]);
+
+  return { data: resolvedData, isLoading: resolvedLoading, writerPrefetch };
 }
 

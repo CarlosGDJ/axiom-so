@@ -2,6 +2,12 @@
 import { useMemo, type DependencyList } from 'react';
 import type { Query, DocumentReference } from 'firebase/firestore';
 
+const globalAny = globalThis as any;
+if (!globalAny.__memoizedFirebaseRefs) {
+  globalAny.__memoizedFirebaseRefs = new WeakSet<any>();
+}
+export const memoizedFirebaseRefs = globalAny.__memoizedFirebaseRefs;
+
 /**
  * Hook to memoize Firebase queries and document references.
  *
@@ -16,25 +22,22 @@ import type { Query, DocumentReference } from 'firebase/firestore';
  * to re-run on every render, leading to an infinite loop of re-fetching data.
  * `useMemo` solves this by returning the same object instance unless its dependencies change.
  *
- * The __memo property is a marker to indicate that the object has been properly memoized.
- * This is used to enforce best practices at runtime.
- *
  * @template T - The type of the query or reference (Query or DocumentReference).
  * @param {() => T | null | undefined} factory - A function that creates the query or reference.
  * @param {DependencyList} deps - The dependency array for the `useMemo` hook.
- * @returns {T & {__memo: true}} The memoized query or reference, or null/undefined.
+ * @returns {T} The memoized query or reference, or null/undefined.
  */
 export function useMemoFirebase<T extends Query<any> | DocumentReference<any>>(
   factory: () => T | null | undefined,
   deps: DependencyList
-): (T & { __memo: true }) | null | undefined {
+): T | null | undefined {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const memoizedValue = useMemo(factory, deps);
 
-  // Attach the memoization marker if the value is not null.
-  if (memoizedValue) {
-    (memoizedValue as T & { __memo: true }).__memo = true;
+  // Track the memoized value in a WeakSet to verify it later without mutating the object
+  if (memoizedValue && typeof memoizedValue === 'object') {
+    memoizedFirebaseRefs.add(memoizedValue);
   }
 
-  return memoizedValue as (T & { __memo: true }) | null | undefined;
+  return memoizedValue;
 }

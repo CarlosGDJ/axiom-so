@@ -11,6 +11,7 @@ import {
 } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { memoizedFirebaseRefs } from './use-memo-firebase';
 
 /** Utility type to add an 'id' field to a given type T. */
 export type WithId<T> = T & { id: string };
@@ -52,7 +53,7 @@ export interface InternalQuery extends Query<DocumentData> {
  * @returns {UseCollectionResult<T>} Object with data, isLoading, error.
  */
 export function useCollection<T = any>(
-    memoizedTargetRefOrQuery: ((CollectionReference<DocumentData> | Query<DocumentData>) & {__memo: boolean})  | null | undefined,
+    memoizedTargetRefOrQuery: CollectionReference<DocumentData> | Query<DocumentData> | null | undefined,
 ): UseCollectionResult<T> {
   type ResultItemType = WithId<T>;
   type StateDataType = ResultItemType[] | null;
@@ -62,6 +63,7 @@ export function useCollection<T = any>(
   const [error, setError] = useState<FirestoreError | Error | null>(null);
   const [retryNonce, setRetryNonce] = useState(0);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const permissionRetryCountRef = useRef(0);
 
   useEffect(() => {
     if (retryTimerRef.current) {
@@ -90,6 +92,7 @@ export function useCollection<T = any>(
 
     setIsLoading(true);
     setError(null);
+    permissionRetryCountRef.current = 0;
 
     // Directly use memoizedTargetRefOrQuery as it's assumed to be the final query
     const unsubscribe = onSnapshot(
@@ -111,7 +114,15 @@ export function useCollection<T = any>(
         setIsLoading(false);
 
         if (error.code === 'permission-denied') {
-          // This logic extracts the path from either a ref or a query
+          // During auth initialization the token may not be propagated yet — retry up to 2 times.
+          if (permissionRetryCountRef.current < 2) {
+            permissionRetryCountRef.current += 1;
+            retryTimerRef.current = setTimeout(() => {
+              setRetryNonce((prev) => prev + 1);
+            }, 1500 * permissionRetryCountRef.current);
+            return;
+          }
+
           const path: string =
             memoizedTargetRefOrQuery.type === 'collection'
               ? (memoizedTargetRefOrQuery as CollectionReference).path
@@ -124,8 +135,6 @@ export function useCollection<T = any>(
 
           setError(contextualError);
           setData(null);
-
-          // trigger global error propagation
           errorEmitter.emit('permission-error', contextualError);
           return;
         }
@@ -146,8 +155,6 @@ export function useCollection<T = any>(
       unsubscribe();
     };
   }, [memoizedTargetRefOrQuery, retryNonce]); // Re-run if target changes or transient retry is triggered.
-  if(memoizedTargetRefOrQuery && !memoizedTargetRefOrQuery.__memo) {
-    throw new Error('useCollection query was not properly memoized using useMemoFirebase. This will cause infinite loops.');
-  }
+
   return { data, isLoading, error };
 }

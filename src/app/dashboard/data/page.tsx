@@ -1,4 +1,4 @@
-
+﻿
 'use client';
 import { useState, useEffect, useMemo } from 'react';
 import { useUserData } from '@/hooks/use-user-data';
@@ -45,7 +45,7 @@ import { columns as relationColumns } from '@/components/app/data-table/columns-
 import { columns as accountColumns } from '@/components/app/data-table/columns-account';
 import { columns as debtColumns } from '@/components/app/data-table/columns-debt';
 import { DataTable } from '@/components/app/data-table/data-table';
-import DashboardLoading from '../loading';
+import AreaPageSkeleton from '@/components/app/area-page-skeleton';
 
 const tabsConfig = [
     { value: 'areas', label: 'Áreas', icon: Compass },
@@ -129,7 +129,7 @@ export default function DataManagementPage() {
   const canGoNext = inactiveTabsStartIndex + tabsPerPage -1 < inactiveTabs.length;
   
   if (isLoading && !userData) {
-    return <DashboardLoading />;
+    return <AreaPageSkeleton />;
   }
 
   return (
@@ -240,3 +240,4 @@ export default function DataManagementPage() {
     </div>
   );
 }
+

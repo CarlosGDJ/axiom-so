@@ -8,6 +8,7 @@ import {
 
 import { AppHeader } from './header';
 import { AppSidebarNav } from './sidebar-nav';
+import { PwaInit } from './pwa-init';
 
 export const DashboardLayout: FC<{ children: ReactNode }> = ({ children }) => {
   return (
@@ -18,6 +19,7 @@ export const DashboardLayout: FC<{ children: ReactNode }> = ({ children }) => {
       <SidebarInset>
         <AppHeader />
         <main className="flex-1 overflow-y-auto p-4 lg:p-6">{children}</main>
+        <PwaInit />
       </SidebarInset>
     </SidebarProvider>
   );
