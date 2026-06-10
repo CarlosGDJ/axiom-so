@@ -20,6 +20,7 @@ import { QuickLogFab } from '@/components/app/quick-log-fab';
 import { NotificationPrompt } from '@/components/app/notification-prompt';
 import { Button } from '@/components/ui/button';
 import { useFirestore, useUser, addDocumentNonBlocking, useMemoFirebase, useDoc, useCollection } from '@/firebase';
+import { UserDataProvider } from '@/contexts/user-data-context';
 import { TourProvider } from '@/components/app/tour/tour-context';
 import { TourOverlay } from '@/components/app/tour/tour-overlay';
 import { collection, doc, query, limit } from 'firebase/firestore';
@@ -113,7 +114,15 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Pass pre-fetched data so useComputedDataWriter skips 14 duplicate listeners.
+  return (
+    <UserDataProvider>
+      <DashboardLayoutInner2>{children}</DashboardLayoutInner2>
+    </UserDataProvider>
+  );
+}
+
+// Separated so hooks that need UserDataProvider run inside it.
+function DashboardLayoutInner2({ children }: { children: React.ReactNode }) {
   const { writerPrefetch } = useUserData();
   useComputedDataWriter(writerPrefetch);
   useSmartNotifications();
