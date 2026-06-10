@@ -16,7 +16,8 @@
         "test": "vitest run",
         "test:watch": "vitest",
         "test:coverage": "vitest run --coverage",
-        "tunnel:demo": "node scripts/tunnel-demo.mjs"
+        "tunnel:demo": "node scripts/tunnel-demo.mjs",
+        "start:local": "node scripts/start-local.mjs"
     },
     "dependencies": {
         "@babel/runtime": "^7.29.2",
