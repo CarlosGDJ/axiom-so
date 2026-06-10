@@ -286,13 +286,13 @@ export default function OverviewCard({ overallState, dominantVariables = [], onA
         )}
       </CardContent>
 
-      <CardFooter className="pt-0 flex flex-col gap-2">
+      <CardFooter className="px-2 sm:px-4 pb-2 sm:pb-4 pt-0 flex flex-col gap-2">
         {overallState === 'CRITICO' ? (
           <Button variant="destructive" className="w-full font-bold" onClick={onActivateProtocol}>
             <Sparkles className="mr-2 h-4 w-4" /> ACTIVAR PROTOCOLO IA
           </Button>
         ) : (
-          <div className="grid grid-cols-3 gap-2 w-full">
+          <div className="grid grid-cols-3 gap-1.5 w-full">
             {dynamicActions.map(action => {
               const Icon = action.icon;
               return (
@@ -300,11 +300,11 @@ export default function OverviewCard({ overallState, dominantVariables = [], onA
                   key={action.var_id}
                   variant="outline"
                   size="sm"
-                  className="text-xs flex-col h-auto py-2 gap-1"
+                  className="text-[11px] flex-col h-auto py-2 gap-1 min-w-0 px-1"
                   onClick={() => logQuickAction(action.var_id, action.label, action.context, action.intensidad)}
                 >
-                  <Icon className="h-3.5 w-3.5" />
-                  {action.label}
+                  <Icon className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate w-full text-center">{action.label}</span>
                 </Button>
               );
             })}

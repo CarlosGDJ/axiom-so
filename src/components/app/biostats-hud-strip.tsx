@@ -59,9 +59,9 @@ export default function BiostatsHudStrip({ rpgStats, scoreVelocity }: BiostatsHu
           const debtLevel = debtScore >= 40 ? 'critical' : debtScore >= 20 ? 'risk' : null;
           return (
             <div key={key} className="space-y-1.5 min-w-0">
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 min-w-0">
                 <Icon className={cn('h-3 w-3 shrink-0', styles.text)} />
-                <span className="text-[9px] font-bold uppercase tracking-normal sm:tracking-wider text-muted-foreground truncate">
+                <span className="text-[8px] sm:text-[9px] font-bold uppercase tracking-wide text-muted-foreground truncate">
                   {label}
                 </span>
               </div>
@@ -123,12 +123,12 @@ export default function BiostatsHudStrip({ rpgStats, scoreVelocity }: BiostatsHu
       {/* Score global */}
       <div className="pt-3 border-t border-border/50 flex items-center gap-3">
         <Trophy className={cn('h-4 w-4 shrink-0', LEVEL_STYLES[scoreLevel].text)} />
-        <div className="flex-1 space-y-1">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              Score Global del Sistema
+        <div className="flex-1 space-y-1 min-w-0">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
+              Score Global
             </span>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               {velCfg && scoreVelocity && (
                 <span className={cn('flex items-center gap-0.5 text-[9px] font-semibold tabular-nums', velCfg.cls)}>
                   <velCfg.icon className="h-3 w-3" />
