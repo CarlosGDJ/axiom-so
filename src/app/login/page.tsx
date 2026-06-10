@@ -4,7 +4,7 @@ import { useUser, useAuth, useFirestore } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { GoogleAuthProvider, createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, signInWithRedirect } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BrainCircuit, AlertTriangle, ShieldAlert, FlaskConical, Loader2 } from 'lucide-react';
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -21,9 +21,11 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [demoLoading, setDemoLoading] = useState(false);
   const [demoStatus, setDemoStatus] = useState('');
+  // Prevents the auto-redirect from racing with handleGoogleSignIn's profile check
+  const isHandlingSignIn = useRef(false);
 
   useEffect(() => {
-    if (!isUserLoading && user) {
+    if (!isUserLoading && user && !isHandlingSignIn.current) {
       router.push('/dashboard');
     }
   }, [user, isUserLoading, router]);
@@ -64,6 +66,7 @@ export default function LoginPage() {
   const handleGoogleSignIn = async () => {
     if (!auth || !firestore) return;
     setError(null);
+    isHandlingSignIn.current = true;
     const provider = new GoogleAuthProvider();
     try {
       const result = await signInWithPopup(auth, provider);
@@ -77,14 +80,19 @@ export default function LoginPage() {
         updatedAt: serverTimestamp(),
       }, { merge: true });
 
-      const profileDoc = await getDoc(doc(firestore, `users/${user.uid}/playerProfile`, 'main-profile'));
-      if (!profileDoc.exists()) {
-        router.push('/onboarding');
-        return;
+      let hasProfile = false;
+      try {
+        const profileDoc = await getDoc(doc(firestore, `users/${user.uid}/playerProfile`, 'main-profile'));
+        hasProfile = profileDoc.exists();
+      } catch {
+        // Firestore unreachable — treat as new user and send to onboarding
+        hasProfile = false;
       }
-      router.push('/dashboard');
+
+      router.push(hasProfile ? '/dashboard' : '/onboarding');
 
     } catch (error: any) {
+      isHandlingSignIn.current = false;
       if (error?.code === 'auth/popup-blocked' || error?.code === 'auth/cancelled-popup-request') {
         await signInWithRedirect(auth, provider);
         return;

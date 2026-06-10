@@ -126,8 +126,8 @@ export default function DashboardLayout({
         if (!profileSnap.exists() && areasSnap.empty) {
           router.replace('/onboarding');
         }
-      } catch {
-        // If verification fails, do not force onboarding redirect.
+      } catch (e) {
+        console.warn('[DashboardLayout] verifyAndRedirect failed — keeping user on dashboard:', e);
       }
     };
 
