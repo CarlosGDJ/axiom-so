@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useUser } from '@/hooks/use-session-user';
-import { useCollection, useDoc } from '@/hooks/use-mongo-collection';
+import { useCollection, useDoc, revalidateCollection } from '@/hooks/use-mongo-collection';
 import { useRouter } from 'next/navigation';
 import { BrainCircuit, Loader2, Sparkles, ChevronRight, ChevronLeft, ShieldCheck, HeartPulse, User, Zap, Activity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -228,7 +228,10 @@ export default function OnboardingPage() {
         toast({ title: "¡Sistema Calibrado!", description: "Tu bioperfil ha sido sincronizado con éxito." });
         localStorage.setItem(`axiom_onboarding_done_${uid}`, 'true');
         sessionStorage.setItem('axiom-launch-tour', '1');
-        setTimeout(() => router.push('/dashboard'), 500);
+        // Bust SWR cache so OnboardingGuard sees the new profile immediately on mount
+        revalidateCollection('playerProfile');
+        revalidateCollection('areas');
+        setTimeout(() => router.push('/dashboard'), 1500);
     } catch (error) {
         console.error(error);
         toast({ variant: "destructive", title: "Falla en la Calibración", description: "Ocurrió un error al procesar tus datos." });

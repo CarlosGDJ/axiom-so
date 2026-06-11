@@ -1,7 +1,7 @@
 'use client';
 
 import { Badge } from '../ui/badge';
-import { Card, CardContent, CardFooter, CardHeader } from '../ui/card';
+import { Card, CardContent, CardHeader } from '../ui/card';
 import { cn } from '@/lib/utils';
 import {
   ShieldCheck, ShieldAlert, ShieldX,
@@ -282,33 +282,33 @@ export default function OverviewCard({ overallState, dominantVariables = [], onA
             Riesgo clínico severo · {userData.clinical_v2.markers[0]?.replace(/_/g, ' ')}
           </div>
         )}
+        {/* Acciones rápidas */}
+        <div className="pt-2">
+          {overallState === 'CRITICO' ? (
+            <Button variant="destructive" className="w-full font-bold" onClick={onActivateProtocol}>
+              <Sparkles className="mr-2 h-4 w-4" /> ACTIVAR PROTOCOLO IA
+            </Button>
+          ) : (
+            <div className="grid grid-cols-3 gap-1.5 w-full">
+              {dynamicActions.map(action => {
+                const Icon = action.icon;
+                return (
+                  <Button
+                    key={action.var_id}
+                    variant="outline"
+                    size="sm"
+                    className="text-[11px] flex-col h-auto py-2 gap-1 min-w-0 px-1"
+                    onClick={() => logQuickAction(action.var_id, action.label, action.context, action.intensidad)}
+                  >
+                    <Icon className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate w-full text-center">{action.label}</span>
+                  </Button>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </CardContent>
-
-      <CardFooter className="px-2 sm:px-4 pb-2 sm:pb-4 pt-0 flex flex-col gap-2">
-        {overallState === 'CRITICO' ? (
-          <Button variant="destructive" className="w-full font-bold" onClick={onActivateProtocol}>
-            <Sparkles className="mr-2 h-4 w-4" /> ACTIVAR PROTOCOLO IA
-          </Button>
-        ) : (
-          <div className="grid grid-cols-3 gap-1.5 w-full">
-            {dynamicActions.map(action => {
-              const Icon = action.icon;
-              return (
-                <Button
-                  key={action.var_id}
-                  variant="outline"
-                  size="sm"
-                  className="text-[11px] flex-col h-auto py-2 gap-1 min-w-0 px-1"
-                  onClick={() => logQuickAction(action.var_id, action.label, action.context, action.intensidad)}
-                >
-                  <Icon className="h-3.5 w-3.5 shrink-0" />
-                  <span className="truncate w-full text-center">{action.label}</span>
-                </Button>
-              );
-            })}
-          </div>
-        )}
-      </CardFooter>
     </Card>
   );
 }

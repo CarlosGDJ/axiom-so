@@ -34,7 +34,6 @@ import ProfileProgressionCard from '@/components/app/profile-progression-card';
 import XpTimelineChart from '@/components/app/charts/xp-timeline-chart';
 import ExportPdfButton from '@/components/app/export-pdf-button';
 import { useUser } from '@/hooks/use-session-user';
-import { deleteDocumentNonBlocking } from '@/lib/api-writes';
 import { useDoc } from '@/hooks/use-mongo-collection';
 import { signOut } from 'next-auth/react';
 export default function ProfilePage() {
@@ -183,25 +182,14 @@ export default function ProfilePage() {
   const handleRecalibrate = async () => {
     if (!uid) return;
     setIsResetting(true);
-    
     try {
-                deleteDocumentNonBlocking('playerProfile', 'main-profile');
-        
-        toast({
-            title: "Sistema Reseteado",
-            description: "Iniciando proceso de bio-calibración...",
-        });
-        
-        // El layout detectará que no hay perfil y redirigirá a /onboarding
-        router.push('/onboarding');
+      await fetch('/api/user/reset', { method: 'POST' });
+      toast({ title: "Sistema Reseteado", description: "Iniciando proceso de bio-calibración..." });
+      // Hard reload so SWR cache is fully cleared before hitting /onboarding
+      window.location.href = '/onboarding';
     } catch (error) {
-        toast({
-            variant: 'destructive',
-            title: "Error",
-            description: "No se pudo reiniciar el perfil.",
-        });
-    } finally {
-        setIsResetting(false);
+      toast({ variant: 'destructive', title: "Error", description: "No se pudo reiniciar el perfil." });
+      setIsResetting(false);
     }
   };
 

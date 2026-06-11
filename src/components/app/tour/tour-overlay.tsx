@@ -54,14 +54,28 @@ export function TourOverlay() {
   useLayoutEffect(() => {
     if (!isActive || !step) return;
     const el = document.querySelector(`[data-tour="${step.target}"]`);
-    if (!el) { setRect(null); return; }
+    if (!el) {
+      // Element not in DOM (e.g. sidebar collapsed on mobile) — skip or end
+      const t = setTimeout(() => {
+        if (currentStep < steps.length - 1) nextStep(); else endTour();
+      }, 400);
+      return () => clearTimeout(t);
+    }
+    // Check element is actually visible (not inside a hidden sheet/drawer)
+    const r = el.getBoundingClientRect();
+    if (r.width === 0 && r.height === 0) {
+      const t = setTimeout(() => {
+        if (currentStep < steps.length - 1) nextStep(); else endTour();
+      }, 400);
+      return () => clearTimeout(t);
+    }
     el.scrollIntoView({ behavior: 'smooth', block: 'center' });
     const t = setTimeout(() => {
-      const r = el.getBoundingClientRect();
-      setRect({ top: r.top, left: r.left, width: r.width, height: r.height });
+      const r2 = el.getBoundingClientRect();
+      setRect({ top: r2.top, left: r2.left, width: r2.width, height: r2.height });
     }, 350);
     return () => clearTimeout(t);
-  }, [isActive, currentStep, step]);
+  }, [isActive, currentStep, step, nextStep]);
 
   useEffect(() => {
     if (!isActive || !step) return;

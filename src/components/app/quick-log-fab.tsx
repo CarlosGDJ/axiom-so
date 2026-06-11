@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useRef, useCallback } from 'react';
+import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import {
   Plus, X, Zap, CheckCircle2, Smile, DollarSign, Users,
   Mic, MicOff, Search, Clock, ShieldAlert, Sparkles, Loader2, Trash2, AlertCircle,
@@ -27,6 +27,7 @@ import { parseNaturalLogAction } from '@/lib/actions';
 import type { ParseNaturalLogOutput, ParsedLogEvent } from '@/lib/actions';
 import { useUser } from '@/hooks/use-session-user';
 import { addDocumentNonBlocking } from '@/lib/api-writes';
+import { useTour } from '@/components/app/tour/tour-context';
 type ActiveDialog = 'evento' | 'habito' | 'estado' | 'transaccion' | 'social' | 'nlp' | null;
 
 const MOOD_OPTIONS = [
@@ -197,6 +198,16 @@ export function QuickLogFab() {
   const { data: userData, isLoading: isUserDataLoading } = useUserData();
   const { user, uid } = useUser();
   const { toast }           = useToast();
+  const { isActive: tourActive, currentStep, steps } = useTour();
+
+  // Auto-open speed dial when the tour highlights this component
+  useEffect(() => {
+    if (tourActive && steps[currentStep]?.target === 'quick-log') {
+      setDialOpen(true);
+    } else if (!tourActive) {
+      // Don't forcibly close when tour ends — user might want it open
+    }
+  }, [tourActive, currentStep, steps]);
 
   const allActiveVars = useMemo(
     () => (userData?.variables ?? []).filter(v => v.activo),
