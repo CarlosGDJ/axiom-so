@@ -258,8 +258,14 @@ export default function OnboardingPage() {
     );
   }
 
-  if (isUserLoading || isProfileLoading || isAreasProbeLoading) return null;
-  if (profileError || areasProbeError) return null;
+  if (isUserLoading || isProfileLoading || isAreasProbeLoading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
   if (uid && (existingProfile || (existingAreas?.length || 0) > 0)) return null;
 
   const SensitivitySlider = ({ label, icon: Icon, value, name, description }: { label: string, icon: any, value: number, name: keyof typeof formData.sensitivities, description: string }) => (
