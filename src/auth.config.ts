@@ -22,10 +22,16 @@ export const authConfig: NextAuthConfig = {
     },
     jwt({ token, user }) {
       if (user?.id) token.userId = user.id;
+      if (user?.name) token.name = user.name;
+      if (user?.email) token.email = user.email;
+      if (user?.image) token.picture = user.image;
       return token;
     },
     session({ session, token }) {
       if (token.userId) session.user.id = token.userId as string;
+      if (token.name) session.user.name = token.name as string;
+      if (token.email) session.user.email = token.email as string;
+      if (token.picture) session.user.image = token.picture as string;
       return session;
     },
   },
