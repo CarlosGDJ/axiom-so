@@ -1,12 +1,12 @@
 'use client';
 
 import { useEffect, useMemo, useRef } from 'react';
-import { collection, query, doc, where, orderBy, limit } from 'firebase/firestore';
-import { useFirestore, useUser, useCollection, useDoc, useMemoFirebase, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { useUserData } from '@/hooks/use-user-data';
 import type { Notification } from '@/lib/types';
 import { parseISO, differenceInHours } from 'date-fns';
-
+import { useUser } from '@/hooks/use-session-user';
+import { setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/lib/api-writes';
+import { useCollection, useDoc } from '@/hooks/use-mongo-collection';
 interface NotificationPrefs {
   finance: boolean;
   habits: boolean;
@@ -50,34 +50,15 @@ function toDate(input: any): Date | null {
 }
 
 export function useSmartNotifications() {
-  const { user } = useUser();
-  const firestore = useFirestore();
-  const { data: userData, isLoading } = useUserData();
+  const { user, uid } = useUser();  const { data: userData, isLoading } = useUserData();
 
-  const prefsRef = useMemoFirebase(() => {
-    if (!user) return null;
-    return doc(firestore, `users/${user.uid}/settings/notifications`);
-  }, [user, firestore]);
-  const { data: prefsDoc } = useDoc<NotificationPrefs>(prefsRef);
+  const { data: prefsDoc } = useDoc<NotificationPrefs>('settings', uid ? 'notifications' : null);
   const prefs: NotificationPrefs = useMemo(() => ({ ...DEFAULT_PREFS, ...(prefsDoc || {}) }), [prefsDoc]);
 
-  const notificationsRef = useMemoFirebase(() => {
-    if (!user) return null;
-    return query(
-      collection(firestore, `users/${user.uid}/notifications`),
-      where('smart', '==', true),
-    );
-  }, [user, firestore]);
-  const { data: existingNotifications, isLoading: isExistingNotificationsLoading } = useCollection<Notification>(notificationsRef);
-  const allNotificationsRef = useMemoFirebase(() => {
-    if (!user) return null;
-    return query(
-      collection(firestore, `users/${user.uid}/notifications`),
-      orderBy('createdAt', 'desc'),
-      limit(200),
-    );
-  }, [user, firestore]);
-  const { data: allNotifications, isLoading: isAllNotificationsLoading } = useCollection<Notification>(allNotificationsRef);
+  const { data: allNotificationsRaw, isLoading: isAllNotificationsLoading } = useCollection<Notification>(uid ? 'notifications' : null, { orderBy: 'createdAt', direction: 'desc', limit: 200 });
+  const existingNotifications = useMemo(() => (allNotificationsRaw || []).filter(n => n.smart), [allNotificationsRaw]);
+  const allNotifications = allNotificationsRaw;
+  const isExistingNotificationsLoading = isAllNotificationsLoading;
 
   const lastRunRef = useRef(0);
   const lastCleanupRef = useRef(0);
@@ -282,7 +263,7 @@ export function useSmartNotifications() {
   }, [userData, prefs]);
 
   useEffect(() => {
-    if (!user || !firestore || isLoading || !userData) return;
+    if (!user || isLoading || !userData) return;
     // Evita recrear alertas como no leídas antes de que cargue el histórico remoto.
     if (isExistingNotificationsLoading || isAllNotificationsLoading) return;
     if (existingNotifications === null || allNotifications === null) return;
@@ -382,8 +363,7 @@ export function useSmartNotifications() {
     }
 
     writes.slice(0, 6).forEach((w) => {
-      const notifRef = doc(firestore, `users/${user.uid}/notifications`, w.id);
-      setDocumentNonBlocking(notifRef, w.data, { merge: true });
+            setDocumentNonBlocking('notifications', w.id, w.data, { merge: true });
     });
 
     // Disparar notificación OS para alertas urgentes nuevas (sin servidor push)
@@ -413,7 +393,6 @@ export function useSmartNotifications() {
     lastRunRef.current = nowTs;
   }, [
     user,
-    firestore,
     isLoading,
     userData,
     existingNotifications,
@@ -424,7 +403,7 @@ export function useSmartNotifications() {
   ]);
 
   useEffect(() => {
-    if (!user || !firestore || !allNotifications || allNotifications.length < 2) return;
+    if (!user || !allNotifications || allNotifications.length < 2) return;
     const nowTs = Date.now();
     if ((nowTs - lastCleanupRef.current) < DUPLICATE_CLEANUP_INTERVAL_MS) return;
 
@@ -452,8 +431,7 @@ export function useSmartNotifications() {
       if (!hasCanonical) {
         const latestDate = toDate(latest.createdAt);
         const { id: _dropId, ...latestData } = latest as any;
-        const canonicalRef = doc(firestore, `users/${user.uid}/notifications`, canonicalId);
-        setDocumentNonBlocking(canonicalRef, {
+                setDocumentNonBlocking('notifications', canonicalId, {
           ...latestData,
           read: anyRead ? true : Boolean(latest.read),
           dedupe_key: key,
@@ -462,8 +440,7 @@ export function useSmartNotifications() {
           updatedAt: new Date().toISOString(),
         }, { merge: true });
       } else if (anyRead) {
-        const canonicalRef = doc(firestore, `users/${user.uid}/notifications`, canonicalId);
-        setDocumentNonBlocking(canonicalRef, {
+                setDocumentNonBlocking('notifications', canonicalId, {
           read: true,
           updatedAt: new Date().toISOString(),
           dedupe_key: key,
@@ -473,11 +450,10 @@ export function useSmartNotifications() {
 
       sorted.forEach((n) => {
         if (n.id === canonicalId) return;
-        const dupRef = doc(firestore, `users/${user.uid}/notifications`, n.id);
-        deleteDocumentNonBlocking(dupRef);
+                deleteDocumentNonBlocking('notifications', n.id);
       });
     });
 
     lastCleanupRef.current = nowTs;
-  }, [user, firestore, allNotifications]);
+  }, [user, allNotifications]);
 }

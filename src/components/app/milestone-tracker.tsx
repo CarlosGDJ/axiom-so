@@ -9,12 +9,11 @@ import { Progress } from '@/components/ui/progress';
 import { Check, Plus, Calendar, Clock, SkipForward, Target, Star, Milestone as MilestoneIcon, Zap } from 'lucide-react';
 import { format, differenceInDays, parseISO, isAfter, startOfToday } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { useFirestore, useUser, updateDocumentNonBlocking } from '@/firebase';
-import { doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-
+import { useUser } from '@/hooks/use-session-user';
+import { updateDocumentNonBlocking } from '@/lib/api-writes';
 interface MilestoneTrackerProps {
   milestones: Milestone[];
   skills: Skill[];
@@ -27,14 +26,11 @@ export default function MilestoneTracker({ milestones, skills, systems, streakMu
     streakMultiplier > 1
       ? `+${Math.round(base * streakMultiplier)} XP ×${streakMultiplier}`
       : `+${base} XP`;
-  const { user } = useUser();
-  const firestore = useFirestore();
-  const { toast } = useToast();
+  const { user, uid } = useUser();  const { toast } = useToast();
 
   const handleUpdateProgress = (milestone: Milestone) => {
-    if (!user || !firestore) return;
+    if (!uid) return;
 
-    const docRef = doc(firestore, `users/${user.uid}/milestones`, milestone.id);
     const skill = skills.find(s => s.habilidad_id === milestone.skill_id);
     
     let xpGained = 0;
@@ -72,35 +68,33 @@ export default function MilestoneTracker({ milestones, skills, systems, streakMu
     }
 
     // Update Milestone
-    updateDocumentNonBlocking(docRef, updateData);
+    updateDocumentNonBlocking('milestones', milestone.id, updateData);
 
     // Update Skill XP and Level
     if (skill) {
-        const skillRef = doc(firestore, `users/${user.uid}/skills`, skill.id);
         const newXP = (skill.xp || 0) + effectiveXP;
         const xpNeeded = skill.nivel_actual * 200;
-        
+
         if (newXP >= xpNeeded) {
             const newLevel = skill.nivel_actual + 1;
-            updateDocumentNonBlocking(skillRef, { 
-                xp: newXP - xpNeeded, 
-                nivel_actual: newLevel 
+            updateDocumentNonBlocking('skills', skill.id, {
+                xp: newXP - xpNeeded,
+                nivel_actual: newLevel
             });
-            toast({ 
-                title: "¡SUBIDA DE NIVEL!", 
+            toast({
+                title: "¡SUBIDA DE NIVEL!",
                 description: `Tu habilidad "${skill.nombre}" ha subido al nivel ${newLevel}.`,
                 variant: "default"
             });
         } else {
-            updateDocumentNonBlocking(skillRef, { xp: newXP });
+            updateDocumentNonBlocking('skills', skill.id, { xp: newXP });
         }
     }
   };
 
   const handleOmit = (milestone: Milestone) => {
-    if (!user || !firestore) return;
-    const docRef = doc(firestore, `users/${user.uid}/milestones`, milestone.id);
-    updateDocumentNonBlocking(docRef, { estado: 'Omitido' });
+    if (!uid) return;
+        updateDocumentNonBlocking('milestones', milestone.id, { estado: 'Omitido' });
     toast({ title: "Hito Omitido", description: `Has quitado "${milestone.nombre}" de tus objetivos activos.` });
   };
 

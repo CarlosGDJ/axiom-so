@@ -6,13 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { useUserData } from '@/hooks/use-user-data';
-import { useFirestore, useUser } from '@/firebase';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { sendChatMessage } from '@/lib/actions';
 import type { ChatMessage, ChatContext } from '@/ai/flows/chat-with-axiom';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-
+import { useUser } from '@/hooks/use-session-user';
+import { setDocumentNonBlocking } from '@/lib/api-writes';
 const SUGGESTED_PROMPTS = [
   '¿Cuál es mi mayor punto débil esta semana?',
   '¿Qué hábito debería priorizar hoy?',
@@ -243,8 +242,7 @@ function inlineMarkdown(text: string): React.ReactNode {
 
 export default function ChatPage() {
   const { data: userData, isLoading: isUserDataLoading } = useUserData();
-  const { user } = useUser();
-  const firestore = useFirestore();
+  const { user, uid } = useUser();
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [input, setInput] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -252,13 +250,13 @@ export default function ChatPage() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // Load chat history from Firestore on mount
+  // Load chat history on mount
   useEffect(() => {
-    if (!user || !firestore) return;
-    const histRef = doc(firestore, `users/${user.uid}/chatHistory`, 'current');
-    getDoc(histRef).then(snap => {
-      if (snap.exists()) {
-        const saved = snap.data()?.messages ?? [];
+    if (!uid) return;
+    fetch(`/api/data/chatHistory?docId=current`)
+      .then(r => r.json())
+      .then(data => {
+        const saved = data?.messages ?? [];
         if (saved.length > 0) {
           setMessages(saved.map((m: any) => ({
             id: m.id,
@@ -267,18 +265,17 @@ export default function ChatPage() {
             timestamp: new Date(m.timestamp),
           })));
         }
-      }
-    }).catch(() => {});
+      })
+      .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.uid]);
+  }, [uid]);
 
-  // Persist messages to Firestore after each completed exchange
+  // Persist messages after each completed exchange
   useEffect(() => {
-    if (!user || !firestore || messages.length === 0) return;
+    if (!user || messages.length === 0) return;
     if (messages.some(m => m.isLoading)) return;
     const timer = setTimeout(() => {
-      const histRef = doc(firestore, `users/${user.uid}/chatHistory`, 'current');
-      setDoc(histRef, {
+      setDocumentNonBlocking('chatHistory', 'current', {
         messages: messages.slice(-50).map(m => ({
           id: m.id,
           role: m.role,
@@ -286,10 +283,10 @@ export default function ChatPage() {
           timestamp: m.timestamp.toISOString(),
         })),
         updatedAt: new Date().toISOString(),
-      }).catch(() => {});
+      });
     }, 1500);
     return () => clearTimeout(timer);
-  }, [messages, user, firestore]);
+  }, [messages, user]);
 
   const scrollToBottom = useCallback(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -366,9 +363,8 @@ export default function ChatPage() {
   const handleReset = () => {
     setMessages([]);
     setInput('');
-    if (user && firestore) {
-      const histRef = doc(firestore, `users/${user.uid}/chatHistory`, 'current');
-      setDoc(histRef, { messages: [], updatedAt: new Date().toISOString() }).catch(() => {});
+    if (user) {
+      setDocumentNonBlocking('chatHistory', 'current', { messages: [], updatedAt: new Date().toISOString() });
     }
     textareaRef.current?.focus();
   };

@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useUser, useFirestore, useMemoFirebase, useDoc, useCollection } from '@/firebase';
+import { useUser } from '@/hooks/use-session-user';
+import { useCollection, useDoc } from '@/hooks/use-mongo-collection';
 import { useRouter } from 'next/navigation';
 import { BrainCircuit, Loader2, Sparkles, ChevronRight, ChevronLeft, ShieldCheck, HeartPulse, User, Zap, Activity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -15,17 +16,15 @@ import { Slider } from '@/components/ui/slider';
 import { mbtiTypes, enneagramTypes, areaPresets, variablePresets, protocolPresets, hormonePresets } from '@/lib/seed-data';
 import { mapMbtiToFacets, mapEnneagramToFacets, mapFacetsToBigFive } from '@/lib/personality-mapper';
 import { getAIOnboardingSetup } from '@/lib/actions';
-import { writeBatch, doc, collection, query, limit, getDoc, getDocs } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { PlayerProfile, Area } from '@/lib/types';
 
 export default function OnboardingPage() {
-  const { user, isUserLoading } = useUser();
-  const firestore = useFirestore();
+  const { uid, isUserLoading } = useUser();
   const router = useRouter();
   const { toast } = useToast();
-  
+
   const [step, setStep] = useState(1);
   const [isProcessing, setIsAiProcessing] = useState(false);
   const totalSteps = 5;
@@ -48,57 +47,25 @@ export default function OnboardingPage() {
     goals: [] as string[],
   });
 
-  const playerProfileRef = useMemoFirebase(() => user ? doc(firestore, `users/${user.uid}/playerProfile/main-profile`) : null, [user, firestore]);
-  const { data: existingProfile, isLoading: isProfileLoading, error: profileError } = useDoc<PlayerProfile>(playerProfileRef);
-  const areasProbeRef = useMemoFirebase(
-    () => (user ? query(collection(firestore, `users/${user.uid}/areas`), limit(1)) : null),
-    [user, firestore]
+  const { data: existingProfile, isLoading: isProfileLoading, error: profileError } = useDoc<PlayerProfile>(
+    'playerProfile', uid ? 'main-profile' : null
   );
-  const { data: existingAreas, isLoading: isAreasProbeLoading, error: areasProbeError } = useCollection<Area>(areasProbeRef);
+  const { data: existingAreas, isLoading: isAreasProbeLoading, error: areasProbeError } = useCollection<Area>(
+    uid ? 'areas' : null, { limit: 1 }
+  );
 
   useEffect(() => {
-    let isCancelled = false;
-
-    if (!isUserLoading && !user) {
+    if (!isUserLoading && !uid) {
       router.replace('/login');
     }
 
-    if (isUserLoading || !user || isProfileLoading || isAreasProbeLoading || profileError || areasProbeError) {
-      return () => {
-        isCancelled = true;
-      };
-    }
+    if (isUserLoading || !uid || isProfileLoading || isAreasProbeLoading || profileError || areasProbeError) return;
 
     const hasAnyArea = (existingAreas?.length || 0) > 0;
     if (existingProfile || hasAnyArea) {
       router.replace('/dashboard');
-      return () => {
-        isCancelled = true;
-      };
     }
-
-    // Double-check to prevent showing onboarding due to transient empty snapshots.
-    const verifyAndRedirect = async () => {
-      try {
-        const [profileSnap, areasSnap] = await Promise.all([
-          getDoc(doc(firestore, `users/${user.uid}/playerProfile`, 'main-profile')),
-          getDocs(query(collection(firestore, `users/${user.uid}/areas`), limit(1))),
-        ]);
-        if (isCancelled) return;
-        if (profileSnap.exists() || !areasSnap.empty) {
-          router.replace('/dashboard');
-        }
-      } catch {
-        // Keep onboarding page if verification fails; avoid forced redirects on errors.
-      }
-    };
-
-    verifyAndRedirect();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [user, isUserLoading, existingProfile, existingAreas, isProfileLoading, isAreasProbeLoading, profileError, areasProbeError, firestore, router]);
+  }, [uid, isUserLoading, existingProfile, existingAreas, isProfileLoading, isAreasProbeLoading, profileError, areasProbeError, router]);
 
   const physioValid = Number(formData.age) > 0 && Number(formData.weight) > 0 && Number(formData.height) > 0
     && formData.age !== '' && formData.weight !== '' && formData.height !== '';
@@ -109,15 +76,15 @@ export default function OnboardingPage() {
   const toggleGoal = (goal: string) => {
     setFormData(prev => ({
         ...prev,
-        goals: prev.goals.includes(goal) 
-            ? prev.goals.filter(g => g !== goal) 
+        goals: prev.goals.includes(goal)
+            ? prev.goals.filter(g => g !== goal)
             : [...prev.goals, goal]
     }));
   };
 
   const handleCompleteOnboarding = async () => {
-    if (!user || !firestore) return;
-    
+    if (!uid) return;
+
     setIsAiProcessing(true);
     try {
         const setup = await getAIOnboardingSetup({
@@ -128,12 +95,10 @@ export default function OnboardingPage() {
             goals: formData.goals
         });
 
-        const batch = writeBatch(firestore);
-
         // 1. Personality Mapping
         const mbtiFacets = formData.mbti !== 'none' ? mapMbtiToFacets(formData.mbti) : null;
         const enneagramFacets = formData.enneagram !== 'none' ? mapEnneagramToFacets(formData.enneagram) : null;
-        
+
         let finalFacets = {
             facet_mind_introverted: 50, facet_energy_intuitive: 50,
             facet_nature_thinking: 50, facet_tactics_judging: 50,
@@ -166,9 +131,8 @@ export default function OnboardingPage() {
             identity: { turbulent: 100 - finalFacets.facet_identity_assertive },
         });
 
-        // 2. Create Player Profile
-        const profileRef = doc(firestore, `users/${user.uid}/playerProfile/main-profile`);
-        batch.set(profileRef, {
+        // 2. Create Player Profile (with specific docId 'main-profile')
+        const profileData = {
             age: Number(formData.age),
             weight_kg: Number(formData.weight),
             height_cm: Number(formData.height),
@@ -182,36 +146,37 @@ export default function OnboardingPage() {
             facet_identity_turbulent: 100 - finalFacets.facet_identity_assertive,
             ...bigFive,
             ...setup.sensitivities,
+        };
+
+        await fetch('/api/data/playerProfile/main-profile', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(profileData),
         });
 
-        // 3. Personalized Hormones (Adjusted by age)
+        // 3. Bulk insert all other documents via setup endpoint
+        const documents: Array<{ collection: string; data: Record<string, unknown> }> = [];
+
+        // Personalized Hormones
         const ageFactor = Math.max(0, Number(formData.age) - 30);
         hormonePresets.forEach(preset => {
             let baseline = preset.baseline;
             if (preset.hormone_id === 'CORTISOL') baseline *= (1 + ageFactor * 0.005);
             if (preset.hormone_id === 'MELATONINA') baseline *= (1 - ageFactor * 0.01);
-            
             const finalBaseline = Math.round(Math.max(10, Math.min(90, baseline)));
-            batch.set(doc(collection(firestore, `users/${user.uid}/hormones`)), {
-                ...preset,
-                baseline: finalBaseline,
-                current_level: finalBaseline
-            });
+            documents.push({ collection: 'hormones', data: { ...preset, baseline: finalBaseline, current_level: finalBaseline } });
         });
 
-        // 4. Adjust Areas
+        // Areas
         areaPresets.forEach(area => {
             const adjusted = setup.startingAreaStates.find(s => s.area_id === area.area_id);
-            batch.set(doc(collection(firestore, `users/${user.uid}/areas`)), {
-                ...area,
-                estado: adjusted?.status || 'OK'
-            });
+            documents.push({ collection: 'areas', data: { ...area, estado: adjusted?.status || 'OK' } });
         });
 
-        // 5. Create Recommended Skills/Systems/Habits
+        // Skills, Systems, Habits
         setup.recommendedSkills.forEach(skillRec => {
             const skillId = `SKILL_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-            batch.set(doc(collection(firestore, `users/${user.uid}/skills`)), {
+            documents.push({ collection: 'skills', data: {
                 habilidad_id: skillId,
                 nombre: skillRec.nombre,
                 area_id: skillRec.area_id,
@@ -219,23 +184,23 @@ export default function OnboardingPage() {
                 nivel_objetivo: 7,
                 estado: 'Activa',
                 kpi: skillRec.kpi
-            });
+            }});
 
             const systemRec = setup.recommendedSystems.find(s => s.habilidad_name === skillRec.nombre);
             if (systemRec) {
                 const systemId = `SYS_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-                batch.set(doc(collection(firestore, `users/${user.uid}/systems`)), {
+                documents.push({ collection: 'systems', data: {
                     sistema_id: systemId,
                     habilidad_id: skillId,
                     objetivo: systemRec.objetivo,
                     frecuencia: systemRec.frecuencia,
                     estado: 'Activo',
                     protocolo_fallo: 'P_RESET_5'
-                });
+                }});
 
                 setup.recommendedHabits.forEach(habitRec => {
                     if (habitRec.system_objective === systemRec.objetivo) {
-                        batch.set(doc(collection(firestore, `users/${user.uid}/habits`)), {
+                        documents.push({ collection: 'habits', data: {
                             habito_id: `HB_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                             sistema_id: systemId,
                             var_id: habitRec.var_id,
@@ -243,19 +208,24 @@ export default function OnboardingPage() {
                             duracion_min: habitRec.duracion_min,
                             minimo_viable: habitRec.minimo_viable,
                             description: habitRec.description
-                        });
+                        }});
                     }
                 });
             }
         });
 
-        // 6. Essentials
-        protocolPresets.forEach(p => batch.set(doc(collection(firestore, `users/${user.uid}/protocols`)), p));
-        variablePresets.forEach(v => batch.set(doc(collection(firestore, `users/${user.uid}/variables`)), v));
+        // Essentials
+        protocolPresets.forEach(p => documents.push({ collection: 'protocols', data: p as Record<string, unknown> }));
+        variablePresets.forEach(v => documents.push({ collection: 'variables', data: v as Record<string, unknown> }));
 
-        await batch.commit();
+        await fetch('/api/onboarding/setup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ documents }),
+        });
+
         toast({ title: "¡Sistema Calibrado!", description: "Tu bioperfil ha sido sincronizado con éxito." });
-        localStorage.setItem(`axiom_onboarding_done_${user.uid}`, 'true');
+        localStorage.setItem(`axiom_onboarding_done_${uid}`, 'true');
         sessionStorage.setItem('axiom-launch-tour', '1');
         setTimeout(() => router.push('/dashboard'), 500);
     } catch (error) {
@@ -290,7 +260,7 @@ export default function OnboardingPage() {
 
   if (isUserLoading || isProfileLoading || isAreasProbeLoading) return null;
   if (profileError || areasProbeError) return null;
-  if (user && (existingProfile || (existingAreas?.length || 0) > 0)) return null;
+  if (uid && (existingProfile || (existingAreas?.length || 0) > 0)) return null;
 
   const SensitivitySlider = ({ label, icon: Icon, value, name, description }: { label: string, icon: any, value: number, name: keyof typeof formData.sensitivities, description: string }) => (
     <div className="space-y-4 p-4 rounded-lg bg-muted/50 border border-border">
@@ -301,9 +271,9 @@ export default function OnboardingPage() {
                 <p className="text-[10px] text-muted-foreground leading-tight">{description}</p>
             </div>
         </div>
-        <Slider 
-            min={1} max={10} step={1} value={[value]} 
-            onValueChange={v => setFormData({ ...formData, sensitivities: { ...formData.sensitivities, [name]: v[0] } })} 
+        <Slider
+            min={1} max={10} step={1} value={[value]}
+            onValueChange={v => setFormData({ ...formData, sensitivities: { ...formData.sensitivities, [name]: v[0] } })}
         />
     </div>
   );

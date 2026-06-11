@@ -18,8 +18,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, Zap } from 'lucide-react';
-import { useFirestore, useUser, addDocumentNonBlocking } from '@/firebase';
-import { collection } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -30,7 +28,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
-
+import { useUser } from '@/hooks/use-session-user';
+import { addDocumentNonBlocking } from '@/lib/api-writes';
 interface AmortizationRow {
   month: number;
   date: Date;
@@ -51,9 +50,7 @@ const formatCurrency = (value: number) => {
 
 export default function AmortizationTable({ debt, transactions }: { debt: Debt, transactions: Transaction[] }) {
   const [simulationExtra, setSimulationExtra] = useState(0);
-  const { toast } = useToast();
-  const firestore = useFirestore();
-  const { user } = useUser();
+  const { toast } = useToast();  const { user, uid } = useUser();
 
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [selectedRow, setSelectedRow] = useState<AmortizationRow | null>(null);
@@ -66,7 +63,7 @@ export default function AmortizationTable({ debt, transactions }: { debt: Debt, 
   };
   
   const handleConfirmPayment = () => {
-    if (!user || !firestore || !selectedRow) return;
+    if (!uid || !selectedRow) return;
 
     const totalPayment = selectedRow.payment + (extraAmortizationInput || 0);
 
@@ -82,8 +79,7 @@ export default function AmortizationTable({ debt, transactions }: { debt: Debt, 
         notas: `Pago ${selectedRow.month} de la deuda "${debt.nombre}"${extraAmortizationInput > 0 ? ` (con ${formatCurrency(extraAmortizationInput)} de amortización extra)` : ''}.`,
     };
     
-    const transactionCollectionRef = collection(firestore, `users/${user.uid}/transactions`);
-    addDocumentNonBlocking(transactionCollectionRef, transactionData);
+        addDocumentNonBlocking('transactions', transactionData);
 
     toast({
         title: 'Pago Registrado',

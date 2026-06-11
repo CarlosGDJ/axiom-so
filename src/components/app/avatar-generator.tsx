@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import { doc } from 'firebase/firestore';
 import { Sparkles, Image as ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,8 +10,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { getAIAvatar } from '@/lib/actions';
 import type { UserProfile } from '@/lib/types';
-import { useFirestore, setDocumentNonBlocking, useUser } from '@/firebase';
-
+import { useUser } from '@/hooks/use-session-user';
+import { setDocumentNonBlocking } from '@/lib/api-writes';
 interface AvatarGeneratorProps {
   userProfile: UserProfile | null;
 }
@@ -22,8 +21,7 @@ export default function AvatarGenerator({ userProfile }: AvatarGeneratorProps) {
   const [generatedAvatar, setGeneratedAvatar] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const { toast } = useToast();
-  const firestore = useFirestore();
-  const { user } = useUser();
+  const { user, uid } = useUser();
 
   const currentAvatar = generatedAvatar || userProfile?.axiomAvatarDataUrl || userProfile?.photoURL || null;
 
@@ -36,13 +34,13 @@ export default function AvatarGenerator({ userProfile }: AvatarGeneratorProps) {
       });
       return;
     }
-    if (!user || !firestore) return;
+    if (!uid) return;
 
     setIsGenerating(true);
     try {
       const avatarDataUrl = await getAIAvatar(prompt);
       setGeneratedAvatar(avatarDataUrl);
-      setDocumentNonBlocking(doc(firestore, `users/${user.uid}`), { axiomAvatarDataUrl: avatarDataUrl }, { merge: true });
+      setDocumentNonBlocking('playerProfile', 'main-profile', { axiomAvatarDataUrl: avatarDataUrl }, { merge: true });
       toast({ title: '¡Avatar generado!', description: 'Tu nuevo avatar se guardó correctamente.' });
     } catch (error) {
       toast({

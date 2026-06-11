@@ -16,8 +16,6 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useUser, setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
-import { doc, collection } from 'firebase/firestore';
 import { Milestone, Skill, System } from '@/lib/types';
 import {
   Select,
@@ -33,9 +31,9 @@ import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { useUser } from '@/hooks/use-session-user';
+import { addDocumentNonBlocking, setDocumentNonBlocking } from '@/lib/api-writes';
 import React, { useMemo, useEffect } from 'react';
-
-
 const formSchema = z.object({
   milestone_id: z.string().optional(),
   nombre: z.string().min(3, 'El nombre es demasiado corto.'),
@@ -70,9 +68,7 @@ interface EditMilestoneFormProps {
 }
 
 export default function EditMilestoneForm({ entity, closeDialog, skills, systems }: EditMilestoneFormProps) {
-  const { toast } = useToast();
-  const firestore = useFirestore();
-  const { user } = useUser();
+  const { toast } = useToast();  const { user, uid } = useUser();
   const isEditMode = !!entity;
 
   const form = useForm<EditMilestoneFormValues>({
@@ -118,7 +114,7 @@ export default function EditMilestoneForm({ entity, closeDialog, skills, systems
 
 
   async function onSubmit(data: EditMilestoneFormValues) {
-    if (!user || !firestore) return;
+    if (!uid) return;
     
     const milestoneId = isEditMode ? entity.milestone_id : `MS_${Date.now()}`;
     const finalData = { 
@@ -133,15 +129,13 @@ export default function EditMilestoneForm({ entity, closeDialog, skills, systems
     };
 
     if (isEditMode) {
-      const docRef = doc(firestore, `users/${user.uid}/milestones`, entity.id);
-      setDocumentNonBlocking(docRef, finalData, { merge: true });
+            setDocumentNonBlocking('milestones', entity.id, finalData, { merge: true });
       toast({
         title: 'Hito Actualizado',
         description: `El hito "${data.nombre}" ha sido actualizado.`,
       });
     } else {
-      const collectionRef = collection(firestore, `users/${user.uid}/milestones`);
-      addDocumentNonBlocking(collectionRef, finalData);
+            addDocumentNonBlocking('milestones', finalData);
       toast({
         title: 'Hito Creado',
         description: `El hito "${data.nombre}" ha sido creado.`,

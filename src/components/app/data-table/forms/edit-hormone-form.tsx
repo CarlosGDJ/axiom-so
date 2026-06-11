@@ -16,10 +16,9 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useUser, setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
-import { doc, collection } from 'firebase/firestore';
 import { Hormone } from '@/lib/types';
-
+import { useUser } from '@/hooks/use-session-user';
+import { addDocumentNonBlocking, setDocumentNonBlocking } from '@/lib/api-writes';
 const formSchema = z.object({
   hormone_id: z.string().optional(),
   name: z.string().min(2, 'El nombre es demasiado corto.'),
@@ -37,9 +36,7 @@ interface EditHormoneFormProps {
 }
 
 export default function EditHormoneForm({ entity, closeDialog }: EditHormoneFormProps) {
-  const { toast } = useToast();
-  const firestore = useFirestore();
-  const { user } = useUser();
+  const { toast } = useToast();  const { user, uid } = useUser();
   const isEditMode = !!entity;
 
   const form = useForm<EditHormoneFormValues>({
@@ -56,21 +53,19 @@ export default function EditHormoneForm({ entity, closeDialog }: EditHormoneForm
   });
 
   async function onSubmit(data: EditHormoneFormValues) {
-    if (!user || !firestore) return;
+    if (!uid) return;
     
     const hormoneId = isEditMode ? entity.hormone_id : `HORM_${data.name.toUpperCase().substring(0,4)}_${Date.now()}`;
     const finalData = { ...data, hormone_id: hormoneId };
 
     if (isEditMode) {
-        const docRef = doc(firestore, `users/${user.uid}/hormones`, entity.id);
-        setDocumentNonBlocking(docRef, finalData, { merge: true });
+                setDocumentNonBlocking('hormones', entity.id, finalData, { merge: true });
         toast({
             title: 'Hormona Actualizada',
             description: `La hormona ${data.name} ha sido actualizada.`,
         });
     } else {
-        const collectionRef = collection(firestore, `users/${user.uid}/hormones`);
-        addDocumentNonBlocking(collectionRef, finalData);
+                addDocumentNonBlocking('hormones', finalData);
         toast({
             title: 'Hormona Creada',
             description: `La hormona ${data.name} ha sido creada.`,

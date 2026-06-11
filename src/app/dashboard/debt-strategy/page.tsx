@@ -2,8 +2,6 @@
 
 import { useState, useMemo } from 'react';
 import { useUserData } from '@/hooks/use-user-data';
-import { useUser, useFirestore, useCollection, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
-import { collection, doc } from 'firebase/firestore';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import DebtSnowballStrategy from '@/components/app/debt-strategy/debt-snowball-strategy';
 import DebtAvalancheStrategy from '@/components/app/debt-strategy/debt-avalanche-strategy';
@@ -12,18 +10,15 @@ import type { DashboardConfig } from '@/lib/types';
 import AreaPageSkeleton from '@/components/app/area-page-skeleton';
 import NavigationReady from '@/components/app/navigation-ready';
 import { Snowflake, Flame, BarChart2 } from 'lucide-react';
-
+import { useUser } from '@/hooks/use-session-user';
+import { setDocumentNonBlocking } from '@/lib/api-writes';
+import { useCollection } from '@/hooks/use-mongo-collection';
 export default function DebtStrategyPage() {
-  const { user } = useUser();
-  const firestore = useFirestore();
+  const { user, uid } = useUser();
   const { data: userData, isLoading: isUserDataLoading } = useUserData();
   const [localStrategy, setLocalStrategy] = useState<string | null>(null);
 
-  const configRef = useMemoFirebase(
-    () => (user ? collection(firestore, `users/${user.uid}/dashboardConfig`) : null),
-    [user, firestore],
-  );
-  const { data: dashboardConfig, isLoading: isConfigLoading } = useCollection<DashboardConfig>(configRef);
+  const { data: dashboardConfig, isLoading: isConfigLoading } = useCollection<DashboardConfig>(uid ? 'dashboardConfig' : null, { orderBy: 'key', direction: 'asc' });
 
   const savedStrategy = useMemo(
     () => dashboardConfig?.find(c => c.key === 'debt_strategy')?.value,
@@ -33,9 +28,8 @@ export default function DebtStrategyPage() {
   const effectiveStrategy = localStrategy || savedStrategy;
 
   const handleSelectStrategy = (strategyId: 'snowball' | 'avalanche') => {
-    if (!user || !firestore) return;
-    const configDocRef = doc(firestore, `users/${user.uid}/dashboardConfig`, 'debt_strategy');
-    setDocumentNonBlocking(configDocRef, { key: 'debt_strategy', value: strategyId });
+    if (!uid) return;
+        setDocumentNonBlocking('dashboardConfig', 'debt_strategy', { key: 'debt_strategy', value: strategyId });
     setLocalStrategy(strategyId);
   };
 

@@ -2,8 +2,6 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useUserData } from '@/hooks/use-user-data';
-import { useFirestore, useUser, addDocumentNonBlocking } from '@/firebase';
-import { collection } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import NavigationReady from '@/components/app/navigation-ready';
 import AreaPageSkeleton from '@/components/app/area-page-skeleton';
@@ -16,6 +14,8 @@ import {
   Play, Pause, SkipBack, SkipForward, Volume2, VolumeX,
   Timer, Brain, SunMoon, CheckCircle2, Repeat, Repeat1,
 } from 'lucide-react';
+import { useUser } from '@/hooks/use-session-user';
+import { addDocumentNonBlocking } from '@/lib/api-writes';
 
 // ── Track catalogue ─────────────────────────────────────────────────────────
 
@@ -105,8 +105,7 @@ function formatTime(secs: number) {
 
 export default function MeditationPage() {
   const { data: userData, isLoading } = useUserData();
-  const { user } = useUser();
-  const firestore = useFirestore();
+  const { user, uid } = useUser();
   const { toast } = useToast();
 
   // Player state
@@ -222,8 +221,8 @@ export default function MeditationPage() {
           setIsPlaying(false);
 
           // Log meditation event in Axiom
-          if (user && firestore) {
-            addDocumentNonBlocking(collection(firestore, `users/${user.uid}/events`), {
+          if (uid) {
+            addDocumentNonBlocking('events', {
               fecha: new Date().toISOString(),
               evento_id: `EVT_MED_${Date.now()}`,
               var_id: 'MEDITACION',

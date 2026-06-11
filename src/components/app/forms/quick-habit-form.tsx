@@ -16,8 +16,6 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useUser, addDocumentNonBlocking } from '@/firebase';
-import { collection } from 'firebase/firestore';
 import {
   Select,
   SelectContent,
@@ -27,7 +25,8 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { systemPresets, variablePresets } from '@/lib/seed-data';
-
+import { useUser } from '@/hooks/use-session-user';
+import { addDocumentNonBlocking } from '@/lib/api-writes';
 const formSchema = z.object({
   sistema_id: z.string({ required_error: 'Por favor, selecciona un sistema.' }),
   var_id: z.string({ required_error: 'Por favor, selecciona una variable.' }),
@@ -43,9 +42,7 @@ interface QuickHabitFormProps {
 }
 
 export default function QuickHabitForm({ closeDialog }: QuickHabitFormProps) {
-  const { toast } = useToast();
-  const firestore = useFirestore();
-  const { user } = useUser();
+  const { toast } = useToast();  const { user, uid } = useUser();
 
   const form = useForm<QuickHabitFormValues>({
     resolver: zodResolver(formSchema),
@@ -59,14 +56,13 @@ export default function QuickHabitForm({ closeDialog }: QuickHabitFormProps) {
   });
 
   async function onSubmit(data: QuickHabitFormValues) {
-    if (!user || !firestore) return;
+    if (!uid) return;
 
     const finalData = {
         ...data,
         habito_id: `HB_${Date.now()}`
     }
-    const collectionRef = collection(firestore, `users/${user.uid}/habits`);
-    addDocumentNonBlocking(collectionRef, finalData);
+        addDocumentNonBlocking('habits', finalData);
     toast({
         title: 'Hábito Creado',
         description: `El nuevo hábito ha sido creado.`,

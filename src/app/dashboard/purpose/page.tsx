@@ -2,8 +2,6 @@
 
 import { useMemo } from 'react';
 import { useUserData } from '@/hooks/use-user-data';
-import { useFirestore, useUser, addDocumentNonBlocking } from '@/firebase';
-import { collection } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import AreaPageSkeleton from '@/components/app/area-page-skeleton';
 import NavigationReady from '@/components/app/navigation-ready';
@@ -17,7 +15,8 @@ import AreaDetailPanel from '@/components/app/area-detail-panel';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
-
+import { useUser } from '@/hooks/use-session-user';
+import { addDocumentNonBlocking } from '@/lib/api-writes';
 const PURPOSE_VARS = ['PURPOSE_SENSE', 'VALUES_ACTION', 'HELP_OTHERS', 'ACHIEVEMENT'];
 
 const QUICK_ACTIONS = [
@@ -29,8 +28,7 @@ const QUICK_ACTIONS = [
 
 export default function PurposePage() {
   const { data: userData, isLoading } = useUserData();
-  const { user } = useUser();
-  const firestore = useFirestore();
+  const { user, uid } = useUser();
   const { toast } = useToast();
 
   const areaScore = useMemo(() => {
@@ -64,8 +62,8 @@ export default function PurposePage() {
   }, [userData, purposeVarIds]);
 
   const logAction = (varId: string, label: string, context: string) => {
-    if (!user || !firestore) return;
-    addDocumentNonBlocking(collection(firestore, `users/${user.uid}/events`), {
+    if (!uid) return;
+    addDocumentNonBlocking('events', {
       fecha: new Date().toISOString(),
       evento_id: `EVT_PURPOSE_${Date.now()}`,
       var_id: varId,

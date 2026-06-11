@@ -23,8 +23,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useUser, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
-import { doc, collection, writeBatch } from 'firebase/firestore';
 import type { PlayerProfile } from '@/lib/types';
 import { useEffect, useState, useMemo } from 'react';
 import { Slider } from '@/components/ui/slider';
@@ -51,6 +49,8 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from 'recharts';
+import { useUser } from '@/hooks/use-session-user';
+import { deleteDocumentNonBlocking, setDocumentNonBlocking, addDocumentNonBlocking } from '@/lib/api-writes';
 
 const formSchema = z.object({
   age: z.coerce.number().int().min(0, 'La edad debe ser un número positivo.'),
@@ -187,9 +187,7 @@ const DichotomySlider = ({
 export default function EditPlayerProfileForm({
   playerProfile,
 }: EditPlayerProfileFormProps) {
-  const { toast } = useToast();
-  const firestore = useFirestore();
-  const { user } = useUser();
+  const { toast } = useToast();  const { user, uid } = useUser();
   const router = useRouter();
   const isEditMode = !!playerProfile;
   const [showRadarChart, setShowRadarChart] = useState(false);
@@ -282,9 +280,8 @@ export default function EditPlayerProfileForm({
   });
   
   const handleResetProfile = () => {
-    if (!user || !firestore) return;
-    const profileRef = doc(firestore, `users/${user.uid}/playerProfile`, 'main-profile');
-    deleteDocumentNonBlocking(profileRef);
+    if (!uid) return;
+        deleteDocumentNonBlocking('playerProfile', 'main-profile');
     toast({
       title: 'Perfil Reseteado',
       description: 'Tu perfil ha sido borrado. Redirigiendo a la calibración...',
@@ -432,29 +429,19 @@ export default function EditPlayerProfileForm({
   ];
 
   async function onSubmit(data: EditPlayerProfileFormValues) {
-    if (!user || !firestore) return;
+    if (!uid) return;
 
-    const batch = writeBatch(firestore);
-
-    const profileRef = doc(
-      firestore,
-      `users/${user.uid}/playerProfile`,
-      'main-profile'
-    );
-    
     const dataToSave = {
       ...data,
       ...bigFiveValues, // ensure the latest calculated Big Five are saved
     };
 
-    batch.set(profileRef, dataToSave, { merge: true });
+    setDocumentNonBlocking('playerProfile', 'main-profile', dataToSave, { merge: true });
 
     if (!isEditMode) {
       const ageFactor = Math.max(0, data.age - 30);
 
       hormonePresets.forEach((preset) => {
-        const docRef = doc(collection(firestore, `users/${user.uid}/hormones`));
-
         let adjustedBaseline = preset.baseline;
 
         switch (preset.hormone_id) {
@@ -478,25 +465,15 @@ export default function EditPlayerProfileForm({
           baseline: finalBaseline,
           current_level: finalBaseline,
         };
-        batch.set(docRef, personalizedHormone);
+        addDocumentNonBlocking('hormones', personalizedHormone);
       });
     }
 
-    try {
-      await batch.commit();
-      toast({
-        title: isEditMode ? 'Perfil Actualizado' : 'Perfil Creado',
-        description: 'Tus parámetros base han sido guardados.',
-      });
-      form.reset(dataToSave);
-    } catch (error) {
-      console.error('Error committing batch:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Error al guardar',
-        description: 'No se pudieron guardar los cambios. Inténtalo de nuevo.',
-      });
-    }
+    toast({
+      title: isEditMode ? 'Perfil Actualizado' : 'Perfil Creado',
+      description: 'Tus parámetros base han sido guardados.',
+    });
+    form.reset(dataToSave);
   }
 
   return (

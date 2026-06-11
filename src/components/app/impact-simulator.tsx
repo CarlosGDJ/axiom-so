@@ -1,7 +1,6 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { collection } from 'firebase/firestore';
 import {
   Activity, Plus, TrendingDown, TrendingUp, Zap,
   AlertTriangle, CheckCircle, Shield,
@@ -16,11 +15,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Slider } from '../ui/slider';
 import { Badge } from '../ui/badge';
 import { cn } from '@/lib/utils';
-import { useFirestore, useUser, addDocumentNonBlocking } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { computeClinicalModelV2 } from '@/lib/model-v2-clinical';
 import type { RPGStats, UserData } from '@/lib/types';
-
+import { useUser } from '@/hooks/use-session-user';
+import { addDocumentNonBlocking } from '@/lib/api-writes';
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const DECAY_K = 0.14; // hr⁻¹ — same as area-scoring.ts
@@ -119,8 +118,7 @@ interface ImpactSimulatorProps {
 }
 
 export default function ImpactSimulator({ userData }: ImpactSimulatorProps) {
-  const { user } = useUser();
-  const firestore = useFirestore();
+  const { user, uid } = useUser();
   const { toast } = useToast();
 
   const [selectedId, setSelectedId]     = useState<string>('');
@@ -206,8 +204,8 @@ export default function ImpactSimulator({ userData }: ImpactSimulatorProps) {
   const isPositive = peakImpact >= 0;
 
   const handleApply = () => {
-    if (!user || !firestore || !selectedId) return;
-    addDocumentNonBlocking(collection(firestore, `users/${user.uid}/events`), {
+    if (!uid || !selectedId) return;
+    addDocumentNonBlocking('events', {
       evento_id: `EVT_SIM_${Date.now()}`,
       fecha: new Date().toISOString(),
       var_id: selectedId,

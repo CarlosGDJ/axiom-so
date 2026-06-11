@@ -2,8 +2,6 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useUser, useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
-import { collection, query, orderBy, limit, doc, writeBatch, where, getDocs } from 'firebase/firestore';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -14,7 +12,9 @@ import type { Notification } from '@/lib/types';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import Link from 'next/link';
-
+import { useUser } from '@/hooks/use-session-user';
+import { updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/lib/api-writes';
+import { useCollection } from '@/hooks/use-mongo-collection';
 const typeIcons = {
     info: <Info className="h-4 w-4 text-blue-500" />,
     warning: <AlertTriangle className="h-4 w-4 text-amber-500" />,
@@ -30,29 +30,14 @@ const typeColors = {
 };
 
 export default function NotificationCenter() {
-  const { user } = useUser();
-  const firestore = useFirestore();
-  const [isOpen, setIsOpen] = useState(false);
+  const { user, uid } = useUser();  const [isOpen, setIsOpen] = useState(false);
 
-  const notifRef = useMemoFirebase(() => {
-    if (!user) return null;
-    return query(
-        collection(firestore, `users/${user.uid}/notifications`),
-        orderBy('createdAt', 'desc'),
-        limit(50)
-    );
-  }, [user, firestore]);
+  const { data: notifications, isLoading } = useCollection<Notification>(uid ? 'notifications' : null, { orderBy: 'createdAt', direction: 'desc', limit: 50 });
 
-  const { data: notifications, isLoading } = useCollection<Notification>(notifRef);
-
-  const unreadRef = useMemoFirebase(() => {
-    if (!user) return null;
-    return query(
-      collection(firestore, `users/${user.uid}/notifications`),
-      where('read', '==', false),
-    );
-  }, [user, firestore]);
-  const { data: unreadNotifications } = useCollection<Notification>(unreadRef);
+  const unreadNotifications = useMemo(() => {
+    if (!notifications) return null;
+    return notifications.filter(n => !n.read);
+  }, [notifications]);
 
   const unreadCount = useMemo(() => {
     if (!unreadNotifications || unreadNotifications.length === 0) return 0;
@@ -92,58 +77,35 @@ export default function NotificationCenter() {
     });
   }, [notifications]);
 
-  const handleMarkAsRead = async (notif: Notification) => {
+  const handleMarkAsRead = (notif: Notification) => {
     if (!user) return;
     const nowIso = new Date().toISOString();
     if (notif.dedupe_key) {
-      const q = query(
-        collection(firestore, `users/${user.uid}/notifications`),
-        where('dedupe_key', '==', notif.dedupe_key),
-        where('read', '==', false),
-      );
-      const snap = await getDocs(q);
-      if (!snap.empty) {
-        const batch = writeBatch(firestore);
-        snap.docs.forEach((d) => batch.update(d.ref, { read: true, readAt: nowIso, updatedAt: nowIso }));
-        await batch.commit();
-      }
-      const canonicalRef = doc(firestore, `users/${user.uid}/notifications`, `smart__${notif.dedupe_key}`);
-      updateDocumentNonBlocking(canonicalRef, { read: true, readAt: nowIso, updatedAt: nowIso });
+      (notifications || [])
+        .filter(n => n.dedupe_key === notif.dedupe_key && !n.read)
+        .forEach(n => updateDocumentNonBlocking('notifications', n.id, { read: true, readAt: nowIso, updatedAt: nowIso }));
+      updateDocumentNonBlocking('notifications', `smart__${notif.dedupe_key}`, { read: true, readAt: nowIso, updatedAt: nowIso });
       return;
     }
-    const docRef = doc(firestore, `users/${user.uid}/notifications`, notif.id);
-    updateDocumentNonBlocking(docRef, { read: true, readAt: nowIso, updatedAt: nowIso });
+    updateDocumentNonBlocking('notifications', notif.id, { read: true, readAt: nowIso, updatedAt: nowIso });
   };
 
   const handleMarkAllAsRead = () => {
     if (!user || !unreadNotifications || unreadNotifications.length === 0) return;
     const nowIso = new Date().toISOString();
-    const batch = writeBatch(firestore);
     unreadNotifications.forEach(n => {
-        const docRef = doc(firestore, `users/${user.uid}/notifications`, n.id);
-        batch.update(docRef, { read: true, readAt: nowIso, updatedAt: nowIso });
+      updateDocumentNonBlocking('notifications', n.id, { read: true, readAt: nowIso, updatedAt: nowIso });
     });
-    batch.commit();
   };
 
   const handleDelete = (id: string) => {
     if (!user) return;
-    const docRef = doc(firestore, `users/${user.uid}/notifications`, id);
-    deleteDocumentNonBlocking(docRef);
+        deleteDocumentNonBlocking('notifications', id);
   };
 
-  const handleClearAll = async () => {
-    if (!user) return;
-    const fullQuery = query(collection(firestore, `users/${user.uid}/notifications`));
-    const snap = await getDocs(fullQuery);
-    if (snap.empty) return;
-
-    const docs = snap.docs;
-    for (let i = 0; i < docs.length; i += 400) {
-      const batch = writeBatch(firestore);
-      docs.slice(i, i + 400).forEach((d) => batch.delete(d.ref));
-      await batch.commit();
-    }
+  const handleClearAll = () => {
+    if (!user || !notifications || notifications.length === 0) return;
+    notifications.forEach(n => deleteDocumentNonBlocking('notifications', n.id));
   };
 
   const formatTime = (createdAt: any) => {

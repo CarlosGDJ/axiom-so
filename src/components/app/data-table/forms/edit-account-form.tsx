@@ -16,8 +16,6 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useUser, setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
-import { doc, collection } from 'firebase/firestore';
 import { Account } from '@/lib/types';
 import {
   Select,
@@ -26,6 +24,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useUser } from '@/hooks/use-session-user';
+import { addDocumentNonBlocking, setDocumentNonBlocking } from '@/lib/api-writes';
 
 const formSchema = z.object({
   tipo: z.enum(['Banco', 'Efectivo', 'Inversion', 'Otro']),
@@ -41,9 +41,7 @@ interface EditAccountFormProps {
 }
 
 export default function EditAccountForm({ entity: account, closeDialog }: EditAccountFormProps) {
-  const { toast } = useToast();
-  const firestore = useFirestore();
-  const { user } = useUser();
+  const { toast } = useToast();  const { user, uid } = useUser();
   const isEditMode = !!account;
 
   const form = useForm<EditAccountFormValues>({
@@ -57,7 +55,7 @@ export default function EditAccountForm({ entity: account, closeDialog }: EditAc
   });
 
   async function onSubmit(data: EditAccountFormValues) {
-    if (!user || !firestore) return;
+    if (!uid) return;
     
     const accountId = isEditMode ? account.cuenta_id : `ACC_${Date.now()}`;
 
@@ -67,15 +65,13 @@ export default function EditAccountForm({ entity: account, closeDialog }: EditAc
     };
 
     if (isEditMode) {
-      const docRef = doc(firestore, `users/${user.uid}/accounts`, account.id);
-      setDocumentNonBlocking(docRef, data, { merge: true });
+            setDocumentNonBlocking('accounts', account.id, data, { merge: true });
       toast({
         title: 'Cuenta Actualizada',
         description: `La cuenta ha sido actualizada.`,
       });
     } else {
-      const collectionRef = collection(firestore, `users/${user.uid}/accounts`);
-      addDocumentNonBlocking(collectionRef, finalData);
+            addDocumentNonBlocking('accounts', finalData);
       toast({
         title: 'Cuenta Creada',
         description: `La nueva cuenta ha sido creada.`,

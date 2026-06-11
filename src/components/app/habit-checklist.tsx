@@ -8,13 +8,12 @@ import { Badge } from '@/components/ui/badge';
 import { CheckCircle2, Plus, Zap, AlertCircle, TrendingDown, TrendingUp, XCircle, Info, CheckCircle } from 'lucide-react';
 import { isSameDay, subDays, format, parseISO, startOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { useFirestore, useUser, addDocumentNonBlocking } from '@/firebase';
-import { collection } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useMemo } from 'react';
-
+import { useUser } from '@/hooks/use-session-user';
+import { addDocumentNonBlocking } from '@/lib/api-writes';
 interface HabitChecklistProps {
   habits: Habit[];
   events: Event[];
@@ -22,9 +21,7 @@ interface HabitChecklistProps {
 }
 
 export default function HabitChecklist({ habits, events, variables }: HabitChecklistProps) {
-  const { user } = useUser();
-  const firestore = useFirestore();
-  const { toast } = useToast();
+  const { user, uid } = useUser();  const { toast } = useToast();
   const today = startOfDay(new Date());
 
   // Deduplicate habits by var_id
@@ -38,12 +35,12 @@ export default function HabitChecklist({ habits, events, variables }: HabitCheck
   }, [habits]);
 
   const handleLogHabit = (habit: Habit, isNegative: boolean) => {
-    if (!user || !firestore) return;
+    if (!uid) return;
 
     const variable = variables.find(v => v.var_id === habit.var_id);
     const habitName = variable?.var_nombre || habit.var_id;
 
-    addDocumentNonBlocking(collection(firestore, `users/${user.uid}/events`), {
+    addDocumentNonBlocking('events', {
       evento_id: `EVT_HABIT_${Date.now()}`,
       fecha: new Date().toISOString(),
       var_id: habit.var_id,

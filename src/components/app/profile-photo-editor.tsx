@@ -6,11 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import type { UserProfile } from '@/lib/types';
-import { useFirestore, setDocumentNonBlocking, useUser } from '@/firebase';
-import { doc } from 'firebase/firestore';
 import { Camera, Upload, User, Check, X, RefreshCcw } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-
+import { useUser } from '@/hooks/use-session-user';
+import { setDocumentNonBlocking } from '@/lib/api-writes';
 interface ProfilePhotoEditorProps {
   userProfile: UserProfile | null;
 }
@@ -25,9 +24,7 @@ export default function ProfilePhotoEditor({ userProfile }: ProfilePhotoEditorPr
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const { toast } = useToast();
-  const firestore = useFirestore();
-  const { user } = useUser();
+  const { toast } = useToast();  const { user, uid } = useUser();
 
   const currentPhoto = userProfile?.axiomAvatarDataUrl || userProfile?.photoURL || '';
 
@@ -92,12 +89,11 @@ export default function ProfilePhotoEditor({ userProfile }: ProfilePhotoEditorPr
   };
 
   const savePhoto = async () => {
-    if (!tempPhoto || !user || !firestore) return;
+    if (!tempPhoto || !user || !uid) return;
 
     setIsSaving(true);
     try {
-      const userRef = doc(firestore, `users/${user.uid}`);
-      setDocumentNonBlocking(userRef, { axiomAvatarDataUrl: tempPhoto }, { merge: true });
+      setDocumentNonBlocking('playerProfile', 'main-profile', { axiomAvatarDataUrl: tempPhoto }, { merge: true });
 
       toast({
         title: 'Foto Actualizada',

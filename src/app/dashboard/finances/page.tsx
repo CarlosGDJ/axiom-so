@@ -3,8 +3,6 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useUserData } from '@/hooks/use-user-data';
-import { useUser, useFirestore, useCollection, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
-import { collection, doc } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -88,7 +86,9 @@ import DebtStrategyComparison from '@/components/app/debt-strategy/debt-strategy
 import type { DashboardConfig, Transaction } from '@/lib/types';
 import NavigationReady from '@/components/app/navigation-ready';
 import TransactionLogForm from '@/components/app/forms/transaction-log-form';
-
+import { useUser } from '@/hooks/use-session-user';
+import { setDocumentNonBlocking } from '@/lib/api-writes';
+import { useCollection } from '@/hooks/use-mongo-collection';
 const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('es-ES', {
         style: 'currency',
@@ -122,9 +122,7 @@ const CATEGORY_ICONS: Record<string, any> = {
 };
 
 export default function FinancesPage() {
-    const { user } = useUser();
-    const firestore = useFirestore();
-    const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    const { user, uid } = useUser();    const [dateRange, setDateRange] = useState<DateRange | undefined>({
         from: startOfMonth(new Date()),
         to: endOfMonth(new Date()),
     });
@@ -142,8 +140,7 @@ export default function FinancesPage() {
     const [movementSearch, setMovementSearch] = useState('');
     const [forecastHorizonDays, setForecastHorizonDays] = useState<30 | 90>(30);
 
-    const configRef = useMemoFirebase(() => user ? collection(firestore, `users/${user.uid}/dashboardConfig`) : null, [user, firestore]);
-    const { data: dashboardConfig, isLoading: isConfigLoading } = useCollection<DashboardConfig>(configRef);
+    const { data: dashboardConfig, isLoading: isConfigLoading } = useCollection<DashboardConfig>(uid ? 'dashboardConfig' : null, { orderBy: 'key', direction: 'asc' });
 
     const savedPockets = useMemo(() => {
         const config = dashboardConfig?.find(c => c.key === 'financial_pockets')?.value;
@@ -525,8 +522,7 @@ export default function FinancesPage() {
         
         // Persistir en segundo plano
         if (user) {
-            const configDocRef = doc(firestore, `users/${user.uid}/dashboardConfig`, 'financial_pockets');
-            setDocumentNonBlocking(configDocRef, {
+                        setDocumentNonBlocking('dashboardConfig', 'financial_pockets', {
                 key: 'financial_pockets',
                 value: JSON.stringify(newPockets)
             });
@@ -1563,8 +1559,7 @@ export default function FinancesPage() {
                                         debts={userData?.debts?.filter(d => d.estado_deuda !== 'Liquidada') || []}
                                         onSelect={(s: 'snowball' | 'avalanche') => {
                                             if (user) {
-                                                const ref = doc(firestore, `users/${user.uid}/dashboardConfig`, 'debt_strategy');
-                                                setDocumentNonBlocking(ref, { key: 'debt_strategy', value: s });
+                                                                                                setDocumentNonBlocking('dashboardConfig', 'debt_strategy', { key: 'debt_strategy', value: s });
                                                 setLocalStrategy(s);
                                             }
                                         }}

@@ -1,13 +1,12 @@
 'use client';
 
-import { useUser } from '@/firebase';
 import { FlaskConical, X } from 'lucide-react';
 import { useState } from 'react';
-
+import { useUser } from '@/hooks/use-session-user';
 const DEMO_EMAIL = 'demo@axiom.app';
 
 export function DemoBanner() {
-  const { user } = useUser();
+  const { user, uid } = useUser();
   const [dismissed, setDismissed] = useState(false);
 
   if (dismissed || user?.email !== DEMO_EMAIL) return null;

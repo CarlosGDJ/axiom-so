@@ -10,21 +10,17 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
-import { useFirestore, useUser, updateDocumentNonBlocking } from '@/firebase';
-import { doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-
+import { useUser } from '@/hooks/use-session-user';
+import { updateDocumentNonBlocking } from '@/lib/api-writes';
 const MilestoneProgress = ({ row, skills }: { row: { original: Milestone }, skills: Skill[] }) => {
     const milestone = row.original;
-    const { user } = useUser();
-    const firestore = useFirestore();
-    const { toast } = useToast();
+    const { user, uid } = useUser();    const { toast } = useToast();
 
     const handleUpdateProgress = (e: React.MouseEvent) => {
         e.stopPropagation();
-        if (!user || !firestore) return;
+        if (!uid) return;
 
-        const docRef = doc(firestore, `users/${user.uid}/milestones`, milestone.id);
         const skill = skills.find(s => s.habilidad_id === milestone.skill_id);
         
         let xpGained = 0;
@@ -52,27 +48,26 @@ const MilestoneProgress = ({ row, skills }: { row: { original: Milestone }, skil
         }
 
         // Update Milestone
-        updateDocumentNonBlocking(docRef, milestoneUpdate);
+        updateDocumentNonBlocking('milestones', milestone.id, milestoneUpdate);
 
         // Update Skill XP and Level
         if (skill) {
-            const skillRef = doc(firestore, `users/${user.uid}/skills`, skill.id);
             const newXP = (skill.xp || 0) + xpGained;
             const xpNeeded = skill.nivel_actual * 200;
-            
+
             if (newXP >= xpNeeded) {
                 const newLevel = skill.nivel_actual + 1;
-                updateDocumentNonBlocking(skillRef, { 
-                    xp: newXP - xpNeeded, 
-                    nivel_actual: newLevel 
+                updateDocumentNonBlocking('skills', skill.id, {
+                    xp: newXP - xpNeeded,
+                    nivel_actual: newLevel
                 });
-                toast({ 
-                    title: "¡SUBIDA DE NIVEL!", 
+                toast({
+                    title: "¡SUBIDA DE NIVEL!",
                     description: `Tu habilidad "${skill.nombre}" ha subido al nivel ${newLevel}.`,
                     variant: "default"
                 });
             } else {
-                updateDocumentNonBlocking(skillRef, { xp: newXP });
+                updateDocumentNonBlocking('skills', skill.id, { xp: newXP });
             }
         }
     };

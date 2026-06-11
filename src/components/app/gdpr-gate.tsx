@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useUser, useFirestore } from '@/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { useAuth } from '@/firebase';
+import { useUser } from '@/hooks/use-session-user';
+import { signOut } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
@@ -27,25 +26,17 @@ const DATA_CATEGORIES = [
 ];
 
 function GdprConsentModal({ onAccept }: { onAccept: () => void }) {
-  const auth = useAuth();
   const [checked, setChecked] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
-  const handleAccept = () => {
-    if (!checked) return;
-    onAccept();
-  };
 
   const handleReject = async () => {
     setIsLeaving(true);
-    if (auth) await auth.signOut();
-    window.location.href = '/login';
+    await signOut({ callbackUrl: '/login' });
   };
 
   return (
     <div className="fixed inset-0 z-[9999] bg-background/95 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
       <div className="w-full max-w-lg my-auto rounded-2xl border bg-card shadow-2xl overflow-hidden">
-
-        {/* Header */}
         <div className="bg-primary/5 border-b px-6 py-5">
           <div className="flex items-center gap-3 mb-2">
             <BrainCircuit className="h-7 w-7 text-primary shrink-0" />
@@ -57,15 +48,12 @@ function GdprConsentModal({ onAccept }: { onAccept: () => void }) {
         </div>
 
         <div className="px-6 py-5 space-y-5">
-
-          {/* Intro */}
           <p className="text-sm text-muted-foreground leading-relaxed">
             Axiom procesa datos personales de <strong className="text-foreground">categoría especial</strong> (salud,
             comportamiento) que requieren tu consentimiento <strong className="text-foreground">explícito e informado</strong>{' '}
             antes de comenzar, conforme al Art. 9.2.a del RGPD.
           </p>
 
-          {/* Data categories */}
           <div className="space-y-2">
             <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Datos que se procesarán</p>
             <div className="rounded-lg border bg-muted/30 divide-y">
@@ -81,14 +69,13 @@ function GdprConsentModal({ onAccept }: { onAccept: () => void }) {
             </div>
           </div>
 
-          {/* Key points */}
           <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 space-y-1.5 text-xs">
             <div className="flex items-center gap-2 font-semibold text-primary">
               <ShieldCheck size={13} />
               <span>Resumen de tus derechos</span>
             </div>
             <ul className="space-y-1 text-muted-foreground pl-1">
-              <li>· Tus datos se almacenan <strong className="text-foreground">solo en tu cuenta de Firebase</strong> — nadie más tiene acceso.</li>
+              <li>· Tus datos se almacenan <strong className="text-foreground">solo en tu cuenta de Axiom</strong> — nadie más tiene acceso.</li>
               <li>· Puedes <strong className="text-foreground">exportar</strong> todos tus datos en CSV desde Ajustes.</li>
               <li>· Puedes <strong className="text-foreground">eliminar tu cuenta</strong> y todos tus datos en cualquier momento desde Perfil.</li>
               <li>· Puedes <strong className="text-foreground">retirar este consentimiento</strong> en cualquier momento desde Ajustes → RGPD.</li>
@@ -96,7 +83,6 @@ function GdprConsentModal({ onAccept }: { onAccept: () => void }) {
             </ul>
           </div>
 
-          {/* Legal note on special category */}
           <div className="flex items-start gap-2 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-lg px-3 py-2.5">
             <AlertTriangle size={13} className="mt-0.5 shrink-0" />
             <span>
@@ -107,7 +93,6 @@ function GdprConsentModal({ onAccept }: { onAccept: () => void }) {
 
           <Separator />
 
-          {/* Checkbox consent */}
           <div className={cn(
             'flex items-start gap-3 rounded-lg border p-3 transition-colors',
             checked ? 'border-primary bg-primary/5' : 'border-border',
@@ -132,13 +117,8 @@ function GdprConsentModal({ onAccept }: { onAccept: () => void }) {
             </Label>
           </div>
 
-          {/* Actions */}
           <div className="flex flex-col gap-2">
-            <Button
-              className="w-full"
-              disabled={!checked}
-              onClick={handleAccept}
-            >
+            <Button className="w-full" disabled={!checked} onClick={onAccept}>
               <ShieldCheck className="mr-2 h-4 w-4" />Acepto y quiero continuar
             </Button>
             <button
@@ -164,8 +144,7 @@ type ConsentStatus = 'loading' | 'accepted' | 'required';
 function localKey(uid: string) { return `axiom_gdpr_${uid}_v${PRIVACY_POLICY_VERSION}`; }
 
 export function GdprGate({ children }: { children: React.ReactNode }) {
-  const { user, isUserLoading } = useUser();
-  const firestore = useFirestore();
+  const { uid, isUserLoading } = useUser();
   const [status, setStatus] = useState<ConsentStatus>('loading');
   const [mounted, setMounted] = useState(false);
 
@@ -173,48 +152,45 @@ export function GdprGate({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (isUserLoading) return;
-    if (!user) {
-      setStatus('accepted'); // Let downstream components handle the auth redirect
-      return;
-    }
-
-    // Fast-path: localStorage avoids a Firestore round-trip on every page load
-    // and keeps the modal from reappearing when Firestore is temporarily unreachable.
-    if (localStorage.getItem(localKey(user.uid)) === 'accepted') {
+    if (!uid) {
       setStatus('accepted');
       return;
     }
 
-    getDoc(doc(firestore, `users/${user.uid}/settings/gdpr_consent`)).then((snap) => {
-      const data = snap.data() as GdprConsentRecord | undefined;
-      if (data?.accepted && data?.version === PRIVACY_POLICY_VERSION) {
-        localStorage.setItem(localKey(user.uid), 'accepted');
-        setStatus('accepted');
-      } else {
-        setStatus('required');
-      }
-    }).catch(() => {
-      // Firestore unreachable — don't force the modal if the user has no local record.
-      // They'll see it again only after clearing storage or on a new device.
-      setStatus('required');
-    });
-  }, [user, isUserLoading, firestore]);
+    if (localStorage.getItem(localKey(uid)) === 'accepted') {
+      setStatus('accepted');
+      return;
+    }
+
+    fetch(`/api/data/settings?docId=gdpr_consent`)
+      .then(r => r.ok ? r.json() : null)
+      .then((data: GdprConsentRecord | null) => {
+        if (data?.accepted && data?.version === PRIVACY_POLICY_VERSION) {
+          localStorage.setItem(localKey(uid), 'accepted');
+          setStatus('accepted');
+        } else {
+          setStatus('required');
+        }
+      })
+      .catch(() => { setStatus('required'); });
+  }, [uid, isUserLoading]);
 
   const handleAccept = () => {
-    if (!user) return;
+    if (!uid) return;
     const record: GdprConsentRecord = {
       accepted: true,
       timestamp: new Date().toISOString(),
       version: PRIVACY_POLICY_VERSION,
     };
     setStatus('accepted');
-    localStorage.setItem(localKey(user.uid), 'accepted');
-    setDoc(doc(firestore, `users/${user.uid}/settings/gdpr_consent`), record)
-      .catch(err => console.warn('[GdprGate] Failed to persist consent to Firestore:', err));
+    localStorage.setItem(localKey(uid), 'accepted');
+    fetch(`/api/data/settings/gdpr_consent`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(record),
+    }).catch(err => console.warn('[GdprGate] Failed to persist consent:', err));
   };
 
-  // SSR: render nothing (same as before — avoids hydration mismatch with Toaster/Radix portals).
-  // Client: show a spinner after mount while the consent check resolves.
   if (status === 'loading') {
     if (!mounted) return null;
     return (
@@ -224,8 +200,6 @@ export function GdprGate({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Do not mount children until consent is confirmed — otherwise dashboard hooks
-  // run while the modal is blocking and the onboarding redirect fires at the wrong time.
   return (
     <>
       {status === 'accepted' && children}

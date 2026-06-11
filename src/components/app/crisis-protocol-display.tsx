@@ -9,11 +9,10 @@ import { CheckCircle2, ChevronLeft, Loader2, ShieldAlert, Zap, ArrowRight, Clock
 import { getAIProtocolRecommendations } from '@/lib/actions';
 import type { UserData } from '@/lib/types';
 import type { GenerateProtocolRecommendationsOutput } from '@/ai/flows/generate-protocol-recommendations';
-import { useFirestore, useUser, addDocumentNonBlocking } from '@/firebase';
-import { collection } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-
+import { useUser } from '@/hooks/use-session-user';
+import { addDocumentNonBlocking } from '@/lib/api-writes';
 interface CrisisProtocolDisplayProps {
   userData: UserData;
   onExit: () => void;
@@ -24,9 +23,7 @@ export default function CrisisProtocolDisplay({ userData, onExit }: CrisisProtoc
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
-  const { user } = useUser();
-  const firestore = useFirestore();
-  const { toast } = useToast();
+  const { user, uid } = useUser();  const { toast } = useToast();
 
   const fetchProtocol = useCallback(async () => {
     if (!userData) return;
@@ -63,16 +60,15 @@ export default function CrisisProtocolDisplay({ userData, onExit }: CrisisProtoc
   };
 
   const handleFinishProtocol = () => {
-    if (!user || !firestore || !protocol) return;
+    if (!uid || !protocol) return;
 
     setIsSubmitting(true);
-    const eventCollectionRef = collection(firestore, `users/${user.uid}/events`);
     const allStepsCompleted = completedSteps.length >= (protocol.recommendations?.length || 0);
-    
+
     const intensity = allStepsCompleted ? 5 : 2;
     const impactScore = protocol.resolutionPotential || 15;
 
-    addDocumentNonBlocking(eventCollectionRef, {
+    addDocumentNonBlocking('events', {
         fecha: new Date().toISOString(),
         evento_id: `EVT_PROT_AI_${Date.now()}`,
         var_id: 'AI_CRISIS_RESOLVE',

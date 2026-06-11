@@ -17,16 +17,14 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { Meh, ThumbsUp, ThumbsDown, ArrowUp, ArrowRight, ArrowDown, UserPlus } from 'lucide-react';
-import { useFirestore, useUser, addDocumentNonBlocking } from '@/firebase';
-import { collection } from 'firebase/firestore';
 import { Textarea } from '@/components/ui/textarea';
 import { Relation } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import EditRelationForm from '../data-table/forms/edit-relation-form';
-
-
+import { useUser } from '@/hooks/use-session-user';
+import { addDocumentNonBlocking } from '@/lib/api-writes';
 const formSchema = z.object({
   persona_id: z.string().min(1, 'Por favor, selecciona una persona.'),
   energia_resultante: z.coerce.number().min(-1).max(1),
@@ -42,9 +40,7 @@ interface InteractionLogFormProps {
 }
 
 export default function InteractionLogForm({ closeDialog, relations }: InteractionLogFormProps) {
-  const { toast } = useToast();
-  const firestore = useFirestore();
-  const { user } = useUser();
+  const { toast } = useToast();  const { user, uid } = useUser();
   const [isAddPersonOpen, setIsAddPersonOpen] = useState(false);
   
   const form = useForm<InteractionFormValues>({
@@ -58,11 +54,9 @@ export default function InteractionLogForm({ closeDialog, relations }: Interacti
   });
 
   async function onSubmit(data: InteractionFormValues) {
-    if (!user || !firestore) return;
+    if (!uid) return;
 
-    const interactionCollectionRef = collection(firestore, `users/${user.uid}/interactions`);
-
-    addDocumentNonBlocking(interactionCollectionRef, {
+        addDocumentNonBlocking('interactions', {
         ...data,
         fecha: new Date().toISOString(),
         interaccion_id: `INT_${Date.now()}`

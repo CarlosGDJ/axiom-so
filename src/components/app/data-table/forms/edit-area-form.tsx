@@ -16,8 +16,6 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useUser, setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
-import { doc, collection } from 'firebase/firestore';
 import { Area } from '@/lib/types';
 import {
   Select,
@@ -26,6 +24,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useUser } from '@/hooks/use-session-user';
+import { addDocumentNonBlocking, setDocumentNonBlocking } from '@/lib/api-writes';
 
 const formSchema = z.object({
   area_nombre: z.string().min(2, 'El nombre es demasiado corto.'),
@@ -48,9 +48,7 @@ interface EditAreaFormProps {
 }
 
 export default function EditAreaForm({ entity: area, closeDialog }: EditAreaFormProps) {
-  const { toast } = useToast();
-  const firestore = useFirestore();
-  const { user } = useUser();
+  const { toast } = useToast();  const { user, uid } = useUser();
   const isEditMode = !!area;
 
   const form = useForm<EditAreaFormValues>({
@@ -71,7 +69,7 @@ export default function EditAreaForm({ entity: area, closeDialog }: EditAreaForm
   });
 
   async function onSubmit(data: EditAreaFormValues) {
-    if (!user || !firestore) return;
+    if (!uid) return;
 
     const areaId = isEditMode ? area.area_id : `AREA_${data.area_nombre.toUpperCase().replace(/\s/g, '_').substring(0, 5)}_${Date.now()}`;
 
@@ -82,15 +80,13 @@ export default function EditAreaForm({ entity: area, closeDialog }: EditAreaForm
     }
 
     if (isEditMode) {
-      const areaRef = doc(firestore, `users/${user.uid}/areas`, area.id);
-      setDocumentNonBlocking(areaRef, finalData, { merge: true });
+            setDocumentNonBlocking('areas', area.id, finalData, { merge: true });
       toast({
         title: 'Área Actualizada',
         description: `El área ${data.area_nombre} ha sido actualizada.`,
       });
     } else {
-      const areaCollectionRef = collection(firestore, `users/${user.uid}/areas`);
-      addDocumentNonBlocking(areaCollectionRef, finalData);
+            addDocumentNonBlocking('areas', finalData);
       toast({
         title: 'Área Creada',
         description: `El área ${data.area_nombre} ha sido creada.`,

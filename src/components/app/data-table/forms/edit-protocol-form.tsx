@@ -16,8 +16,6 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useUser, setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
-import { doc, collection } from 'firebase/firestore';
 import { Protocol } from '@/lib/types';
 import {
   Select,
@@ -27,7 +25,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-
+import { useUser } from '@/hooks/use-session-user';
+import { addDocumentNonBlocking, setDocumentNonBlocking } from '@/lib/api-writes';
 const formSchema = z.object({
   protocolo_id: z.string().optional(),
   nombre: z.string().min(2, 'El nombre es demasiado corto.'),
@@ -44,9 +43,7 @@ interface EditProtocolFormProps {
 }
 
 export default function EditProtocolForm({ entity: protocol, closeDialog }: EditProtocolFormProps) {
-  const { toast } = useToast();
-  const firestore = useFirestore();
-  const { user } = useUser();
+  const { toast } = useToast();  const { user, uid } = useUser();
   const isEditMode = !!protocol;
 
   const form = useForm<EditProtocolFormValues>({
@@ -62,21 +59,19 @@ export default function EditProtocolForm({ entity: protocol, closeDialog }: Edit
   });
 
   async function onSubmit(data: EditProtocolFormValues) {
-    if (!user || !firestore) return;
+    if (!uid) return;
     
     const protocolId = isEditMode ? protocol.protocolo_id : `P_${data.nombre.toUpperCase().substring(0,4)}_${Date.now()}`;
     const finalData = { ...data, protocolo_id: protocolId };
 
     if (isEditMode) {
-      const docRef = doc(firestore, `users/${user.uid}/protocols`, protocol.id);
-      setDocumentNonBlocking(docRef, data, { merge: true });
+            setDocumentNonBlocking('protocols', protocol.id, data, { merge: true });
       toast({
         title: 'Protocolo Actualizado',
         description: `El protocolo ${data.nombre} ha sido actualizado.`,
       });
     } else {
-      const collectionRef = collection(firestore, `users/${user.uid}/protocols`);
-      addDocumentNonBlocking(collectionRef, finalData);
+            addDocumentNonBlocking('protocols', finalData);
       toast({
         title: 'Protocolo Creado',
         description: `El protocolo ${data.nombre} ha sido creado.`,

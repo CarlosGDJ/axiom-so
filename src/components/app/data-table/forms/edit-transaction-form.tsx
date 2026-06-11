@@ -25,11 +25,10 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useUser, addDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
-import { collection, doc } from 'firebase/firestore';
 import { useEffect } from 'react';
 import type { Account, Transaction, Debt } from '@/lib/types';
-
+import { useUser } from '@/hooks/use-session-user';
+import { addDocumentNonBlocking, setDocumentNonBlocking } from '@/lib/api-writes';
 const expenseCategories = [
   'Vivienda', 'Alimentación', 'Transporte', 'Salud y Bienestar',
   'Ocio y Suscripciones', 'Desarrollo Personal', 'Compras', 'Deudas',
@@ -69,9 +68,7 @@ interface TransactionLogFormProps {
 }
 
 export default function TransactionLogForm({ entity: transaction, accounts, debts, closeDialog, prefill }: TransactionLogFormProps) {
-  const { toast } = useToast();
-  const firestore = useFirestore();
-  const { user } = useUser();
+  const { toast } = useToast();  const { user, uid } = useUser();
   const isEditMode = !!transaction;
   
 
@@ -110,7 +107,7 @@ export default function TransactionLogForm({ entity: transaction, accounts, debt
   const category = form.watch('categoria');
 
   async function onSubmit(data: TransactionFormValues) {
-    if (!user || !firestore) return;
+    if (!uid) return;
     
     const finalAmount = data.tipo === 'Gasto' ? -Math.abs(data.monto) : Math.abs(data.monto);
     const normalizedDebtId = data.categoria === 'Deudas' ? (data.deuda_id ?? '') : '';
@@ -127,9 +124,8 @@ export default function TransactionLogForm({ entity: transaction, accounts, debt
     }
 
     if (isEditMode) {
-      const docRef = doc(firestore, `users/${user.uid}/transactions`, transaction.id);
       const { id, ...dataToSave } = { ...transaction, ...transactionData };
-      setDocumentNonBlocking(docRef, dataToSave, { merge: true });
+      setDocumentNonBlocking('transactions', transaction.id, dataToSave, { merge: true });
        toast({
         title: 'Transacción Actualizada',
         description: `Se ha actualizado la transacción.`,
@@ -137,8 +133,7 @@ export default function TransactionLogForm({ entity: transaction, accounts, debt
 
     } else {
         transactionData.transaccion_id = `TRN_${Date.now()}`;
-        const transactionCollectionRef = collection(firestore, `users/${user.uid}/transactions`);
-        addDocumentNonBlocking(transactionCollectionRef, transactionData);
+                addDocumentNonBlocking('transactions', transactionData);
         toast({
         title: 'Transacción Registrada',
         description: `Se ha registrado un ${data.tipo.toLowerCase()} de ${data.monto}€ con éxito.`,

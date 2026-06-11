@@ -19,30 +19,28 @@ import { PwaInit } from '@/components/app/pwa-init';
 import { QuickLogFab } from '@/components/app/quick-log-fab';
 import { NotificationPrompt } from '@/components/app/notification-prompt';
 import { Button } from '@/components/ui/button';
-import { useFirestore, useUser, addDocumentNonBlocking, useMemoFirebase, useDoc, useCollection } from '@/firebase';
+import { useUser } from '@/hooks/use-session-user';
+import { addDocumentNonBlocking } from '@/lib/api-writes';
+import { useCollection, useDoc } from '@/hooks/use-mongo-collection';
 import { UserDataProvider } from '@/contexts/user-data-context';
 import { TourProvider } from '@/components/app/tour/tour-context';
 import { TourOverlay } from '@/components/app/tour/tour-overlay';
-import { collection, doc, query, limit } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import type { PlayerProfile, Area } from '@/lib/types';
 
 function GlobalCrisisBanner() {
   const { data: userData } = useUserData();
-  const { user } = useUser();
-  const firestore = useFirestore();
+  const { uid } = useUser();
   const { toast } = useToast();
   const [isResetting, setIsResetting] = useState(false);
-  
+
   if (userData?.overallState !== 'CRITICO') return null;
 
   const handleManualOverride = () => {
-    if (!user || !firestore) return;
+    if (!uid) return;
     setIsResetting(true);
 
-    // Inyectamos un "evento maestro" de resolución que garantiza +30 puntos
-    const eventCollectionRef = collection(firestore, `users/${user.uid}/events`);
-    addDocumentNonBlocking(eventCollectionRef, {
+    addDocumentNonBlocking('events', {
         fecha: new Date().toISOString(),
         evento_id: `EVT_OVERRIDE_${Date.now()}`,
         var_id: 'AI_CRISIS_RESOLVE',
@@ -66,9 +64,9 @@ function GlobalCrisisBanner() {
                     Sistema en Modo Estabilización — Navegación restringida para proteger tu foco.
                 </AlertDescription>
             </div>
-            <Button 
-                variant="outline" 
-                size="sm" 
+            <Button
+                variant="outline"
+                size="sm"
                 className="h-7 text-[10px] bg-white/10 hover:bg-white/20 border-white/20 text-white font-bold"
                 onClick={handleManualOverride}
                 disabled={isResetting}
@@ -83,36 +81,27 @@ function GlobalCrisisBanner() {
 
 function onboardingDoneKey(uid: string) { return `axiom_onboarding_done_${uid}`; }
 
-// Checks for an existing profile AFTER GDPR consent — only mounted inside GdprGate children.
 function OnboardingGuard({ children }: { children: React.ReactNode }) {
-  const { user, isUserLoading } = useUser();
-  const firestore = useFirestore();
+  const { uid, isUserLoading } = useUser();
   const router = useRouter();
-  const playerProfileRef = useMemoFirebase(
-    () => (user ? doc(firestore, `users/${user.uid}/playerProfile`, 'main-profile') : null),
-    [user, firestore]
+  const { data: playerProfile, isLoading: isProfileLoading, error: profileError } = useDoc<PlayerProfile>(
+    'playerProfile', uid ? 'main-profile' : null
   );
-  const { data: playerProfile, isLoading: isProfileLoading, error: profileError } = useDoc<PlayerProfile>(playerProfileRef);
-  const areasProbeRef = useMemoFirebase(
-    () => (user ? query(collection(firestore, `users/${user.uid}/areas`), limit(1)) : null),
-    [user, firestore]
+  const { data: areasProbe, isLoading: isAreasProbeLoading, error: areasProbeError } = useCollection<Area>(
+    uid ? 'areas' : null, { limit: 1 }
   );
-  const { data: areasProbe, isLoading: isAreasProbeLoading, error: areasProbeError } = useCollection<Area>(areasProbeRef);
 
   useEffect(() => {
-    if (isUserLoading || !user || isProfileLoading || isAreasProbeLoading) return;
+    if (isUserLoading || !uid || isProfileLoading || isAreasProbeLoading) return;
     if (profileError || areasProbeError) return;
-    // Fast-path: if onboarding was completed in this browser, don't redirect even
-    // when Firestore returns empty (e.g. offline mode or emulator data loss).
-    if (localStorage.getItem(onboardingDoneKey(user.uid)) === 'true') return;
+    if (localStorage.getItem(onboardingDoneKey(uid)) === 'true') return;
     const hasAnyArea = (areasProbe?.length || 0) > 0;
     if (!playerProfile && !hasAnyArea) {
       router.replace('/onboarding');
     } else if (playerProfile || hasAnyArea) {
-      // Profile exists in Firestore — persist the flag so future loads skip the check.
-      localStorage.setItem(onboardingDoneKey(user.uid), 'true');
+      localStorage.setItem(onboardingDoneKey(uid), 'true');
     }
-  }, [user, isUserLoading, isProfileLoading, isAreasProbeLoading, playerProfile, areasProbe, profileError, areasProbeError, router]);
+  }, [uid, isUserLoading, isProfileLoading, isAreasProbeLoading, playerProfile, areasProbe, profileError, areasProbeError, router]);
 
   return <>{children}</>;
 }
@@ -129,7 +118,6 @@ export default function DashboardLayout({
   );
 }
 
-// Separated so hooks that need UserDataProvider run inside it.
 function DashboardLayoutInner2({ children }: { children: React.ReactNode }) {
   const { writerPrefetch } = useUserData();
   useComputedDataWriter(writerPrefetch);
@@ -165,7 +153,6 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const prevPathname = useRef(pathname);
 
-  // Page-enter animation on route change — useLayoutEffect avoids flash
   useLayoutEffect(() => {
     if (pathname !== prevPathname.current) {
       prevPathname.current = pathname;

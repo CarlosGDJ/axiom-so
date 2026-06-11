@@ -17,8 +17,6 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { useUserData } from '@/hooks/use-user-data';
-import { useUser, useFirestore, addDocumentNonBlocking } from '@/firebase';
-import { collection } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { ToastAction } from '@/components/ui/toast';
 import TransactionLogForm from './forms/transaction-log-form';
@@ -27,7 +25,8 @@ import type { Variable } from '@/lib/types';
 import { haptic } from '@/lib/haptic';
 import { parseNaturalLogAction } from '@/lib/actions';
 import type { ParseNaturalLogOutput, ParsedLogEvent } from '@/lib/actions';
-
+import { useUser } from '@/hooks/use-session-user';
+import { addDocumentNonBlocking } from '@/lib/api-writes';
 type ActiveDialog = 'evento' | 'habito' | 'estado' | 'transaccion' | 'social' | 'nlp' | null;
 
 const MOOD_OPTIONS = [
@@ -196,8 +195,7 @@ export function QuickLogFab() {
   const [impulsivo, setImpulsivo]       = useState(false);
 
   const { data: userData, isLoading: isUserDataLoading } = useUserData();
-  const { user }            = useUser();
-  const firestore           = useFirestore();
+  const { user, uid } = useUser();
   const { toast }           = useToast();
 
   const allActiveVars = useMemo(
@@ -286,11 +284,11 @@ export function QuickLogFab() {
   }
 
   function handleNlpCommit() {
-    if (!user || !firestore || nlpEvents.length === 0) return;
+    if (!user || nlpEvents.length === 0) return;
     haptic('success');
     nlpEvents.forEach((ev, i) => {
       const intensidad = nlpIntensities[i] ?? ev.intensidad;
-      addDocumentNonBlocking(collection(firestore, `users/${user.uid}/events`), {
+      addDocumentNonBlocking('events', {
         evento_id: `EVT_NLP_${Date.now()}_${i}`,
         fecha: new Date().toISOString(),
         var_id: ev.var_id,
@@ -311,7 +309,7 @@ export function QuickLogFab() {
   const pendingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function writeEvent(var_id: string, intensidad: number, contexto: string, tipo = 'Variable', isImpulsivo = false): () => void {
-    if (!user || !firestore) return () => {};
+    if (!user) return () => {};
 
     // Cancel any previous pending write (edge case: rapid fire)
     if (pendingTimerRef.current) clearTimeout(pendingTimerRef.current);
@@ -324,7 +322,7 @@ export function QuickLogFab() {
 
     pendingTimerRef.current = setTimeout(() => {
       if (cancelled) return;
-      addDocumentNonBlocking(collection(firestore, `users/${user.uid}/events`), {
+      addDocumentNonBlocking('events', {
         evento_id: `EVT_QUICK_${Date.now()}`,
         fecha:     new Date().toISOString(),
         var_id,

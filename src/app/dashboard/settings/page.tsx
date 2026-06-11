@@ -2,8 +2,6 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useTheme } from 'next-themes';
-import { useFirestore, useUser, setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
-import { doc, getDoc, collection, type DocumentReference } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -19,11 +17,12 @@ import { cn } from '@/lib/utils';
 import NavigationReady from '@/components/app/navigation-ready';
 import { useUserData } from '@/hooks/use-user-data';
 import { format, parseISO } from 'date-fns';
-import { useAuth } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { PrivacyPolicyDialog, PRIVACY_POLICY_VERSION } from '@/components/app/privacy-policy-dialog';
 import { ShieldCheck, ShieldAlert } from 'lucide-react';
-
+import { useUser } from '@/hooks/use-session-user';
+import { addDocumentNonBlocking, setDocumentNonBlocking } from '@/lib/api-writes';
+import { signOut } from 'next-auth/react';
 interface NotificationPrefs {
   finance: boolean;
   habits: boolean;
@@ -104,11 +103,9 @@ function exportEventsCSV(events: any[]) {
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
-  const { user } = useUser();
-  const firestore = useFirestore();
+  const { user, uid } = useUser();
   const { toast } = useToast();
   const { data: userData } = useUserData();
-  const auth = useAuth();
   const router = useRouter();
 
   const [prefs, setPrefs] = useState<NotificationPrefs>(DEFAULT_PREFS);
@@ -127,17 +124,20 @@ export default function SettingsPage() {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
-    getDoc(doc(firestore, `users/${user.uid}/settings/notifications`)).then((snap) => {
-      if (snap.exists()) setPrefs({ ...DEFAULT_PREFS, ...(snap.data() as Partial<NotificationPrefs>) });
-    });
-    getDoc(doc(firestore, `users/${user.uid}/settings/engine`)).then((snap) => {
-      if (snap.exists()) setEngine({ ...DEFAULT_ENGINE, ...(snap.data() as Partial<EngineSettings>) });
-    });
-    getDoc(doc(firestore, `users/${user.uid}/settings/gdpr_consent`)).then((snap) => {
-      if (snap.exists()) setGdprRecord(snap.data() as any);
-    });
-  }, [user, firestore]);
+    if (!user || !uid) return;
+    fetch(`/api/data/settings?docId=notifications`)
+      .then(r => r.json())
+      .then(data => { if (data) setPrefs({ ...DEFAULT_PREFS, ...data }); })
+      .catch(() => {});
+    fetch(`/api/data/settings?docId=engine`)
+      .then(r => r.json())
+      .then(data => { if (data) setEngine({ ...DEFAULT_ENGINE, ...data }); })
+      .catch(() => {});
+    fetch(`/api/data/settings?docId=gdpr_consent`)
+      .then(r => r.json())
+      .then(data => { if (data) setGdprRecord(data); })
+      .catch(() => {});
+  }, [user, uid]);
 
   function togglePref(key: keyof NotificationPrefs) {
     setPrefs((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -146,14 +146,14 @@ export default function SettingsPage() {
 
   function savePrefs() {
     if (!user) return;
-    setDocumentNonBlocking(doc(firestore, `users/${user.uid}/settings/notifications`) as DocumentReference, prefs);
+    setDocumentNonBlocking('settings', 'notifications', prefs as unknown as Record<string, unknown>);
     setPrefsSaved(true);
     toast({ title: 'Preferencias guardadas', description: 'Tus ajustes de notificación están actualizados.' });
   }
 
   function saveEngine() {
     if (!user) return;
-    setDocumentNonBlocking(doc(firestore, `users/${user.uid}/settings/engine`) as DocumentReference, engine);
+    setDocumentNonBlocking('settings', 'engine', engine as unknown as Record<string, unknown>);
     setEngineSaved(true);
     toast({ title: 'Motor actualizado', description: `Horizonte de análisis: ${engine.lookback_days} días.` });
   }
@@ -438,12 +438,8 @@ export default function SettingsPage() {
               onClick={async () => {
                 if (!user) return;
                 // Clear consent record → GdprGate will show modal again on next load
-                setDocumentNonBlocking(
-                  doc(firestore, `users/${user.uid}/settings/gdpr_consent`) as DocumentReference,
-                  { accepted: false, timestamp: new Date().toISOString(), version: PRIVACY_POLICY_VERSION },
-                );
-                if (auth) await auth.signOut();
-                router.push('/login');
+                setDocumentNonBlocking('settings', 'gdpr_consent', { accepted: false, timestamp: new Date().toISOString(), version: PRIVACY_POLICY_VERSION });
+                await signOut({ callbackUrl: '/login' });
               }}
             >
               Retirar consentimiento y cerrar sesión
@@ -496,8 +492,7 @@ export default function SettingsPage() {
 }
 
 function CsvImportCard() {
-  const { user } = useUser();
-  const firestore = useFirestore();
+  const { user, uid } = useUser();
   const { toast } = useToast();
   const [importing, setImporting] = useState(false);
   const [preview, setPreview] = useState<string[] | null>(null);
@@ -527,15 +522,14 @@ function CsvImportCard() {
   };
 
   const handleImport = async () => {
-    if (!user || !firestore || parsedRows.length === 0) return;
+    if (!user || parsedRows.length === 0) return;
     setImporting(true);
     try {
-      const col = collection(firestore, `users/${user.uid}/events`);
       for (const row of parsedRows) {
         const fecha = row.fecha || row.date || row.Date || row.Fecha || new Date().toISOString();
         const var_id = row.var_id || row.variable || row.Variable || 'CUSTOM';
         const intensidad = parseFloat(row.intensidad || row.intensity || '5') || 5;
-        addDocumentNonBlocking(col, {
+        addDocumentNonBlocking('events', {
           fecha: isNaN(Date.parse(fecha)) ? new Date().toISOString() : new Date(fecha).toISOString(),
           evento_id: `EVT_CSV_${Date.now()}_${Math.random().toString(36).slice(2)}`,
           var_id,

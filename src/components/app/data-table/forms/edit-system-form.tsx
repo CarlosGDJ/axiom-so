@@ -16,8 +16,6 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useUser, setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
-import { doc, collection, writeBatch } from 'firebase/firestore';
 import { Skill, System, Variable } from '@/lib/types';
 import {
   Select,
@@ -35,7 +33,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { addDays } from 'date-fns';
-
+import { useUser } from '@/hooks/use-session-user';
+import { setDocumentNonBlocking, addDocumentNonBlocking } from '@/lib/api-writes';
 const formSchema = z.object({
   userPrompt: z.string().optional(),
   objetivo: z.string().optional(),
@@ -55,9 +54,7 @@ interface EditSystemFormProps {
 }
 
 export default function EditSystemForm({ entity: system, closeDialog, skills, variables }: EditSystemFormProps) {
-  const { toast } = useToast();
-  const firestore = useFirestore();
-  const { user } = useUser();
+  const { toast } = useToast();  const { user, uid } = useUser();
   const isEditMode = !!system;
 
   const [step, setStep] = useState<'prompt' | 'review'>(isEditMode ? 'review' : 'prompt');
@@ -112,30 +109,26 @@ export default function EditSystemForm({ entity: system, closeDialog, skills, va
   };
 
   async function onSubmit(data: EditSystemFormValues) {
-    if (!user || !firestore) return;
-    
-    const batch = writeBatch(firestore);
-    
+    if (!uid) return;
+
     let sistemaId = isEditMode ? system.sistema_id : '';
     const { userPrompt, ...systemData } = data; // Exclude userPrompt from final data
     const finalData = { ...systemData, sistema_id: sistemaId };
 
     if (isEditMode) {
-        const docRef = doc(firestore, `users/${user.uid}/systems`, system.id);
-        batch.set(docRef, finalData, { merge: true });
+        setDocumentNonBlocking('systems', system.id, finalData, { merge: true });
     } else {
-        const collectionRef = collection(firestore, `users/${user.uid}/systems`);
-        const newSystemRef = doc(collectionRef);
-        finalData.sistema_id = newSystemRef.id;
-        sistemaId = newSystemRef.id;
-        batch.set(newSystemRef, finalData);
+        // Generate a temporary client-side ID for the new system
+        const newId = `SYS_${Date.now()}`;
+        finalData.sistema_id = newId;
+        sistemaId = newId;
+        addDocumentNonBlocking('systems', finalData);
 
         // Create habits for selected suggestions
         aiPlan?.suggestedHabits.forEach(habitSuggestion => {
             if (selectedHabits.includes(habitSuggestion.var_id)) {
-                const newHabitRef = doc(collection(firestore, `users/${user.uid}/habits`));
-                batch.set(newHabitRef, {
-                    habito_id: newHabitRef.id,
+                addDocumentNonBlocking('habits', {
+                    habito_id: `HAB_${Date.now()}_${habitSuggestion.var_id}`,
                     sistema_id: sistemaId,
                     ...habitSuggestion,
                 });
@@ -145,9 +138,8 @@ export default function EditSystemForm({ entity: system, closeDialog, skills, va
         // Create milestones for selected suggestions
         aiPlan?.suggestedMilestones.forEach((milestoneSuggestion, index) => {
             if (selectedMilestones.includes(index)) {
-                const newMilestoneRef = doc(collection(firestore, `users/${user.uid}/milestones`));
-                batch.set(newMilestoneRef, {
-                    milestone_id: newMilestoneRef.id,
+                addDocumentNonBlocking('milestones', {
+                    milestone_id: `MIL_${Date.now()}_${index}`,
                     nombre: milestoneSuggestion.nombre,
                     milestone_type: milestoneSuggestion.milestone_type,
                     target_count: milestoneSuggestion.target_count,
@@ -161,17 +153,11 @@ export default function EditSystemForm({ entity: system, closeDialog, skills, va
         });
     }
 
-    try {
-      await batch.commit();
-      toast({
-        title: isEditMode ? 'Sistema Actualizado' : 'Sistema y Componentes Creados',
-        description: `El sistema ${data.objetivo} ha sido guardado.`,
-      });
-      closeDialog();
-    } catch (error) {
-      console.error(error);
-      toast({ variant: 'destructive', title: 'Error', description: 'No se pudieron guardar los cambios.' });
-    }
+    toast({
+      title: isEditMode ? 'Sistema Actualizado' : 'Sistema y Componentes Creados',
+      description: `El sistema ${data.objetivo} ha sido guardado.`,
+    });
+    closeDialog();
   }
 
   return (

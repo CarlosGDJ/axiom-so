@@ -17,8 +17,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useUser, setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
-import { doc, collection } from 'firebase/firestore';
 import { Debt } from '@/lib/types';
 import {
   Select,
@@ -36,7 +34,8 @@ import { cn } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useState } from 'react';
-
+import { useUser } from '@/hooks/use-session-user';
+import { addDocumentNonBlocking, setDocumentNonBlocking } from '@/lib/api-writes';
 const formSchema = z.object({
   debt_id: z.string().optional(),
   nombre: z.string().min(2, 'El nombre es demasiado corto.'),
@@ -63,9 +62,7 @@ interface EditDebtFormProps {
 }
 
 export default function EditDebtForm({ entity: debt, closeDialog }: EditDebtFormProps) {
-  const { toast } = useToast();
-  const firestore = useFirestore();
-  const { user } = useUser();
+  const { toast } = useToast();  const { user, uid } = useUser();
   const isEditMode = !!debt;
 
   const form = useForm<EditDebtFormValues>({
@@ -91,7 +88,7 @@ export default function EditDebtForm({ entity: debt, closeDialog }: EditDebtForm
   });
 
   async function onSubmit(data: EditDebtFormValues) {
-    if (!user || !firestore) return;
+    if (!uid) return;
     
     const debtId = isEditMode ? debt.debt_id : `DEBT_${Date.now()}`;
     const finalData = { 
@@ -101,15 +98,13 @@ export default function EditDebtForm({ entity: debt, closeDialog }: EditDebtForm
     };
 
     if (isEditMode) {
-      const docRef = doc(firestore, `users/${user.uid}/debts`, debt.id);
-      setDocumentNonBlocking(docRef, finalData, { merge: true });
+            setDocumentNonBlocking('debts', debt.id, finalData, { merge: true });
       toast({
         title: 'Deuda Actualizada',
         description: `La deuda ${data.nombre} ha sido actualizada.`,
       });
     } else {
-      const collectionRef = collection(firestore, `users/${user.uid}/debts`);
-      addDocumentNonBlocking(collectionRef, finalData);
+            addDocumentNonBlocking('debts', finalData);
       toast({
         title: 'Deuda Creada',
         description: `La deuda ${data.nombre} ha sido creada.`,

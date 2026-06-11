@@ -1,7 +1,6 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useUser } from '@/firebase';
 import { usePathname } from 'next/navigation';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -22,9 +21,10 @@ import { Flame, Zap } from 'lucide-react';
 import { computeProgression } from '@/lib/progression';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-
+import { useUser } from '@/hooks/use-session-user';
+import { signOut } from 'next-auth/react';
 export function AppHeader() {
-  const { user, auth } = useUser();
+  const { user } = useUser();
   const { data: userData, isLoading: isUserDataLoading } = useUserData();
   const router = useRouter();
   const pathname = usePathname();
@@ -92,13 +92,11 @@ export function AppHeader() {
 
 
   const handleSignOut = async () => {
-    if (auth) {
-      await auth.signOut();
-      router.push('/login');
-    }
+    await signOut();
+    router.push('/login');
   };
 
-  const avatarSrc = userData?.userProfile?.axiomAvatarDataUrl || userData?.userProfile?.photoURL || user?.photoURL;
+  const avatarSrc = userData?.userProfile?.axiomAvatarDataUrl || userData?.userProfile?.photoURL || user?.image;
 
   // Global Progression Logic
   const streak = useMemo(() => {
@@ -211,17 +209,17 @@ export function AppHeader() {
             <Button variant="secondary" size="icon" className="rounded-full">
               <Avatar className="h-8 w-8">
                 {avatarSrc && (
-                    <AvatarImage src={avatarSrc} alt={user?.displayName || 'Usuario'} />
+                    <AvatarImage src={avatarSrc} alt={user?.name || 'Usuario'} />
                 )}
                 <AvatarFallback>
-                  {user?.displayName ? user.displayName.charAt(0) : 'U'}
+                  {user?.name ? user.name.charAt(0) : 'U'}
                 </AvatarFallback>
               </Avatar>
               <span className="sr-only">Menú de usuario</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuLabel>{user?.displayName}</DropdownMenuLabel>
+            <DropdownMenuLabel>{user?.name}</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => router.push('/dashboard/profile')}>Perfil</DropdownMenuItem>
             <DropdownMenuItem>Ajustes</DropdownMenuItem>

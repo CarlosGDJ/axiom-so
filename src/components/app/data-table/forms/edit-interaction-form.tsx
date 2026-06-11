@@ -17,13 +17,12 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { Meh, ThumbsUp, ThumbsDown, ArrowUp, ArrowRight, ArrowDown } from 'lucide-react';
-import { useFirestore, useUser, addDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
-import { collection, doc } from 'firebase/firestore';
 import { Textarea } from '@/components/ui/textarea';
 import { Interaction, Relation } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useEffect } from 'react';
-
+import { useUser } from '@/hooks/use-session-user';
+import { addDocumentNonBlocking, setDocumentNonBlocking } from '@/lib/api-writes';
 const formSchema = z.object({
   persona_id: z.string({ required_error: "Por favor, selecciona una persona."}),
   energia_resultante: z.coerce.number().min(-1).max(1),
@@ -40,9 +39,7 @@ interface InteractionLogFormProps {
 }
 
 export default function InteractionLogForm({ entity: interaction, closeDialog, relations }: InteractionLogFormProps) {
-  const { toast } = useToast();
-  const firestore = useFirestore();
-  const { user } = useUser();
+  const { toast } = useToast();  const { user, uid } = useUser();
   const isEditMode = !!interaction;
   
   const form = useForm<InteractionFormValues>({
@@ -68,18 +65,16 @@ export default function InteractionLogForm({ entity: interaction, closeDialog, r
   }, [interaction, isEditMode, form]);
 
   async function onSubmit(data: InteractionFormValues) {
-    if (!user || !firestore) return;
+    if (!uid) return;
     
     if (isEditMode) {
-        const docRef = doc(firestore, `users/${user.uid}/interactions`, interaction.id);
-        setDocumentNonBlocking(docRef, data, { merge: true });
+                setDocumentNonBlocking('interactions', interaction.id, data, { merge: true });
         toast({
           title: 'Interacción Actualizada',
           description: `Se ha actualizado la interacción.`,
         });
     } else {
-        const interactionCollectionRef = collection(firestore, `users/${user.uid}/interactions`);
-        addDocumentNonBlocking(interactionCollectionRef, {
+                addDocumentNonBlocking('interactions', {
             ...data,
             fecha: new Date().toISOString(),
             interaccion_id: `INT_${Date.now()}`

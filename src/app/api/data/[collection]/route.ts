@@ -1,0 +1,70 @@
+import { auth } from '@/auth';
+import { getDb } from '@/lib/mongodb';
+import { NextRequest, NextResponse } from 'next/server';
+
+const ALLOWED_COLLECTIONS = new Set([
+  'areas', 'hormones', 'variables', 'events', 'transactions',
+  'interactions', 'relations', 'accounts', 'debts', 'skills',
+  'systems', 'habits', 'milestones', 'protocols', 'states',
+  'impactMatrix', 'notifications', 'computed_global_state',
+  'computed_areas', 'computed_hormones', 'computed_daily_score',
+  'playerProfile', 'settings', 'chatHistory', 'dashboardConfig',
+]);
+
+async function getUserId(): Promise<string | null> {
+  const session = await auth();
+  return session?.user?.id ?? null;
+}
+
+type Params = { params: Promise<{ collection: string }> };
+
+export async function GET(req: NextRequest, { params }: Params) {
+  const { collection: col } = await params;
+  if (!ALLOWED_COLLECTIONS.has(col)) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
+
+  const userId = await getUserId();
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const { searchParams } = req.nextUrl;
+  const docId = searchParams.get('docId');
+  const limitVal = Math.min(parseInt(searchParams.get('limit') ?? '1000'), 1000);
+  const orderByField = searchParams.get('orderBy');
+  const direction = searchParams.get('direction') === 'asc' ? 1 : -1;
+
+  const db = await getDb();
+
+  if (docId) {
+    const doc = await db.collection(col).findOne({ userId, _id: docId as any });
+    if (!doc) return NextResponse.json(null);
+    const { _id, ...rest } = doc;
+    return NextResponse.json({ ...rest, id: _id.toString() });
+  }
+
+  let cursor = db.collection(col).find({ userId });
+  if (orderByField) cursor = cursor.sort({ [orderByField]: direction });
+  cursor = cursor.limit(limitVal);
+  const docs = await cursor.toArray();
+  const result = docs.map(({ _id, ...rest }) => ({ ...rest, id: _id.toString() }));
+  return NextResponse.json(result);
+}
+
+export async function POST(req: NextRequest, { params }: Params) {
+  const { collection: col } = await params;
+  if (!ALLOWED_COLLECTIONS.has(col)) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
+
+  const userId = await getUserId();
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const body = await req.json();
+  const db = await getDb();
+  const result = await db.collection(col).insertOne({
+    ...body,
+    userId,
+    createdAt: body.createdAt ?? new Date().toISOString(),
+  });
+  return NextResponse.json({ id: result.insertedId.toString() }, { status: 201 });
+}

@@ -2,8 +2,6 @@
 
 import { useMemo } from 'react';
 import { useUserData } from '@/hooks/use-user-data';
-import { useFirestore, useUser, addDocumentNonBlocking } from '@/firebase';
-import { collection } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import AreaPageSkeleton from '@/components/app/area-page-skeleton';
 import NavigationReady from '@/components/app/navigation-ready';
@@ -17,7 +15,8 @@ import AreaDetailPanel from '@/components/app/area-detail-panel';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
-
+import { useUser } from '@/hooks/use-session-user';
+import { addDocumentNonBlocking } from '@/lib/api-writes';
 const QUICK_ACTIONS = [
   {
     var_id: 'SKILL_PRACTICE', label: 'Práctica', icon: Wrench,
@@ -49,8 +48,7 @@ const STUDY_VAR_IDS = QUICK_ACTIONS.map(a => a.var_id);
 
 export default function StudiesPage() {
   const { data: userData, isLoading } = useUserData();
-  const { user } = useUser();
-  const firestore = useFirestore();
+  const { user, uid } = useUser();
   const { toast } = useToast();
 
   const areaScore = useMemo(
@@ -93,8 +91,8 @@ export default function StudiesPage() {
   );
 
   const log = (action: typeof QUICK_ACTIONS[number]) => {
-    if (!user || !firestore) return;
-    addDocumentNonBlocking(collection(firestore, `users/${user.uid}/events`), {
+    if (!uid) return;
+    addDocumentNonBlocking('events', {
       fecha: new Date().toISOString(),
       evento_id: `EVT_STUDY_${Date.now()}`,
       var_id: action.var_id,

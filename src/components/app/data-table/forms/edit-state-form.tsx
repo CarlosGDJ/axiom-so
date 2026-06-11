@@ -16,8 +16,6 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useUser, setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
-import { doc, collection } from 'firebase/firestore';
 import { State } from '@/lib/types';
 import {
   Select,
@@ -26,6 +24,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useUser } from '@/hooks/use-session-user';
+import { setDocumentNonBlocking } from '@/lib/api-writes';
 
 const formSchema = z.object({
   estado_id: z.enum(['OK', 'RIESGO', 'CRITICO']),
@@ -42,9 +42,7 @@ interface EditStateFormProps {
 }
 
 export default function EditStateForm({ entity: state, closeDialog }: EditStateFormProps) {
-  const { toast } = useToast();
-  const firestore = useFirestore();
-  const { user } = useUser();
+  const { toast } = useToast();  const { user, uid } = useUser();
   const isEditMode = !!state;
 
   const form = useForm<EditStateFormValues>({
@@ -60,11 +58,10 @@ export default function EditStateForm({ entity: state, closeDialog }: EditStateF
   });
 
   async function onSubmit(data: EditStateFormValues) {
-    if (!user || !firestore) return;
+    if (!uid) return;
 
     // For states, the ID is one of the enum values, so we use it as the document ID
-    const docRef = doc(collection(firestore, `users/${user.uid}/states`), data.estado_id);
-    setDocumentNonBlocking(docRef, data, { merge: true });
+    setDocumentNonBlocking('states', data.estado_id, data, { merge: true });
     toast({
         title: `Estado '${data.estado_id}' Actualizado`,
         description: `Las reglas para el estado ${data.estado_id} han sido guardadas.`,

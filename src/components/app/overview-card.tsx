@@ -11,12 +11,11 @@ import {
 import { useMemo } from 'react';
 import type { OverallState, UserData } from '@/lib/types';
 import { Button } from '../ui/button';
-import { useFirestore, useUser, addDocumentNonBlocking } from '@/firebase';
-import { collection } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import Link from 'next/link';
-
+import { useUser } from '@/hooks/use-session-user';
+import { addDocumentNonBlocking } from '@/lib/api-writes';
 const stateConfig = {
   OK: {
     label: 'ESTABLE',
@@ -71,13 +70,12 @@ function VelocityBadge({ velocity }: { velocity: UserData['kpis']['scoreVelocity
 
 export default function OverviewCard({ overallState, dominantVariables = [], onActivateProtocol, userData }: OverviewCardProps) {
   const config = stateConfig[overallState || 'OK'];
-  const { user } = useUser();
-  const firestore = useFirestore();
+  const { user, uid } = useUser();
   const { toast } = useToast();
 
   const logQuickAction = (varId: string, label: string, context: string, intensidad = 5) => {
-    if (!user || !firestore) return;
-    addDocumentNonBlocking(collection(firestore, `users/${user.uid}/events`), {
+    if (!uid) return;
+    addDocumentNonBlocking('events', {
       fecha: new Date().toISOString(),
       evento_id: `EVT_QUICK_${Date.now()}`,
       var_id: varId,

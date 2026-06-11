@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
-import { collection, doc, query, where, writeBatch, serverTimestamp, orderBy, limit } from 'firebase/firestore';
+import { useUser } from '@/hooks/use-session-user';
+import { useCollection, useDoc } from '@/hooks/use-mongo-collection';
 import {
   Area,
   Hormone,
@@ -423,61 +423,29 @@ export interface WriterPrefetch {
 }
 
 export function useComputedDataWriter(ext?: WriterPrefetch) {
-  const { user } = useUser();
-  const firestore = useFirestore();
+  const { uid } = useUser();
+  const active = !!uid && !ext; // Only fetch when ext is NOT provided
 
-  // When ext is provided these refs resolve to null → hooks become no-ops,
-  // eliminating 14 duplicate Firestore listeners.
-  const playerProfileRef = useMemoFirebase(() => (!ext && user) ? doc(firestore, `users/${user.uid}/playerProfile/main-profile`) : null, [user, firestore, !!ext]);
-  const { data: _playerProfile } = useDoc<PlayerProfile>(playerProfileRef);
+  // Fallback SWR listeners — only active when writerPrefetch is not provided by the dashboard
+  const { data: _playerProfile }      = useDoc<PlayerProfile>(active ? 'playerProfile' : null, active ? 'main-profile' : null);
+  const { data: _areas }              = useCollection<Area>(active ? 'areas' : null);
+  const { data: _hormones }           = useCollection<Hormone>(active ? 'hormones' : null);
+  const { data: _impactMatrix }       = useCollection<ImpactMatrix>(active ? 'impactMatrix' : null);
+  const { data: _variables }          = useCollection<Variable>(active ? 'variables' : null);
+  const { data: _events }             = useCollection<Event>(active ? 'events' : null, { orderBy: 'fecha', direction: 'desc', limit: 300 });
+  const { data: _interactions }       = useCollection<Interaction>(active ? 'interactions' : null, { orderBy: 'fecha', direction: 'desc', limit: 150 });
+  const { data: _relations }          = useCollection<Relation>(active ? 'relations' : null);
+  const { data: _transactions }       = useCollection<Transaction>(active ? 'transactions' : null, { orderBy: 'fecha', direction: 'desc', limit: 300 });
+  const { data: _protocols }          = useCollection<Protocol>(active ? 'protocols' : null);
+  const { data: _milestones }         = useCollection<Milestone>(active ? 'milestones' : null);
+  const { data: _calibrationScores }  = useCollection<ComputedDailyScore>(active ? 'computed_daily_score' : null, { orderBy: 'fecha', direction: 'desc', limit: 50 });
+  const { data: _lastGlobalState }    = useDoc<ComputedGlobalState>(active ? 'computed_global_state' : null, active ? 'latest' : null);
 
-  const areasRef = useMemoFirebase(() => (!ext && user) ? collection(firestore, `users/${user.uid}/areas`) : null, [user, firestore, !!ext]);
-  const { data: _areas } = useCollection<Area>(areasRef);
+  // These two are unique to the writer — always fetch them (not in writerPrefetch)
+  const { data: calibrationMeta } = useDoc<DashboardConfig>(uid ? 'dashboardConfig' : null, uid ? 'bio_auto_calibration' : null);
+  const { data: modelFlags }      = useDoc<DashboardConfig>(uid ? 'dashboardConfig' : null, uid ? 'model_flags' : null);
 
-  const hormonesRef = useMemoFirebase(() => (!ext && user) ? collection(firestore, `users/${user.uid}/hormones`) : null, [user, firestore, !!ext]);
-  const { data: _hormones } = useCollection<Hormone>(hormonesRef);
-
-  const impactMatrixRef = useMemoFirebase(() => (!ext && user) ? collection(firestore, `users/${user.uid}/impactMatrix`) : null, [user, firestore, !!ext]);
-  const { data: _impactMatrix } = useCollection<ImpactMatrix>(impactMatrixRef);
-
-  const variablesRef = useMemoFirebase(() => (!ext && user) ? collection(firestore, `users/${user.uid}/variables`) : null, [user, firestore, !!ext]);
-  const { data: _variables } = useCollection<Variable>(variablesRef);
-
-  const eventsQuery = useMemoFirebase(() => (!ext && user) ? query(collection(firestore, `users/${user.uid}/events`), where('fecha', '>=', subDays(new Date(), 7).toISOString())) : null, [user, firestore, !!ext]);
-  const { data: _events } = useCollection<Event>(eventsQuery);
-
-  const interactionsQuery = useMemoFirebase(() => (!ext && user) ? query(collection(firestore, `users/${user.uid}/interactions`), where('fecha', '>=', subDays(new Date(), 7).toISOString())) : null, [user, firestore, !!ext]);
-  const { data: _interactions } = useCollection<Interaction>(interactionsQuery);
-
-  const relationsRef = useMemoFirebase(() => (!ext && user) ? collection(firestore, `users/${user.uid}/relations`) : null, [user, firestore, !!ext]);
-  const { data: _relations } = useCollection<Relation>(relationsRef);
-
-  const transactionsQuery = useMemoFirebase(() => (!ext && user) ? query(collection(firestore, `users/${user.uid}/transactions`), where('fecha', '>=', subDays(new Date(), 7).toISOString())) : null, [user, firestore, !!ext]);
-  const { data: _transactions } = useCollection<Transaction>(transactionsQuery);
-
-  const historicalEventsQuery = useMemoFirebase(() => (!ext && user) ? query(collection(firestore, `users/${user.uid}/events`), where('fecha', '>=', subDays(new Date(), 60).toISOString())) : null, [user, firestore, !!ext]);
-  const { data: _historicalEvents } = useCollection<Event>(historicalEventsQuery);
-
-  const protocolsRef = useMemoFirebase(() => (!ext && user) ? collection(firestore, `users/${user.uid}/protocols`) : null, [user, firestore, !!ext]);
-  const { data: _protocols } = useCollection<Protocol>(protocolsRef);
-
-  const milestonesRef = useMemoFirebase(() => (!ext && user) ? collection(firestore, `users/${user.uid}/milestones`) : null, [user, firestore, !!ext]);
-  const { data: _milestones } = useCollection<Milestone>(milestonesRef);
-
-  const calibrationScoresQuery = useMemoFirebase(() => (!ext && user) ? query(collection(firestore, `users/${user.uid}/computed_daily_score`), orderBy('fecha', 'desc'), limit(50)) : null, [user, firestore, !!ext]);
-  const { data: _calibrationScores } = useCollection<ComputedDailyScore>(calibrationScoresQuery);
-
-  const globalStateRef = useMemoFirebase(() => (!ext && user) ? doc(firestore, `users/${user.uid}/computed_global_state/latest`) : null, [user, firestore, !!ext]);
-  const { data: _lastGlobalState } = useDoc<ComputedGlobalState>(globalStateRef);
-
-  // These two are unique to the writer — always fetch them.
-  const calibrationMetaRef = useMemoFirebase(() => user ? doc(firestore, `users/${user.uid}/dashboardConfig/bio_auto_calibration`) : null, [user, firestore]);
-  const { data: calibrationMeta } = useDoc<DashboardConfig>(calibrationMetaRef);
-
-  const modelFlagsRef = useMemoFirebase(() => user ? doc(firestore, `users/${user.uid}/dashboardConfig/model_flags`) : null, [user, firestore]);
-  const { data: modelFlags } = useDoc<DashboardConfig>(modelFlagsRef);
-
-  // Resolve: use pre-fetched data when available, otherwise fall back to own listeners.
+  // Resolve: use pre-fetched data when available, otherwise fall back to own SWR listeners.
   const cutoff7d  = subDays(new Date(), 7).toISOString();
   const cutoff60d = subDays(new Date(), 60).toISOString();
   const playerProfile    = ext?.playerProfile  ?? _playerProfile;
@@ -485,11 +453,11 @@ export function useComputedDataWriter(ext?: WriterPrefetch) {
   const hormones         = ext?.hormones       ?? _hormones       ?? [];
   const impactMatrix     = ext?.impactMatrix   ?? _impactMatrix   ?? [];
   const variables        = ext?.variables      ?? _variables      ?? [];
-  const events           = ext ? ext.allEvents.filter(e => e.fecha >= cutoff7d)           : (_events           ?? []);
-  const interactions     = ext ? ext.allInteractions.filter(i => i.fecha >= cutoff7d)     : (_interactions     ?? []);
+  const events           = ext ? ext.allEvents.filter(e => e.fecha >= cutoff7d)           : ((_events           ?? []).filter(e => e.fecha >= cutoff7d));
+  const interactions     = ext ? ext.allInteractions.filter(i => i.fecha >= cutoff7d)     : ((_interactions     ?? []).filter(i => i.fecha >= cutoff7d));
   const relations        = ext?.relations      ?? _relations      ?? [];
-  const transactions     = ext ? ext.allTransactions.filter(t => t.fecha >= cutoff7d)     : (_transactions     ?? []);
-  const historicalEvents = ext ? ext.allEvents.filter(e => e.fecha >= cutoff60d)          : (_historicalEvents ?? []);
+  const transactions     = ext ? ext.allTransactions.filter(t => t.fecha >= cutoff7d)     : ((_transactions     ?? []).filter(t => t.fecha >= cutoff7d));
+  const historicalEvents = ext ? ext.allEvents.filter(e => e.fecha >= cutoff60d)          : ((_events           ?? []).filter(e => e.fecha >= cutoff60d));
   const protocols        = ext?.protocols      ?? _protocols      ?? [];
   const milestones       = ext?.milestones     ?? _milestones     ?? [];
   const calibrationScores = ext?.computedDailyScores ?? _calibrationScores ?? [];
@@ -575,7 +543,7 @@ export function useComputedDataWriter(ext?: WriterPrefetch) {
   );
 
   useEffect(() => {
-    if (!user || !firestore || !playerProfile || !areas || !hormones || !impactMatrix || !variables) {
+    if (!uid || !playerProfile || !areas || !hormones || !impactMatrix || !variables) {
       return;
     }
 
@@ -713,7 +681,8 @@ export function useComputedDataWriter(ext?: WriterPrefetch) {
       if (rank > maxToleranceRank) { maxToleranceRank = rank; maxToleranceVar = varId; }
     });
 
-    const batch = writeBatch(firestore);
+    // Accumulated writes — sent as a batch to /api/data/computed at the end
+    const writes: Array<{ collection: string; docId: string; data: Record<string, unknown> }> = [];
 
     const statsValues: Record<string, number> = {
       dopamina: 50,
@@ -801,11 +770,11 @@ export function useComputedDataWriter(ext?: WriterPrefetch) {
         statsValues[statKey] = finalLevel;
       }
 
-      batch.set(doc(firestore, `users/${user.uid}/computed_hormones`, hId), {
+      writes.push({ collection: 'computed_hormones', docId: hId, data: {
         hormone_id: hId,
         current_level: finalLevel,
         delta_24h: totalEffect,
-      });
+      } });
     });
 
     const s = statsValues;
@@ -1976,7 +1945,7 @@ export function useComputedDataWriter(ext?: WriterPrefetch) {
           ...(pkExerciseFinal > 0 ? [`PK_EXERCISE_BOOST:${pkExerciseFinal.toFixed(1)}`] : []),
         ],
       },
-      updatedAt: serverTimestamp() as any,
+      updatedAt: new Date().toISOString(),
       rpg_stats: s as any,
       is_locked,
       lock_reason,
@@ -1987,7 +1956,7 @@ export function useComputedDataWriter(ext?: WriterPrefetch) {
       data_quality: clinicalV2?.data_quality ?? null,
     };
 
-    batch.set(doc(firestore, `users/${user.uid}/computed_global_state/latest`), globalStateDoc);
+    writes.push({ collection: 'computed_global_state', docId: 'latest', data: globalStateDoc as unknown as Record<string, unknown> });
 
     const lastCalibrationAtRaw = calibrationMeta?.value ? (() => {
       try { return JSON.parse(calibrationMeta.value).last_calibrated_at as string | undefined; } catch { return undefined; }
@@ -1996,25 +1965,23 @@ export function useComputedDataWriter(ext?: WriterPrefetch) {
     const canPersistCalibration = calibration.transitions >= MIN_CALIBRATION_TRANSITIONS && (now.getTime() - lastCalibrationAt >= AUTO_CALIBRATION_INTERVAL_MS);
 
     if (canPersistCalibration) {
-      const profileRef = doc(firestore, `users/${user.uid}/playerProfile/main-profile`);
-      batch.set(profileRef, {
+      writes.push({ collection: 'playerProfile', docId: 'main-profile', data: {
         sensitivity_stress: sensitivity.stress,
         sensitivity_dopamine: sensitivity.dopamine,
         sensitivity_sleep: sensitivity.sleep,
         sensitivity_emotional: sensitivity.emotional,
         sensitivity_environmental: sensitivity.environmental,
         sensitivity_pressure: sensitivity.pressure,
-      }, { merge: true });
+      } });
 
-      const calibrationMetaRefWrite = doc(firestore, `users/${user.uid}/dashboardConfig`, 'bio_auto_calibration');
-      batch.set(calibrationMetaRefWrite, {
+      writes.push({ collection: 'dashboardConfig', docId: 'bio_auto_calibration', data: {
         key: 'bio_auto_calibration',
         value: JSON.stringify({
           last_calibrated_at: now.toISOString(),
           confidence: calibration.confidence,
           transitions: calibration.transitions,
         }),
-      }, { merge: true });
+      } });
     }
 
     areas.forEach(area => {
@@ -2029,32 +1996,35 @@ export function useComputedDataWriter(ext?: WriterPrefetch) {
         globalState: nextState,
       });
 
-      batch.set(doc(firestore, `users/${user.uid}/computed_areas`, area.area_id), {
+      writes.push({ collection: 'computed_areas', docId: area.area_id, data: {
         id: area.area_id,
         area_id: area.area_id,
         score_7d: areaCalc.score,
         estado: areaCalc.state,
-      });
+      } });
     });
 
     const todayStr = format(now, 'yyyy-MM-dd');
-    batch.set(doc(firestore, `users/${user.uid}/computed_daily_score`, todayStr), {
+    writes.push({ collection: 'computed_daily_score', docId: todayStr, data: {
       fecha: todayStr,
       score_total: player_score,
-    });
+    } });
 
-    // Mark as processed BEFORE the async commit so any listener that fires
-    // during the round-trip finds the signature already consumed and bails out.
+    // Mark as processed BEFORE the async write so any re-render during the round-trip
+    // finds the signature already consumed and bails out.
     lastProcessedSignature.current = currentDataSignature;
     lastWriteTime.current = now.getTime();
 
-    batch.commit().catch(err => {
+    fetch('/api/data/computed', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ writes }),
+    }).catch(err => {
       console.error('Axiom Core: write failed, will retry on next data change.', err);
       lastProcessedSignature.current = null; // reset so next genuine change retries
     });
   }, [
-    user?.uid,
-    firestore,
+    uid,
     playerProfileSig,
     areasSig,
     hormonesSig,

@@ -16,8 +16,6 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useUser, setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
-import { doc, collection } from 'firebase/firestore';
 import { Habit, System, Variable } from '@/lib/types';
 import {
   Select,
@@ -28,7 +26,8 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-
+import { useUser } from '@/hooks/use-session-user';
+import { addDocumentNonBlocking, setDocumentNonBlocking } from '@/lib/api-writes';
 const formSchema = z.object({
   habito_id: z.string().optional(),
   sistema_id: z.string({ required_error: 'Por favor, selecciona un sistema.' }),
@@ -49,9 +48,7 @@ interface EditHabitFormProps {
 }
 
 export default function EditHabitForm({ entity: habit, closeDialog, systems, variables }: EditHabitFormProps) {
-  const { toast } = useToast();
-  const firestore = useFirestore();
-  const { user } = useUser();
+  const { toast } = useToast();  const { user, uid } = useUser();
   const isEditMode = !!habit;
 
   const form = useForm<EditHabitFormValues>({
@@ -67,11 +64,10 @@ export default function EditHabitForm({ entity: habit, closeDialog, systems, var
   });
 
   async function onSubmit(data: EditHabitFormValues) {
-    if (!user || !firestore) return;
+    if (!uid) return;
 
     if (isEditMode) {
-      const docRef = doc(firestore, `users/${user.uid}/habits`, habit.id);
-      setDocumentNonBlocking(docRef, data, { merge: true });
+            setDocumentNonBlocking('habits', habit.id, data, { merge: true });
        toast({
         title: 'Hábito Actualizado',
         description: `El hito ha sido actualizado.`,
@@ -81,8 +77,7 @@ export default function EditHabitForm({ entity: habit, closeDialog, systems, var
             ...data,
             habito_id: `HB_${Date.now()}`
         }
-        const collectionRef = collection(firestore, `users/${user.uid}/habits`);
-        addDocumentNonBlocking(collectionRef, finalData);
+                addDocumentNonBlocking('habits', finalData);
         toast({
             title: 'Hábito Creado',
             description: `El hábito ha sido creado.`,

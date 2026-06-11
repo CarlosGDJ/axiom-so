@@ -16,8 +16,6 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useUser, setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
-import { doc, collection } from 'firebase/firestore';
 import { Area, Skill } from '@/lib/types';
 import {
   Select,
@@ -26,6 +24,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useUser } from '@/hooks/use-session-user';
+import { addDocumentNonBlocking, setDocumentNonBlocking } from '@/lib/api-writes';
 
 const formSchema = z.object({
   habilidad_id: z.string().optional(),
@@ -46,9 +46,7 @@ interface EditSkillFormProps {
 }
 
 export default function EditSkillForm({ entity: skill, closeDialog, areas }: EditSkillFormProps) {
-  const { toast } = useToast();
-  const firestore = useFirestore();
-  const { user } = useUser();
+  const { toast } = useToast();  const { user, uid } = useUser();
   const isEditMode = !!skill;
 
   const form = useForm<EditSkillFormValues>({
@@ -64,21 +62,19 @@ export default function EditSkillForm({ entity: skill, closeDialog, areas }: Edi
   });
 
   async function onSubmit(data: EditSkillFormValues) {
-    if (!user || !firestore) return;
+    if (!uid) return;
     
     const habilidadId = isEditMode ? skill.habilidad_id : `SKILL_${Date.now()}`;
     const finalData = { ...data, habilidad_id: habilidadId };
 
     if (isEditMode) {
-      const docRef = doc(firestore, `users/${user.uid}/skills`, skill.id);
-      setDocumentNonBlocking(docRef, data, { merge: true });
+            setDocumentNonBlocking('skills', skill.id, data, { merge: true });
       toast({
         title: 'Habilidad Actualizada',
         description: `La habilidad ${data.nombre} ha sido actualizada.`,
       });
     } else {
-      const collectionRef = collection(firestore, `users/${user.uid}/skills`);
-      addDocumentNonBlocking(collectionRef, finalData);
+            addDocumentNonBlocking('skills', finalData);
        toast({
         title: 'Habilidad Creada',
         description: `La habilidad ${data.nombre} ha sido creada.`,

@@ -16,8 +16,6 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useUser, setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
-import { doc, collection } from 'firebase/firestore';
 import { Relation } from '@/lib/types';
 import {
   Select,
@@ -27,7 +25,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-
+import { useUser } from '@/hooks/use-session-user';
+import { addDocumentNonBlocking, setDocumentNonBlocking } from '@/lib/api-writes';
 const formSchema = z.object({
   persona_id: z.string().optional(),
   nombre: z.string().min(2, 'El nombre es demasiado corto.'),
@@ -45,9 +44,7 @@ interface EditRelationFormProps {
 }
 
 export default function EditRelationForm({ entity: relation, closeDialog }: EditRelationFormProps) {
-  const { toast } = useToast();
-  const firestore = useFirestore();
-  const { user } = useUser();
+  const { toast } = useToast();  const { user, uid } = useUser();
   const isEditMode = !!relation;
 
   const form = useForm<EditRelationFormValues>({
@@ -64,21 +61,19 @@ export default function EditRelationForm({ entity: relation, closeDialog }: Edit
   });
 
   async function onSubmit(data: EditRelationFormValues) {
-    if (!user || !firestore) return;
+    if (!uid) return;
     
     const personaId = isEditMode ? relation.persona_id : `REL_${data.nombre.toUpperCase().replace(/\s/g, '_').substring(0,5)}_${Date.now()}`;
     const finalData = { ...data, persona_id: personaId };
 
     if (isEditMode) {
-      const docRef = doc(firestore, `users/${user.uid}/relations`, relation.id);
-      setDocumentNonBlocking(docRef, data, { merge: true });
+            setDocumentNonBlocking('relations', relation.id, data, { merge: true });
       toast({
         title: 'Relación Actualizada',
         description: `La relación con ${data.nombre} ha sido actualizada.`,
       });
     } else {
-      const collectionRef = collection(firestore, `users/${user.uid}/relations`);
-      addDocumentNonBlocking(collectionRef, finalData);
+            addDocumentNonBlocking('relations', finalData);
       toast({
         title: 'Relación Creada',
         description: `La relación con ${data.nombre} ha sido creada.`,

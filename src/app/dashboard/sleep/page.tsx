@@ -2,8 +2,6 @@
 
 import { useMemo, useState } from 'react';
 import { useUserData } from '@/hooks/use-user-data';
-import { useFirestore, useUser, addDocumentNonBlocking } from '@/firebase';
-import { collection } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import AreaPageSkeleton from '@/components/app/area-page-skeleton';
 import NavigationReady from '@/components/app/navigation-ready';
@@ -18,7 +16,8 @@ import AreaDetailPanel from '@/components/app/area-detail-panel';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
-
+import { useUser } from '@/hooks/use-session-user';
+import { addDocumentNonBlocking } from '@/lib/api-writes';
 const SLEEP_OPTIONS = [
   {
     var_id: 'SUEÑO_PROF',
@@ -71,8 +70,7 @@ const SLEEP_VAR_IDS = ['SUEÑO_PROF', 'SUEÑO_BAJO', 'SIESTA'];
 
 export default function SleepPage() {
   const { data: userData, isLoading } = useUserData();
-  const { user } = useUser();
-  const firestore = useFirestore();
+  const { user, uid } = useUser();
   const { toast } = useToast();
   const [sleepHours, setSleepHours] = useState(7);
 
@@ -107,8 +105,8 @@ export default function SleepPage() {
   }, [recentSleep]);
 
   const logSleep = (opt: typeof SLEEP_OPTIONS[number]) => {
-    if (!user || !firestore) return;
-    addDocumentNonBlocking(collection(firestore, `users/${user.uid}/events`), {
+    if (!uid) return;
+    addDocumentNonBlocking('events', {
       fecha: new Date().toISOString(),
       evento_id: `EVT_SLEEP_${Date.now()}`,
       var_id: opt.var_id,
@@ -127,8 +125,8 @@ export default function SleepPage() {
   };
 
   const logSiesta = () => {
-    if (!user || !firestore) return;
-    addDocumentNonBlocking(collection(firestore, `users/${user.uid}/events`), {
+    if (!uid) return;
+    addDocumentNonBlocking('events', {
       fecha: new Date().toISOString(),
       evento_id: `EVT_SIESTA_${Date.now()}`,
       var_id: 'SIESTA',

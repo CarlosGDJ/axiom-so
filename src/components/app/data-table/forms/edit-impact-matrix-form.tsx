@@ -16,8 +16,6 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useUser, setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
-import { doc, collection } from 'firebase/firestore';
 import { ImpactMatrix, Variable, Hormone } from '@/lib/types';
 import {
   Select,
@@ -26,6 +24,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useUser } from '@/hooks/use-session-user';
+import { addDocumentNonBlocking, setDocumentNonBlocking } from '@/lib/api-writes';
 
 const formSchema = z.object({
   matrix_id: z.string().optional(),
@@ -45,9 +45,7 @@ interface EditImpactMatrixFormProps {
 }
 
 export default function EditImpactMatrixForm({ entity, closeDialog, variables, hormones }: EditImpactMatrixFormProps) {
-  const { toast } = useToast();
-  const firestore = useFirestore();
-  const { user } = useUser();
+  const { toast } = useToast();  const { user, uid } = useUser();
   const isEditMode = !!entity;
 
   const form = useForm<EditImpactMatrixFormValues>({
@@ -61,11 +59,10 @@ export default function EditImpactMatrixForm({ entity, closeDialog, variables, h
   });
 
   async function onSubmit(data: EditImpactMatrixFormValues) {
-    if (!user || !firestore) return;
+    if (!uid) return;
 
     if (isEditMode) {
-      const docRef = doc(firestore, `users/${user.uid}/impactMatrix`, entity.id);
-      setDocumentNonBlocking(docRef, data, { merge: true });
+            setDocumentNonBlocking('impactMatrix', entity.id, data, { merge: true });
        toast({
         title: 'Impacto Actualizado',
         description: `La conexión ha sido actualizada.`,
@@ -75,8 +72,7 @@ export default function EditImpactMatrixForm({ entity, closeDialog, variables, h
             ...data,
             matrix_id: `IM_${Date.now()}`
         }
-        const collectionRef = collection(firestore, `users/${user.uid}/impactMatrix`);
-        addDocumentNonBlocking(collectionRef, finalData);
+                addDocumentNonBlocking('impactMatrix', finalData);
         toast({
             title: 'Impacto Creado',
             description: `La nueva conexión ha sido creada.`,

@@ -39,8 +39,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useFirestore, useUser, deleteDocumentNonBlocking } from '@/firebase';
-import { doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 
 import EditAreaForm from './forms/edit-area-form';
@@ -60,8 +58,8 @@ import EventLogForm from './forms/edit-event-form';
 import TransactionLogForm from './forms/edit-transaction-form';
 import InteractionLogForm from './forms/edit-interaction-form';
 import type { Area, Skill, System, Variable, Account } from '@/lib/types';
-
-
+import { useUser } from '@/hooks/use-session-user';
+import { deleteDocumentNonBlocking } from '@/lib/api-writes';
 // Define a generic type for our entities that includes an 'id'
 type EntityWithId = { id: string, [key: string]: any };
 
@@ -158,9 +156,7 @@ export function DataTable<TData extends EntityWithId, TValue>({
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [currentEntity, setCurrentEntity] = React.useState<TData | undefined>(undefined);
 
-  const { user } = useUser();
-  const firestore = useFirestore();
-  const { toast } = useToast();
+  const { user, uid } = useUser();  const { toast } = useToast();
 
   const handleEdit = (entity: TData) => {
     setCurrentEntity(entity);
@@ -168,14 +164,13 @@ export function DataTable<TData extends EntityWithId, TValue>({
   };
 
   const handleDelete = (entity: TData) => {
-    if (!user || !firestore || !entityName) return;
+    if (!uid || !entityName) return;
     const collectionName = collectionNameMap[entityName];
     if (!collectionName) {
       toast({ variant: "destructive", title: "Error", description: `No se encontró el nombre de la colección para: ${entityName}` });
       return;
     }
-    const docRef = doc(firestore, `users/${user.uid}/${collectionName}`, entity.id);
-    deleteDocumentNonBlocking(docRef);
+    deleteDocumentNonBlocking(collectionName, entity.id);
     toast({ title: `${entityName} Eliminado`, description: `El ${entityName.toLowerCase()} ha sido eliminado correctamente.` });
   };
   

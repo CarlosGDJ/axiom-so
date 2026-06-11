@@ -2,8 +2,6 @@
 
 import { useMemo } from 'react';
 import { useUserData } from '@/hooks/use-user-data';
-import { useFirestore, useUser, addDocumentNonBlocking } from '@/firebase';
-import { collection } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import AreaPageSkeleton from '@/components/app/area-page-skeleton';
 import NavigationReady from '@/components/app/navigation-ready';
@@ -17,7 +15,8 @@ import Link from 'next/link';
 import AreaDetailPanel from '@/components/app/area-detail-panel';
 import EventHistoryList from '@/components/app/event-history-list';
 import { cn } from '@/lib/utils';
-
+import { useUser } from '@/hooks/use-session-user';
+import { addDocumentNonBlocking } from '@/lib/api-writes';
 const CREATIVE_AREA_IDS = ['CREATIVIDAD', 'DOPAMINA'];
 
 const QUICK_ACTIONS = [
@@ -63,8 +62,7 @@ const CREATIVE_VAR_IDS = QUICK_ACTIONS.map(a => a.var_id);
 
 export default function CreativityPage() {
   const { data: userData, isLoading } = useUserData();
-  const { user } = useUser();
-  const firestore = useFirestore();
+  const { user, uid } = useUser();
   const { toast } = useToast();
 
   const areaScore = useMemo(
@@ -87,8 +85,8 @@ export default function CreativityPage() {
   const streak = useAreaStreak(userData?.events, CREATIVE_VAR_IDS as unknown as string[]);
 
   const log = (action: typeof QUICK_ACTIONS[number]) => {
-    if (!user || !firestore) return;
-    addDocumentNonBlocking(collection(firestore, `users/${user.uid}/events`), {
+    if (!uid) return;
+    addDocumentNonBlocking('events', {
       fecha: new Date().toISOString(),
       evento_id: `EVT_CREAT_${Date.now()}`,
       var_id: action.var_id,

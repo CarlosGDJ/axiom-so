@@ -9,10 +9,10 @@ import type { UserData } from '@/lib/types';
 import type { MorningBriefingOutput } from '@/ai/flows/generate-morning-briefing';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { useFirestore, useUser, addDocumentNonBlocking, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, doc, setDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-
+import { useUser } from '@/hooks/use-session-user';
+import { addDocumentNonBlocking, setDocumentNonBlocking } from '@/lib/api-writes';
+import { useDoc } from '@/hooks/use-mongo-collection';
 interface MorningBriefingProps {
   userData: UserData;
 }
@@ -30,18 +30,13 @@ export default function MorningBriefing({ userData }: MorningBriefingProps) {
   const [checked, setChecked]       = useState<boolean[]>([]);
   const [logged, setLogged]         = useState<boolean[]>([]);
 
-  const { user }    = useUser();
-  const firestore   = useFirestore();
+  const { user, uid } = useUser();
   const { toast }   = useToast();
   const hour        = new Date().getHours();
   const timeCtx     = getTimeContext(hour);
 
   const today = useMemo(() => new Date().toISOString().split('T')[0], []);
-  const briefingDocRef = useMemoFirebase(
-    () => (user && firestore ? doc(firestore, `users/${user.uid}/dailyBriefing`, today) : null),
-    [user, firestore, today],
-  );
-  const { data: cachedBriefing } = useDoc<MorningBriefingOutput>(briefingDocRef);
+  const { data: cachedBriefing } = useDoc<MorningBriefingOutput>('dailyBriefing', uid ? today : null);
 
   useEffect(() => {
     if (cachedBriefing && !hasLoaded) {
@@ -67,8 +62,8 @@ export default function MorningBriefing({ userData }: MorningBriefingProps) {
       setHasLoaded(true);
       setChecked(new Array(result.tacticalSteps.length).fill(false));
       setLogged(new Array(result.tacticalSteps.length).fill(false));
-      if (user && firestore) {
-        setDoc(doc(firestore, `users/${user.uid}/dailyBriefing`, today), result).catch(() => {});
+      if (uid) {
+        setDocumentNonBlocking('dailyBriefing', today, result);
       }
     } catch (error) {
       console.error(error);
@@ -81,8 +76,8 @@ export default function MorningBriefing({ userData }: MorningBriefingProps) {
     setChecked(prev => prev.map((v, idx) => idx === i ? !v : v));
 
   const logStep = (i: number, step: string) => {
-    if (!user || !firestore || logged[i]) return;
-    addDocumentNonBlocking(collection(firestore, `users/${user.uid}/events`), {
+    if (!user || logged[i]) return;
+    addDocumentNonBlocking('events', {
       fecha: new Date().toISOString(),
       evento_id: `EVT_DIRECTIVE_${Date.now()}`,
       var_id: 'MEDITATION',

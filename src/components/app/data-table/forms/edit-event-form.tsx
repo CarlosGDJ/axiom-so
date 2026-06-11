@@ -24,15 +24,13 @@ import {
 import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useUser, addDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
-import { collection, doc } from 'firebase/firestore';
 import { variablePresets } from '@/lib/seed-data';
 import { Switch } from '@/components/ui/switch';
 import { useEffect, useMemo } from 'react';
 import { Sparkles } from 'lucide-react';
 import type { Event, Variable, Milestone } from '@/lib/types';
-
-
+import { useUser } from '@/hooks/use-session-user';
+import { addDocumentNonBlocking, setDocumentNonBlocking } from '@/lib/api-writes';
 const formSchema = z.object({
   var_id: z.string({
     required_error: 'Por favor, selecciona una variable.',
@@ -60,9 +58,7 @@ interface EventLogFormProps {
 }
 
 export default function EventLogForm({ entity: event, variables = variablePresets as Array<Pick<Variable, 'var_id' | 'var_nombre'>>, events = [], milestones, closeDialog, prefill }: EventLogFormProps) {
-  const { toast } = useToast();
-  const firestore = useFirestore();
-  const { user } = useUser();
+  const { toast } = useToast();  const { user, uid } = useUser();
   const isEditMode = !!event;
 
   // Calculate frequencies and sort variables
@@ -126,18 +122,16 @@ export default function EventLogForm({ entity: event, variables = variablePreset
 
 
   async function onSubmit(data: EventFormValues) {
-    if (!user || !firestore) return;
+    if (!uid) return;
 
     if (isEditMode) {
-      const docRef = doc(firestore, `users/${user.uid}/events`, event.id);
-      setDocumentNonBlocking(docRef, data, { merge: true });
+            setDocumentNonBlocking('events', event.id, data, { merge: true });
       toast({
         title: 'Evento Actualizado',
         description: `El evento para ${data.var_id} ha sido actualizado.`,
       });
     } else {
-        const eventCollectionRef = collection(firestore, `users/${user.uid}/events`);
-        addDocumentNonBlocking(eventCollectionRef, {
+                addDocumentNonBlocking('events', {
             ...data,
             fecha: new Date().toISOString(),
             evento_id: `EVT_${Date.now()}` // Simple unique ID

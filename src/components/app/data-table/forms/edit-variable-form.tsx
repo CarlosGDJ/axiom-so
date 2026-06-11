@@ -16,8 +16,6 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useUser, setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
-import { doc, collection } from 'firebase/firestore';
 import { Variable, Area } from '@/lib/types';
 import {
   Select,
@@ -27,7 +25,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-
+import { useUser } from '@/hooks/use-session-user';
+import { addDocumentNonBlocking, setDocumentNonBlocking } from '@/lib/api-writes';
 const formSchema = z.object({
   var_id: z.string().optional(),
   var_nombre: z.string().min(2, 'El nombre es demasiado corto.'),
@@ -52,9 +51,7 @@ interface EditVariableFormProps {
 }
 
 export default function EditVariableForm({ entity: variable, closeDialog, areas }: EditVariableFormProps) {
-  const { toast } = useToast();
-  const firestore = useFirestore();
-  const { user } = useUser();
+  const { toast } = useToast();  const { user, uid } = useUser();
   const isEditMode = !!variable;
 
   const form = useForm<EditVariableFormValues>({
@@ -77,21 +74,19 @@ export default function EditVariableForm({ entity: variable, closeDialog, areas 
   });
 
   async function onSubmit(data: EditVariableFormValues) {
-    if (!user || !firestore) return;
+    if (!uid) return;
     
     const varId = isEditMode ? variable.var_id : `${data.var_nombre.toUpperCase().replace(/\s/g, '_').substring(0,10)}_${Date.now()}`;
     const finalData = { ...data, var_id: varId };
 
     if (isEditMode) {
-      const variableRef = doc(firestore, `users/${user.uid}/variables`, variable.id);
-      setDocumentNonBlocking(variableRef, finalData, { merge: true });
+            setDocumentNonBlocking('variables', variable.id, finalData, { merge: true });
       toast({
         title: 'Variable Actualizada',
         description: `La variable ${data.var_nombre} ha sido actualizada.`,
       });
     } else {
-      const variableCollectionRef = collection(firestore, `users/${user.uid}/variables`);
-      addDocumentNonBlocking(variableCollectionRef, finalData);
+            addDocumentNonBlocking('variables', finalData);
       toast({
         title: 'Variable Creada',
         description: `La variable ${data.var_nombre} ha sido creada.`,

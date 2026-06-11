@@ -2,13 +2,10 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useUser, useFirestore, useDoc, useMemoFirebase, deleteDocumentNonBlocking } from '@/firebase';
-import { doc } from 'firebase/firestore';
 import type { DashboardConfig, PlayerProfile, UserProfile } from '@/lib/types';
 import EditPlayerProfileForm from '@/components/app/data-table/forms/edit-player-profile-form';
 import ProfilePhotoEditor from '@/components/app/profile-photo-editor';
 import { useRouter } from 'next/navigation';
-import { deleteUser, GoogleAuthProvider, reauthenticateWithPopup } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -36,34 +33,21 @@ import { computeProgression } from '@/lib/progression';
 import ProfileProgressionCard from '@/components/app/profile-progression-card';
 import XpTimelineChart from '@/components/app/charts/xp-timeline-chart';
 import ExportPdfButton from '@/components/app/export-pdf-button';
-
+import { useUser } from '@/hooks/use-session-user';
+import { deleteDocumentNonBlocking } from '@/lib/api-writes';
+import { useDoc } from '@/hooks/use-mongo-collection';
+import { signOut } from 'next-auth/react';
 export default function ProfilePage() {
-  const { user, auth } = useUser();
-  const firestore = useFirestore();
+  const { user, uid } = useUser();
   const router = useRouter();
   const { toast } = useToast();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const { data: userData } = useUserData();
 
-  const playerProfileDocRef = useMemoFirebase(
-    () => (user ? doc(firestore, `users/${user.uid}/playerProfile`, 'main-profile') : null),
-    [user, firestore]
-  );
-  
-  const userProfileDocRef = useMemoFirebase(
-    () => (user ? doc(firestore, `users/${user.uid}`) : null),
-    [user, firestore]
-  );
-
-  const { data: playerProfile } = useDoc<PlayerProfile>(playerProfileDocRef);
-  const { data: userProfile } = useDoc<UserProfile>(userProfileDocRef);
-
-  const calibrationDocRef = useMemoFirebase(
-    () => (user ? doc(firestore, `users/${user.uid}/dashboardConfig`, 'bio_auto_calibration') : null),
-    [user, firestore]
-  );
-  const { data: calibrationDoc } = useDoc<DashboardConfig>(calibrationDocRef);
+  const { data: playerProfile } = useDoc<PlayerProfile>('playerProfile', uid ? 'main-profile' : null);
+  const { data: userProfile } = useDoc<UserProfile>('userProfile', uid ? uid : null);
+  const { data: calibrationDoc } = useDoc<DashboardConfig>('dashboardConfig', uid ? 'bio_auto_calibration' : null);
 
   const calibrationInfo = useMemo(() => {
     if (!calibrationDoc?.value) return null;
@@ -197,12 +181,11 @@ export default function ProfilePage() {
   }, [userData, profileStats]);
 
   const handleRecalibrate = async () => {
-    if (!user || !firestore) return;
+    if (!uid) return;
     setIsResetting(true);
     
     try {
-        const profileRef = doc(firestore, `users/${user.uid}/playerProfile`, 'main-profile');
-        deleteDocumentNonBlocking(profileRef);
+                deleteDocumentNonBlocking('playerProfile', 'main-profile');
         
         toast({
             title: "Sistema Reseteado",
@@ -223,42 +206,19 @@ export default function ProfilePage() {
   };
 
   const handleDeleteAccount = async () => {
-    if (!user || !auth) return;
-
+    if (!user) return;
     try {
-        await deleteUser(user);
-        toast({ title: "Cuenta eliminada", description: "Tu cuenta de autenticación ha sido eliminada." });
-        router.push('/login');
+      // TODO: implement DELETE /api/user to purge user data
+      await fetch('/api/user', { method: 'DELETE' });
+      toast({ title: "Cuenta eliminada", description: "Tu cuenta ha sido eliminada." });
+      await signOut({ callbackUrl: '/login' });
     } catch (error: any) {
-        if (error.code === 'auth/requires-recent-login') {
-            toast({
-                variant: 'destructive',
-                title: "Se requiere reautenticación",
-                description: "Por seguridad, debes volver a iniciar sesión antes de eliminar tu cuenta.",
-            });
-            const provider = new GoogleAuthProvider();
-            try {
-                await reauthenticateWithPopup(user, provider);
-                await deleteUser(user);
-                toast({ title: "Cuenta eliminada", description: "Tu cuenta ha sido eliminada con éxito." });
-                await auth.signOut();
-                router.push('/login');
-            } catch (reauthError: any) {
-                console.error("Re-authentication failed:", reauthError);
-                toast({
-                    variant: 'destructive',
-                    title: "Falló la reautenticación",
-                    description: "No se pudo eliminar la cuenta. Por favor, inténtalo de nuevo.",
-                });
-            }
-        } else {
-            console.error("Error deleting user:", error);
-            toast({
-                variant: 'destructive',
-                title: "Error al eliminar la cuenta",
-                description: error.message || "Ocurrió un error inesperado.",
-            });
-        }
+      console.error("Error deleting account:", error);
+      toast({
+        variant: 'destructive',
+        title: "Error al eliminar la cuenta",
+        description: error.message || "Ocurrió un error inesperado.",
+      });
     } finally {
       setIsDeleteDialogOpen(false);
     }
