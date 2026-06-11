@@ -18,6 +18,7 @@ import { mapMbtiToFacets, mapEnneagramToFacets, mapFacetsToBigFive } from '@/lib
 import { getAIOnboardingSetup } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { GdprGate } from '@/components/app/gdpr-gate';
 import type { PlayerProfile, Area } from '@/lib/types';
 
 export default function OnboardingPage() {
@@ -285,6 +286,7 @@ export default function OnboardingPage() {
   );
 
   return (
+    <GdprGate>
     <div className="min-h-screen bg-muted/30 flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-2xl space-y-8">
         <header className="flex flex-col items-center text-center space-y-2">
@@ -371,6 +373,7 @@ export default function OnboardingPage() {
         </Card>
       </div>
     </div>
+    </GdprGate>
   );
 }
 
