@@ -6,7 +6,7 @@ import { useCollection, useDoc } from '@/hooks/use-mongo-collection';
 import { useRouter } from 'next/navigation';
 import { BrainCircuit, Loader2, Sparkles, ChevronRight, ChevronLeft, ShieldCheck, HeartPulse, User, Zap, Activity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -301,7 +301,7 @@ export default function OnboardingPage() {
         </header>
 
         <Card className="shadow-xl border-2">
-            <CardContent className="p-8">
+            <CardContent className="p-8 space-y-8">
                 {step === 1 && (
                     <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
                         <div className="flex items-center gap-3 mb-2"><HeartPulse className="text-primary" /><h2 className="text-xl font-bold">Datos Fisiológicos</h2></div>
@@ -358,18 +358,18 @@ export default function OnboardingPage() {
                         </div>
                     </div>
                 )}
+                <div className="flex justify-between pt-2">
+                    <Button variant="ghost" onClick={handlePrev} disabled={step === 1}><ChevronLeft className="mr-2 h-4 w-4" /> Atrás</Button>
+                    {step < totalSteps ? (
+                        <Button onClick={handleNext} disabled={step === 1 && !physioValid}>Siguiente <ChevronRight className="ml-2 h-4 w-4" /></Button>
+                    ) : (
+                        <div className="flex flex-col items-end gap-1">
+                          <Button onClick={handleCompleteOnboarding} disabled={formData.goals.length === 0}>Finalizar y Calibrar <Sparkles className="ml-2 h-4 w-4" /></Button>
+                          {formData.goals.length === 0 && <p className="text-xs text-muted-foreground">Selecciona al menos un objetivo</p>}
+                        </div>
+                    )}
+                </div>
             </CardContent>
-            <CardFooter className="p-8 pt-0 flex justify-between">
-                <Button variant="ghost" onClick={handlePrev} disabled={step === 1}><ChevronLeft className="mr-2 h-4 w-4" /> Atrás</Button>
-                {step < totalSteps ? (
-                    <Button onClick={handleNext} disabled={step === 1 && !physioValid}>Siguiente <ChevronRight className="ml-2 h-4 w-4" /></Button>
-                ) : (
-                    <div className="flex flex-col items-end gap-1">
-                      <Button onClick={handleCompleteOnboarding} disabled={formData.goals.length === 0}>Finalizar y Calibrar <Sparkles className="ml-2 h-4 w-4" /></Button>
-                      {formData.goals.length === 0 && <p className="text-xs text-muted-foreground">Selecciona al menos un objetivo</p>}
-                    </div>
-                )}
-            </CardFooter>
         </Card>
       </div>
     </div>
