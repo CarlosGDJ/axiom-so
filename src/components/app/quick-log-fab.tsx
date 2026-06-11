@@ -39,11 +39,11 @@ const MOOD_OPTIONS = [
 ] as const;
 
 const SPEED_DIAL_ACTIONS = [
-  { key: 'evento' as ActiveDialog,      label: 'Evento',   icon: Zap,          color: 'bg-primary text-primary-foreground hover:bg-primary/90',                  labelColor: 'bg-primary/10 text-primary border-primary/20' },
-  { key: 'habito' as ActiveDialog,      label: 'Hábito',   icon: CheckCircle2, color: 'bg-green-600 text-white hover:bg-green-700',                              labelColor: 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800' },
-  { key: 'estado' as ActiveDialog,      label: 'Estado',   icon: Smile,        color: 'bg-violet-600 text-white hover:bg-violet-700',                            labelColor: 'bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-900/20 dark:text-violet-400 dark:border-violet-800' },
-  { key: 'transaccion' as ActiveDialog, label: 'Gasto',    icon: DollarSign,   color: 'bg-orange-500 text-white hover:bg-orange-600',                            labelColor: 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-800' },
-  { key: 'social' as ActiveDialog,      label: 'Social',   icon: Users,        color: 'bg-blue-600 text-white hover:bg-blue-700',                                labelColor: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800' },
+  { key: 'evento' as ActiveDialog,      label: 'Evento',   icon: Zap,          color: 'bg-primary text-primary-foreground hover:bg-primary/90',       labelColor: 'bg-popover text-primary border-primary/40' },
+  { key: 'habito' as ActiveDialog,      label: 'Hábito',   icon: CheckCircle2, color: 'bg-green-600 text-white hover:bg-green-700',                   labelColor: 'bg-popover text-green-500 border-green-500/40' },
+  { key: 'estado' as ActiveDialog,      label: 'Estado',   icon: Smile,        color: 'bg-violet-600 text-white hover:bg-violet-700',                 labelColor: 'bg-popover text-violet-500 border-violet-500/40' },
+  { key: 'transaccion' as ActiveDialog, label: 'Gasto',    icon: DollarSign,   color: 'bg-orange-500 text-white hover:bg-orange-600',                 labelColor: 'bg-popover text-orange-500 border-orange-500/40' },
+  { key: 'social' as ActiveDialog,      label: 'Social',   icon: Users,        color: 'bg-blue-600 text-white hover:bg-blue-700',                     labelColor: 'bg-popover text-blue-500 border-blue-500/40' },
 ];
 
 // Variable IDs suggested by time slot (morning/midday/afternoon/evening)
