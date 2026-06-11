@@ -8,7 +8,7 @@ const ALLOWED_COLLECTIONS = new Set([
   'systems', 'habits', 'milestones', 'protocols', 'states',
   'impactMatrix', 'notifications', 'computed_global_state',
   'computed_areas', 'computed_hormones', 'computed_daily_score',
-  'playerProfile', 'settings', 'chatHistory', 'dashboardConfig',
+  'playerProfile', 'settings', 'chatHistory', 'dashboardConfig', 'users',
 ]);
 
 async function getUserId(): Promise<string | null> {
