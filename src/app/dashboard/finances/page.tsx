@@ -729,16 +729,14 @@ export default function FinancesPage() {
             )}
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-                <div className="overflow-x-auto pb-2">
-                    <TabsList className="bg-muted/50 p-1 inline-flex w-auto">
-                        <TabsTrigger value="summary" className="gap-2"><Activity size={14}/> Resumen</TabsTrigger>
-                        <TabsTrigger value="pockets" className="gap-2"><Target size={14}/> Pockets</TabsTrigger>
-                        <TabsTrigger value="income" className="gap-2"><TrendingUp size={14}/> Ingresos</TabsTrigger>
-                        <TabsTrigger value="evolution" className="gap-2"><Zap size={14}/> Evolución</TabsTrigger>
-                        <TabsTrigger value="movements" className="gap-2"><ArrowRightLeft size={14}/> Movimientos</TabsTrigger>
-                        <TabsTrigger value="debt" className="gap-2"><CreditCard size={14}/> Deuda</TabsTrigger>
-                    </TabsList>
-                </div>
+                <TabsList className="bg-muted/50 p-1 flex w-full sm:w-auto sm:inline-flex">
+                    <TabsTrigger value="summary" className="gap-1.5 flex-1 sm:flex-none"><Activity size={14}/><span className="hidden sm:inline">Resumen</span></TabsTrigger>
+                    <TabsTrigger value="pockets" className="gap-1.5 flex-1 sm:flex-none"><Target size={14}/><span className="hidden sm:inline">Pockets</span></TabsTrigger>
+                    <TabsTrigger value="income" className="gap-1.5 flex-1 sm:flex-none"><TrendingUp size={14}/><span className="hidden sm:inline">Ingresos</span></TabsTrigger>
+                    <TabsTrigger value="evolution" className="gap-1.5 flex-1 sm:flex-none"><Zap size={14}/><span className="hidden sm:inline">Evolución</span></TabsTrigger>
+                    <TabsTrigger value="movements" className="gap-1.5 flex-1 sm:flex-none"><ArrowRightLeft size={14}/><span className="hidden sm:inline">Movimientos</span></TabsTrigger>
+                    <TabsTrigger value="debt" className="gap-1.5 flex-1 sm:flex-none"><CreditCard size={14}/><span className="hidden sm:inline">Deuda</span></TabsTrigger>
+                </TabsList>
 
                 {!stats ? (
                     <div className="h-[400px] flex items-center justify-center border-2 border-dashed rounded-xl opacity-50">

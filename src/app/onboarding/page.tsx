@@ -181,7 +181,7 @@ export default function OnboardingPage() {
                 habilidad_id: skillId,
                 nombre: skillRec.nombre,
                 area_id: skillRec.area_id,
-                nivel_actual: 3,
+                nivel_actual: 1,
                 nivel_objetivo: 7,
                 estado: 'Activa',
                 kpi: skillRec.kpi
