@@ -706,6 +706,7 @@ export default function FinancesPage() {
                 </div>
                 <div className="flex items-center gap-2">
                     <Button
+                        data-tour="finances-add"
                         onClick={() => openTransactionDialog()}
                         disabled={!hasAccounts}
                         className="gap-2"
@@ -729,7 +730,7 @@ export default function FinancesPage() {
             )}
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-                <TabsList className="bg-muted/50 p-1 flex w-full sm:w-auto sm:inline-flex">
+                <TabsList data-tour="finances-tabs" className="bg-muted/50 p-1 flex w-full sm:w-auto sm:inline-flex">
                     <TabsTrigger value="summary" className="gap-1.5 flex-1 sm:flex-none"><Activity size={14}/><span className="hidden sm:inline">Resumen</span></TabsTrigger>
                     <TabsTrigger value="pockets" className="gap-1.5 flex-1 sm:flex-none"><Target size={14}/><span className="hidden sm:inline">Pockets</span></TabsTrigger>
                     <TabsTrigger value="income" className="gap-1.5 flex-1 sm:flex-none"><TrendingUp size={14}/><span className="hidden sm:inline">Ingresos</span></TabsTrigger>

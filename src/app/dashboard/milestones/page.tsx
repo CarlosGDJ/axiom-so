@@ -38,15 +38,17 @@ export default function HabitTrackerPage() {
         <p className="text-muted-foreground text-sm">Gestiona tus hábitos diarios y hitos estratégicos para mantener el sistema equilibrado.</p>
       </div>
 
-      <HabitChecklist 
-          habits={habits || []} 
-          events={events || []} 
-          variables={variables || []} 
-      />
+      <div data-tour="milestones-habits">
+        <HabitChecklist
+            habits={habits || []}
+            events={events || []}
+            variables={variables || []}
+        />
+      </div>
 
       <Separator className="my-10" />
 
-      <section className="space-y-6">
+      <section data-tour="milestones-goals" className="space-y-6">
         <div className="flex items-center gap-2">
             <Target className="h-5 w-5 text-primary" />
             <div>

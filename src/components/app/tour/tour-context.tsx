@@ -1,6 +1,7 @@
 'use client';
 
-import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
+import { usePathname } from 'next/navigation';
 
 export interface TourStep {
   target: string;
@@ -9,7 +10,8 @@ export interface TourStep {
   position: 'top' | 'bottom' | 'left' | 'right';
 }
 
-export const TOUR_STEPS: TourStep[] = [
+// ── Dashboard ──────────────────────────────────────────────────────────────
+const DASHBOARD_STEPS: TourStep[] = [
   {
     target: 'hud',
     title: 'HUD de Biomarcadores',
@@ -19,13 +21,13 @@ export const TOUR_STEPS: TourStep[] = [
   {
     target: 'overview',
     title: 'Estado del Sistema',
-    content: 'El motor Axiom calcula tu estado global (ÓPTIMO / OK / RIESGO / CRÍTICO) y detecta las variables dominantes que más te afectan hoy. El panel derecho muestra tu motor de causalidad (KAIROS).',
+    content: 'El motor Axiom calcula tu estado global (ÓPTIMO / OK / RIESGO / CRÍTICO) y detecta las variables dominantes que más te afectan hoy.',
     position: 'bottom',
   },
   {
     target: 'quick-log',
     title: 'Registro Rápido',
-    content: 'Tu herramienta principal. Pulsa "+" para registrar cualquier evento: "dormí 7 horas", "hice ejercicio", "me siento ansioso". Puedes escribir en lenguaje natural — la IA lo interpreta sola.',
+    content: 'Tu herramienta principal. Pulsa "+" para registrar cualquier evento: "dormí 7 horas", "hice ejercicio", "me siento ansioso". La IA lo interpreta sola.',
     position: 'top',
   },
   {
@@ -48,6 +50,98 @@ export const TOUR_STEPS: TourStep[] = [
   },
 ];
 
+// ── Perfil ─────────────────────────────────────────────────────────────────
+const PROFILE_STEPS: TourStep[] = [
+  {
+    target: 'profile-photo',
+    title: 'Foto de perfil',
+    content: 'Personaliza tu avatar con una foto tomada desde la cámara o subida desde tu dispositivo. Se usa en el dashboard y en las notificaciones.',
+    position: 'bottom',
+  },
+  {
+    target: 'profile-params',
+    title: 'Parámetros biológicos',
+    content: 'Configura tu perfil físico y de personalidad. Estos datos calibran el motor de Axiom para que las métricas sean precisas contigo.',
+    position: 'top',
+  },
+  {
+    target: 'profile-calibration',
+    title: 'Calibración automática',
+    content: 'A medida que registras datos, el sistema ajusta tu perfil de sensibilidad automáticamente. Cuantos más eventos registres, más preciso será Axiom.',
+    position: 'top',
+  },
+];
+
+// ── Finanzas ───────────────────────────────────────────────────────────────
+const FINANCE_STEPS: TourStep[] = [
+  {
+    target: 'finances-add',
+    title: 'Registrar movimiento',
+    content: 'Añade ingresos y gastos. Axiom calcula tu flujo de caja, detecta patrones de gasto impulsivo y monitoriza tu salud financiera en tiempo real.',
+    position: 'bottom',
+  },
+  {
+    target: 'finances-tabs',
+    title: 'Módulos de finanzas',
+    content: 'Navega entre Resumen (flujo neto), Pockets (ahorro por objetivo), Ingresos, Evolución temporal, Movimientos y Deuda. Cada sección tiene métricas propias.',
+    position: 'bottom',
+  },
+];
+
+// ── Habit Tracker ──────────────────────────────────────────────────────────
+const MILESTONES_STEPS: TourStep[] = [
+  {
+    target: 'milestones-habits',
+    title: 'Check diario de hábitos',
+    content: 'Marca tus hábitos completados cada día. Cada check suma XP, activa multiplicadores de racha y refuerza las áreas de vida conectadas.',
+    position: 'bottom',
+  },
+  {
+    target: 'milestones-goals',
+    title: 'Objetivos activos',
+    content: 'Los hitos estratégicos te permiten fijar metas concretas vinculadas a tus sistemas y habilidades. Al completarlos, el motor registra el progreso.',
+    position: 'top',
+  },
+];
+
+// ── Áreas de vida (genérico) ───────────────────────────────────────────────
+const AREA_STEPS: TourStep[] = [
+  {
+    target: 'area-header',
+    title: 'Estado del área',
+    content: 'Cada área muestra su puntuación (0-100) y tendencia. Verde = óptimo, amarillo = riesgo, rojo = crítico. El valor se recalcula en tiempo real con cada registro.',
+    position: 'bottom',
+  },
+  {
+    target: 'area-variables',
+    title: 'Variables del área',
+    content: 'Las variables son los factores que Axiom monitoriza en este dominio. Regístralos desde el botón "+" para que el sistema recalcule tu estado.',
+    position: 'top',
+  },
+  {
+    target: 'quick-log',
+    title: 'Registro rápido',
+    content: 'El botón flotante "+" es tu herramienta principal para registrar cualquier dato de esta área. Puedes escribir en lenguaje natural.',
+    position: 'top',
+  },
+];
+
+// ── Mapa pathname → steps ──────────────────────────────────────────────────
+const PAGE_STEPS: { prefix: string; steps: TourStep[] }[] = [
+  { prefix: '/dashboard/profile',     steps: PROFILE_STEPS },
+  { prefix: '/dashboard/finances',    steps: FINANCE_STEPS },
+  { prefix: '/dashboard/milestones',  steps: MILESTONES_STEPS },
+  { prefix: '/dashboard/sleep',       steps: AREA_STEPS },
+  { prefix: '/dashboard/physical',    steps: AREA_STEPS },
+  { prefix: '/dashboard/relations',   steps: AREA_STEPS },
+  { prefix: '/dashboard/dopamine',    steps: AREA_STEPS },
+  { prefix: '/dashboard/creativity',  steps: AREA_STEPS },
+  { prefix: '/dashboard/studies',     steps: AREA_STEPS },
+  { prefix: '/dashboard/purpose',     steps: AREA_STEPS },
+  { prefix: '/dashboard/environment', steps: AREA_STEPS },
+  { prefix: '/dashboard',             steps: DASHBOARD_STEPS },
+];
+
 const STORAGE_KEY = 'axiom-tour-seen-v1';
 
 interface TourContextValue {
@@ -65,21 +159,33 @@ const TourContext = createContext<TourContextValue | null>(null);
 export function TourProvider({ children }: { children: React.ReactNode }) {
   const [isActive, setIsActive] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
+  const pathname = usePathname();
 
+  const steps = useMemo(() => {
+    const match = PAGE_STEPS.find(p => pathname.startsWith(p.prefix));
+    return match?.steps ?? DASHBOARD_STEPS;
+  }, [pathname]);
+
+  // End tour and reset step when navigating to a different page
+  useEffect(() => {
+    setIsActive(false);
+    setCurrentStep(0);
+  }, [pathname]);
+
+  // Auto-start tour on first dashboard visit
   useEffect(() => {
     const forceTour = sessionStorage.getItem('axiom-launch-tour');
     if (forceTour) {
       sessionStorage.removeItem('axiom-launch-tour');
       localStorage.removeItem(STORAGE_KEY);
-      // Wait long enough for the dashboard to fully render on slow mobile connections
       const t = setTimeout(() => setIsActive(true), 2500);
       return () => clearTimeout(t);
     }
-    if (!localStorage.getItem(STORAGE_KEY)) {
+    if (pathname === '/dashboard' && !localStorage.getItem(STORAGE_KEY)) {
       const t = setTimeout(() => setIsActive(true), 2500);
       return () => clearTimeout(t);
     }
-  }, []);
+  }, [pathname]);
 
   const startTour = useCallback(() => {
     setCurrentStep(0);
@@ -87,8 +193,8 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const nextStep = useCallback(() => {
-    setCurrentStep(s => Math.min(TOUR_STEPS.length - 1, s + 1));
-  }, []);
+    setCurrentStep(s => Math.min(steps.length - 1, s + 1));
+  }, [steps.length]);
 
   const prevStep = useCallback(() => {
     setCurrentStep(s => Math.max(0, s - 1));
@@ -97,11 +203,13 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
   const endTour = useCallback(() => {
     setIsActive(false);
     setCurrentStep(0);
-    localStorage.setItem(STORAGE_KEY, 'true');
-  }, []);
+    if (pathname === '/dashboard') {
+      localStorage.setItem(STORAGE_KEY, 'true');
+    }
+  }, [pathname]);
 
   return (
-    <TourContext.Provider value={{ isActive, currentStep, steps: TOUR_STEPS, startTour, nextStep, prevStep, endTour }}>
+    <TourContext.Provider value={{ isActive, currentStep, steps, startTour, nextStep, prevStep, endTour }}>
       {children}
     </TourContext.Provider>
   );

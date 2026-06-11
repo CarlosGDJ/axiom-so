@@ -212,14 +212,16 @@ export function AppHeader() {
                     <AvatarImage src={avatarSrc} alt={user?.name || 'Usuario'} />
                 )}
                 <AvatarFallback>
-                  {user?.name ? user.name.charAt(0) : 'U'}
+                  {user?.name?.charAt(0) ?? user?.email?.charAt(0)?.toUpperCase() ?? 'A'}
                 </AvatarFallback>
               </Avatar>
               <span className="sr-only">Menú de usuario</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuLabel>{user?.name}</DropdownMenuLabel>
+            <DropdownMenuLabel>
+              {userData?.userProfile?.displayName || user?.name || user?.email}
+            </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => router.push('/dashboard/profile')}>Perfil</DropdownMenuItem>
             <DropdownMenuItem>Ajustes</DropdownMenuItem>

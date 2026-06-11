@@ -165,11 +165,11 @@ export default function ProfilePhotoEditor({ userProfile }: ProfilePhotoEditorPr
         <div className="grid grid-cols-2 gap-2">
           {!isCameraOpen && !tempPhoto && (
             <>
-              <Button variant="outline" onClick={startCamera}>
-                <Camera className="mr-2 h-4 w-4" /> Cámara
+              <Button variant="outline" size="sm" onClick={startCamera} className="gap-1.5">
+                <Camera className="h-4 w-4 shrink-0" /><span className="truncate">Cámara</span>
               </Button>
-              <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
-                <Upload className="mr-2 h-4 w-4" /> Subir
+              <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="gap-1.5">
+                <Upload className="h-4 w-4 shrink-0" /><span className="truncate">Subir foto</span>
               </Button>
             </>
           )}

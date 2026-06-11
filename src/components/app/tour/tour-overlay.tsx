@@ -55,27 +55,53 @@ export function TourOverlay() {
     if (!isActive || !step) return;
     const el = document.querySelector(`[data-tour="${step.target}"]`);
     if (!el) {
-      // Element not in DOM (e.g. sidebar collapsed on mobile) — skip or end
       const t = setTimeout(() => {
         if (currentStep < steps.length - 1) nextStep(); else endTour();
       }, 400);
       return () => clearTimeout(t);
     }
-    // Check element is actually visible (not inside a hidden sheet/drawer)
+
     const r = el.getBoundingClientRect();
     if (r.width === 0 && r.height === 0) {
+      // Check if the element is inside the sidebar Sheet (collapsed on mobile)
+      const sidebarPanel = document.querySelector('[data-sidebar="sidebar"]');
+      const isInSidebar = sidebarPanel ? sidebarPanel.contains(el) : false;
+
+      if (isInSidebar) {
+        // Open the sidebar, then re-measure
+        const trigger = document.querySelector('[data-sidebar="trigger"]') as HTMLButtonElement | null;
+        if (trigger) {
+          trigger.click();
+          const t = setTimeout(() => {
+            const r2 = el.getBoundingClientRect();
+            if (r2.width > 0) {
+              el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              setTimeout(() => {
+                const r3 = el.getBoundingClientRect();
+                setRect({ top: r3.top, left: r3.left, width: r3.width, height: r3.height });
+              }, 300);
+            } else {
+              if (currentStep < steps.length - 1) nextStep(); else endTour();
+            }
+          }, 700);
+          return () => clearTimeout(t);
+        }
+      }
+
+      // Not in sidebar or no trigger — skip step
       const t = setTimeout(() => {
         if (currentStep < steps.length - 1) nextStep(); else endTour();
       }, 400);
       return () => clearTimeout(t);
     }
+
     el.scrollIntoView({ behavior: 'smooth', block: 'center' });
     const t = setTimeout(() => {
       const r2 = el.getBoundingClientRect();
       setRect({ top: r2.top, left: r2.left, width: r2.width, height: r2.height });
     }, 350);
     return () => clearTimeout(t);
-  }, [isActive, currentStep, step, nextStep]);
+  }, [isActive, currentStep, step, nextStep, endTour, steps.length]);
 
   useEffect(() => {
     if (!isActive || !step) return;

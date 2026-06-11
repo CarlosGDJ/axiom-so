@@ -250,9 +250,16 @@ export default function ProfilePage() {
               {/* ── XP Timeline ── */}
               {xpChartData.length > 0 && <XpTimelineChart data={xpChartData} />}
 
-              <EditPlayerProfileForm playerProfile={playerProfile} />
+              <Card data-tour="profile-params">
+                <CardHeader>
+                  <CardTitle>Parámetros de perfil</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <EditPlayerProfileForm playerProfile={playerProfile} />
+                </CardContent>
+              </Card>
 
-              <Card>
+              <Card data-tour="profile-calibration">
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between gap-3">
                     <span>Calibración Automática</span>
@@ -373,7 +380,9 @@ export default function ProfilePage() {
 
             </div>
             <div className="lg:col-span-1 space-y-6">
-              <ProfilePhotoEditor userProfile={userProfile} />
+              <div data-tour="profile-photo">
+                <ProfilePhotoEditor userProfile={userProfile} />
+              </div>
               {playerProfile && <PersonalityRadarCard playerProfile={playerProfile} />}
 
               {/* ── Achievements ── */}
