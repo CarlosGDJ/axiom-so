@@ -143,6 +143,10 @@ type ConsentStatus = 'loading' | 'accepted' | 'required';
 
 function localKey(uid: string) { return `axiom_gdpr_${uid}_v${PRIVACY_POLICY_VERSION}`; }
 
+export function clearGdprConsent(uid: string) {
+  localStorage.removeItem(localKey(uid));
+}
+
 export function GdprGate({ children }: { children: React.ReactNode }) {
   const { uid, isUserLoading } = useUser();
   const [status, setStatus] = useState<ConsentStatus>('loading');

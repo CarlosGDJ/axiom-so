@@ -36,6 +36,7 @@ import ExportPdfButton from '@/components/app/export-pdf-button';
 import { useUser } from '@/hooks/use-session-user';
 import { useDoc } from '@/hooks/use-mongo-collection';
 import { signOut } from 'next-auth/react';
+import { clearGdprConsent } from '@/components/app/gdpr-gate';
 export default function ProfilePage() {
   const { user, uid } = useUser();
   const router = useRouter();
@@ -184,8 +185,8 @@ export default function ProfilePage() {
     setIsResetting(true);
     try {
       await fetch('/api/user/reset', { method: 'POST' });
+      clearGdprConsent(uid);
       toast({ title: "Sistema Reseteado", description: "Iniciando proceso de bio-calibración..." });
-      // Hard reload so SWR cache is fully cleared before hitting /onboarding
       window.location.href = '/onboarding';
     } catch (error) {
       toast({ variant: 'destructive', title: "Error", description: "No se pudo reiniciar el perfil." });
@@ -196,8 +197,8 @@ export default function ProfilePage() {
   const handleDeleteAccount = async () => {
     if (!user) return;
     try {
-      // TODO: implement DELETE /api/user to purge user data
       await fetch('/api/user', { method: 'DELETE' });
+      if (uid) clearGdprConsent(uid);
       toast({ title: "Cuenta eliminada", description: "Tu cuenta ha sido eliminada." });
       await signOut({ callbackUrl: '/login' });
     } catch (error: any) {
