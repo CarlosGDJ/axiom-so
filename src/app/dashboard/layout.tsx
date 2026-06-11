@@ -94,9 +94,9 @@ function OnboardingGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isUserLoading || !uid || isProfileLoading || isAreasProbeLoading) return;
     if (profileError || areasProbeError) return;
-    if (localStorage.getItem(onboardingDoneKey(uid)) === 'true') return;
     const hasAnyArea = (areasProbe?.length || 0) > 0;
     if (!playerProfile && !hasAnyArea) {
+      localStorage.removeItem(onboardingDoneKey(uid));
       router.replace('/onboarding');
     } else if (playerProfile || hasAnyArea) {
       localStorage.setItem(onboardingDoneKey(uid), 'true');
