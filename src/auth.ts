@@ -1,18 +1,15 @@
 import NextAuth from 'next-auth';
-import Google from 'next-auth/providers/google';
 import Credentials from 'next-auth/providers/credentials';
 import { MongoDBAdapter } from '@auth/mongodb-adapter';
 import bcrypt from 'bcryptjs';
 import { clientPromise, getDb } from '@/lib/mongodb';
+import { authConfig } from '@/auth.config';
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  ...authConfig,
   adapter: MongoDBAdapter(clientPromise, { databaseName: 'axiom' }),
   providers: [
-    Google({
-      clientId: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      allowDangerousEmailAccountLinking: true,
-    }),
+    ...authConfig.providers,
     Credentials({
       credentials: {
         email: { label: 'Email', type: 'email' },
@@ -34,18 +31,4 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
   ],
-  session: { strategy: 'jwt' },
-  callbacks: {
-    jwt({ token, user }) {
-      if (user?.id) token.userId = user.id;
-      return token;
-    },
-    session({ session, token }) {
-      if (token.userId) session.user.id = token.userId as string;
-      return session;
-    },
-  },
-  pages: {
-    signIn: '/login',
-  },
 });
