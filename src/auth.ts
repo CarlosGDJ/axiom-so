@@ -44,23 +44,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (token.userId) session.user.id = token.userId as string;
       return session;
     },
-    async signIn({ user, account }) {
-      if (account?.provider === 'google' && user.email) {
-        const db = await getDb();
-        await db.collection('users').updateOne(
-          { email: user.email },
-          {
-            $setOnInsert: {
-              createdAt: new Date().toISOString(),
-              displayName: user.name ?? '',
-              photoURL: user.image ?? '',
-            },
-          },
-          { upsert: true }
-        );
-      }
-      return true;
-    },
   },
   pages: {
     signIn: '/login',
