@@ -56,7 +56,7 @@ export default function EditHabitForm({ entity: habit, closeDialog, systems, var
     resolver: zodResolver(formSchema),
     defaultValues: isEditMode ? { ...habit } : {
         nombre: '',
-        sistema_id: systems?.[0]?.sistema_id ?? '',
+        sistema_id: systems?.[0]?.sistema_id ?? '__none__',
         var_id: variables?.[0]?.var_id,
         frecuencia: 'Diaria',
         duracion_min: 10,
@@ -68,15 +68,20 @@ export default function EditHabitForm({ entity: habit, closeDialog, systems, var
   async function onSubmit(data: EditHabitFormValues) {
     if (!uid) return;
 
+    const payload = {
+      ...data,
+      sistema_id: data.sistema_id === '__none__' ? undefined : data.sistema_id,
+    };
+
     if (isEditMode) {
-            setDocumentNonBlocking('habits', habit.id, data, { merge: true });
+            setDocumentNonBlocking('habits', habit.id, payload, { merge: true });
        toast({
         title: 'Hábito Actualizado',
         description: `El hito ha sido actualizado.`,
       });
     } else {
         const finalData = {
-            ...data,
+            ...payload,
             habito_id: `HB_${Date.now()}`
         }
                 addDocumentNonBlocking('habits', finalData);
@@ -116,7 +121,7 @@ export default function EditHabitForm({ entity: habit, closeDialog, systems, var
                 <Select onValueChange={field.onChange} value={field.value ?? ''}>
                   <FormControl><SelectTrigger><SelectValue placeholder="Sin sistema" /></SelectTrigger></FormControl>
                   <SelectContent>
-                    <SelectItem value="">Sin sistema</SelectItem>
+                    <SelectItem value="__none__">Sin sistema</SelectItem>
                     {systems?.map(s => <SelectItem key={s.id} value={s.sistema_id}>{s.objetivo}</SelectItem>)}
                   </SelectContent>
                 </Select>
