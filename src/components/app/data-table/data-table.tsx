@@ -29,6 +29,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { MoreHorizontal, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import {
   DropdownMenu,
@@ -146,6 +156,7 @@ export function DataTable<TData extends EntityWithId, TValue>({
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [currentEntity, setCurrentEntity] = React.useState<TData | undefined>(undefined);
+  const [entityToDelete, setEntityToDelete] = React.useState<TData | undefined>(undefined);
 
   const { uid } = useUser();
   const { toast } = useToast();
@@ -155,15 +166,21 @@ export function DataTable<TData extends EntityWithId, TValue>({
     setIsEditDialogOpen(true);
   };
 
+  // Abre la confirmación; el borrado real ocurre en confirmDelete.
   const handleDelete = (entity: TData) => {
-    if (!uid || !entityName) return;
+    setEntityToDelete(entity);
+  };
+
+  const confirmDelete = () => {
+    if (!entityToDelete || !uid || !entityName) return setEntityToDelete(undefined);
     const collectionName = collectionNameMap[entityName];
     if (!collectionName) {
       toast({ variant: 'destructive', title: 'Error', description: `No se encontró la colección: ${entityName}` });
-      return;
+      return setEntityToDelete(undefined);
     }
-    deleteDocumentNonBlocking(collectionName, entity.id);
-    toast({ title: `${entityName} Eliminado`, description: `El ${entityName.toLowerCase()} ha sido eliminado.` });
+    deleteDocumentNonBlocking(collectionName, entityToDelete.id);
+    toast({ title: `${entityName} eliminado`, description: `El ${entityName.toLowerCase()} ha sido eliminado.` });
+    setEntityToDelete(undefined);
   };
 
   const columns = React.useMemo<ColumnDef<TData, TValue>[]>(() => [
@@ -357,6 +374,24 @@ export function DataTable<TData extends EntityWithId, TValue>({
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Confirmación de borrado — evita borrados accidentales de un solo clic */}
+      <AlertDialog open={!!entityToDelete} onOpenChange={(open) => { if (!open) setEntityToDelete(undefined); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar {entityName?.toLowerCase()}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. El registro se eliminará permanentemente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700 focus:ring-red-600">
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

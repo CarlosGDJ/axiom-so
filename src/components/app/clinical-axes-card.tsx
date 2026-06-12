@@ -3,6 +3,7 @@
 import { cn } from '@/lib/utils';
 import { ShieldAlert, Activity } from 'lucide-react';
 import type { ClinicalV2ModelOutput } from '@/lib/types';
+import { clinicalMarkerLabel } from '@/lib/clinical-labels';
 
 interface ClinicalAxesCardProps {
   clinical: ClinicalV2ModelOutput;
@@ -108,7 +109,7 @@ export default function ClinicalAxesCard({ clinical }: ClinicalAxesCardProps) {
                   : 'bg-muted border-border text-muted-foreground';
               return (
                 <span key={marker} className={cn('text-[8px] font-bold px-1.5 py-0.5 rounded border', sevCls)}>
-                  {marker.replace(/_/g, ' ')}
+                  {clinicalMarkerLabel(marker)}
                 </span>
               );
             })}

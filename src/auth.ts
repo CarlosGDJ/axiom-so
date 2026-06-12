@@ -19,7 +19,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
         const db = await getDb();
-        const user = await db.collection('users').findOne({ email: credentials.email as string });
+        // Normalizado a minúsculas: el registro guarda email.toLowerCase().trim(),
+        // así un login con mayúsculas (Foo@Bar.com) antes no encontraba al usuario.
+        const email = (credentials.email as string).toLowerCase().trim();
+        const user = await db.collection('users').findOne({ email });
         if (!user || !user.hashedPassword) return null;
         const valid = await bcrypt.compare(credentials.password as string, user.hashedPassword as string);
         if (!valid) return null;

@@ -1,5 +1,6 @@
 import { auth } from '@/auth';
 import { getDb } from '@/lib/mongodb';
+import { toDocIdFilter } from '@/lib/mongo-id';
 import { NextRequest, NextResponse } from 'next/server';
 
 const ALLOWED_COLLECTIONS = new Set([
@@ -8,7 +9,8 @@ const ALLOWED_COLLECTIONS = new Set([
   'systems', 'habits', 'milestones', 'protocols', 'states',
   'impactMatrix', 'notifications', 'computed_global_state',
   'computed_areas', 'computed_hormones', 'computed_daily_score',
-  'playerProfile', 'settings', 'chatHistory', 'dashboardConfig', 'users',
+  'playerProfile', 'settings', 'chatHistory', 'dashboardConfig',
+  'dailyBriefing', 'userProfile',
 ]);
 
 async function getUserId(): Promise<string | null> {
@@ -32,7 +34,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
   const db = await getDb();
 
   await db.collection(col).updateOne(
-    { _id: docId as any, userId },
+    { _id: toDocIdFilter(docId) as any, userId },
     { $set: { ...body, userId } },
     { upsert: true }
   );
@@ -53,7 +55,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const db = await getDb();
 
   await db.collection(col).updateOne(
-    { _id: docId as any, userId },
+    { _id: toDocIdFilter(docId) as any, userId },
     { $set: body }
   );
   return NextResponse.json({ ok: true });
@@ -70,6 +72,6 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const db = await getDb();
-  await db.collection(col).deleteOne({ _id: docId as any, userId });
+  await db.collection(col).deleteOne({ _id: toDocIdFilter(docId) as any, userId });
   return NextResponse.json({ ok: true });
 }

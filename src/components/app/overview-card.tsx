@@ -15,6 +15,7 @@ import { Button } from '../ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import DiagnosticDialog from '@/components/app/diagnostic-dialog';
+import { clinicalMarkerLabel } from '@/lib/clinical-labels';
 import Link from 'next/link';
 import { useUser } from '@/hooks/use-session-user';
 import { addDocumentNonBlocking } from '@/lib/api-writes';
@@ -304,7 +305,7 @@ export default function OverviewCard({ overallState, dominantVariables = [], onA
         {/* Alerta clínica — solo SEVERE */}
         {userData.clinical_v2?.enabled && userData.clinical_v2.risk_band === 'SEVERE' && (
           <div className="rounded-lg px-2.5 py-1.5 bg-red-500/10 border border-red-500/30 text-[10px] font-bold text-red-500 uppercase tracking-widest">
-            Riesgo clínico severo · {userData.clinical_v2.markers[0]?.replace(/_/g, ' ')}
+            Riesgo clínico severo · {userData.clinical_v2.markers[0] ? clinicalMarkerLabel(userData.clinical_v2.markers[0]) : ''}
           </div>
         )}
         {/* Acciones rápidas */}

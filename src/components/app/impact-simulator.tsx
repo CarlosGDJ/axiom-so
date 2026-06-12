@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { computeClinicalModelV2 } from '@/lib/model-v2-clinical';
 import type { RPGStats, UserData } from '@/lib/types';
+import { clinicalMarkerLabel } from '@/lib/clinical-labels';
 import { useUser } from '@/hooks/use-session-user';
 import { addDocumentNonBlocking } from '@/lib/api-writes';
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -497,7 +498,7 @@ export default function ImpactSimulator({ userData }: ImpactSimulatorProps) {
                         {clinicalProjected.markers.map((m) => (
                           <div key={m} className="flex items-center gap-1.5 text-[10px] text-amber-600">
                             <AlertTriangle className="h-3 w-3" />
-                            {m.replace(/_/g, ' ')}
+                            {clinicalMarkerLabel(m)}
                           </div>
                         ))}
                       </div>

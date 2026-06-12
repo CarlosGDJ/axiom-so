@@ -13,7 +13,10 @@ export const getTransactionColumns = (accounts: Account[], debts: Debt[]): Colum
     accessorKey: 'fecha',
     header: 'Fecha',
     cell: ({ row }) => {
-      const date = new Date(row.getValue('fecha'));
+      const raw = row.getValue('fecha');
+      if (!raw) return '—';
+      const date = new Date(raw as string);
+      if (isNaN(date.getTime())) return '—';
       return format(date, "d MMM, yyyy 'a las' HH:mm", { locale: es });
     },
   },
@@ -44,7 +47,7 @@ export const getTransactionColumns = (accounts: Account[], debts: Debt[]): Colum
     accessorKey: 'monto',
     header: 'Monto (€)',
     cell: ({ row }) => {
-      const amount = parseFloat(row.getValue('monto'));
+      const amount = Number(row.getValue('monto')) || 0;
       const formatted = new Intl.NumberFormat('es-ES', {
         style: 'currency',
         currency: 'EUR',

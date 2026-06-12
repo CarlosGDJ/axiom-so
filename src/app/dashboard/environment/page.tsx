@@ -219,7 +219,7 @@ export default function EnvironmentPage() {
             <div className="space-y-1">
               <p className="text-xs font-bold text-primary uppercase tracking-widest">Efecto en el sistema</p>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                El entorno caótico eleva el cortisol de fondo de forma crónica — aunque no lo percibas como estrés agudo. Ordenar el espacio tiene un efecto <strong>cortisol −6 por 24h</strong>. La exposición a naturaleza añade <strong>serotonina +25h</strong>, comparable al ejercicio aeróbico.
+                El entorno caótico eleva el cortisol de fondo de forma crónica — aunque no lo percibas como estrés agudo. Ordenar el espacio tiene un efecto <strong>cortisol −6 durante 24h</strong>. La exposición a naturaleza añade <strong>serotonina +25 (12h)</strong>, comparable al ejercicio aeróbico.
               </p>
             </div>
           </div>

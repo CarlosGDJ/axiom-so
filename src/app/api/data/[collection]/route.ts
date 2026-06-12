@@ -1,5 +1,6 @@
 import { auth } from '@/auth';
 import { getDb } from '@/lib/mongodb';
+import { toDocIdFilter } from '@/lib/mongo-id';
 import { NextRequest, NextResponse } from 'next/server';
 
 const ALLOWED_COLLECTIONS = new Set([
@@ -8,7 +9,8 @@ const ALLOWED_COLLECTIONS = new Set([
   'systems', 'habits', 'milestones', 'protocols', 'states',
   'impactMatrix', 'notifications', 'computed_global_state',
   'computed_areas', 'computed_hormones', 'computed_daily_score',
-  'playerProfile', 'settings', 'chatHistory', 'dashboardConfig', 'users',
+  'playerProfile', 'settings', 'chatHistory', 'dashboardConfig',
+  'dailyBriefing', 'userProfile',
 ]);
 
 async function getUserId(): Promise<string | null> {
@@ -29,14 +31,20 @@ export async function GET(req: NextRequest, { params }: Params) {
 
   const { searchParams } = req.nextUrl;
   const docId = searchParams.get('docId');
-  const limitVal = Math.min(parseInt(searchParams.get('limit') ?? '1000'), 1000);
-  const orderByField = searchParams.get('orderBy');
+  // `limit` robusto: NaN/negativos no deben desactivar el límite (Mongo trata
+  // limit(NaN) como 0 = sin límite → devolvía la colección entera).
+  const limitRaw = Number(searchParams.get('limit'));
+  const limitVal = Number.isFinite(limitRaw) ? Math.min(Math.max(Math.trunc(limitRaw), 1), 1000) : 1000;
+  // `orderBy` validado: solo nombres de campo simples (evita sorts sobre paths
+  // arbitrarios / no indexados que un cliente podría forzar).
+  const orderByRaw = searchParams.get('orderBy');
+  const orderByField = orderByRaw && /^[a-zA-Z0-9_]+$/.test(orderByRaw) ? orderByRaw : null;
   const direction = searchParams.get('direction') === 'asc' ? 1 : -1;
 
   const db = await getDb();
 
   if (docId) {
-    const doc = await db.collection(col).findOne({ userId, _id: docId as any });
+    const doc = await db.collection(col).findOne({ userId, _id: toDocIdFilter(docId) as any });
     if (!doc) return NextResponse.json(null);
     const { _id, ...rest } = doc;
     return NextResponse.json({ ...rest, id: _id.toString() });

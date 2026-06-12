@@ -44,7 +44,7 @@ const formSchema = z.object({
   milestone_type: z.enum(['single', 'recurring']),
   target_count: z.coerce.number().int().min(1).optional(),
   notas: z.string().optional(),
-}).refine(data => data.skill_id || data.system_id, {
+}).refine(data => (data.skill_id && data.skill_id !== '__none__') || (data.system_id && data.system_id !== '__none__'), {
     message: "Debe seleccionar una Habilidad o un Sistema.",
     path: ["skill_id"],
 }).refine(data => {
@@ -119,8 +119,8 @@ export default function EditMilestoneForm({ entity, closeDialog, skills, systems
     const milestoneId = isEditMode ? entity.milestone_id : `MS_${Date.now()}`;
     const finalData = { 
         ...data,
-        skill_id: data.skill_id || undefined,
-        system_id: data.system_id || undefined,
+        skill_id: data.skill_id && data.skill_id !== '__none__' ? data.skill_id : undefined,
+        system_id: data.system_id && data.system_id !== '__none__' ? data.system_id : undefined,
         milestone_id: milestoneId,
         fecha_objetivo: data.fecha_objetivo ? data.fecha_objetivo.toISOString() : undefined,
         fecha_completado: data.estado === 'Completado' ? new Date().toISOString() : undefined,
@@ -193,10 +193,10 @@ export default function EditMilestoneForm({ entity, closeDialog, skills, systems
               render={({ field }) => (
                   <FormItem>
                   <FormLabel>Habilidad (Opcional)</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value || " "}>
+                  <Select onValueChange={field.onChange} value={field.value || "__none__"}>
                       <FormControl><SelectTrigger><SelectValue placeholder="Vincular a habilidad..." /></SelectTrigger></FormControl>
                       <SelectContent>
-                          <SelectItem value=" ">Ninguna</SelectItem>
+                          <SelectItem value="__none__">Ninguna</SelectItem>
                           {skills?.map(s => <SelectItem key={s.id} value={s.habilidad_id}>{s.nombre}</SelectItem>)}
                       </SelectContent>
                   </Select>
@@ -210,10 +210,10 @@ export default function EditMilestoneForm({ entity, closeDialog, skills, systems
               render={({ field }) => (
                   <FormItem>
                   <FormLabel>Sistema (Opcional)</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value || " "}>
+                  <Select onValueChange={field.onChange} value={field.value || "__none__"}>
                       <FormControl><SelectTrigger><SelectValue placeholder="Vincular a sistema..." /></SelectTrigger></FormControl>
                       <SelectContent>
-                          <SelectItem value=" ">Ninguno</SelectItem>
+                          <SelectItem value="__none__">Ninguno</SelectItem>
                           {availableSystems?.map(s => <SelectItem key={s.id} value={s.sistema_id}>{s.objetivo}</SelectItem>)}
                       </SelectContent>
                   </Select>

@@ -27,7 +27,7 @@ export const columns: ColumnDef<Relation>[] = [
     accessorKey: 'energia_neta',
     header: 'Energía Neta (Calculada)',
     cell: ({ row }) => {
-      const value = row.original.energia_neta;
+      const value = row.original.energia_neta ?? 0;
       const Icon = value > 0.1 ? ArrowUp : value < -0.1 ? ArrowDown : Minus;
       const color = value > 0.1 ? 'text-green-500' : value < -0.1 ? 'text-red-500' : 'text-yellow-500';
       return (
@@ -51,7 +51,7 @@ export const columns: ColumnDef<Relation>[] = [
     accessorKey: 'respeto',
     header: 'Respeto (Calculado)',
      cell: ({ row }) => {
-      const value = row.original.respeto;
+      const value = row.original.respeto ?? 0;
       const percentage = value * 10; // Convert 0-10 scale to 0-100 for Progress
       return (
          <TooltipProvider>

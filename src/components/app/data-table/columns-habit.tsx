@@ -7,12 +7,21 @@ import { Checkbox } from '@/components/ui/checkbox';
 
 export const getHabitColumns = (areas: Area[], systems: System[], variables: Variable[]): ColumnDef<Habit>[] => [
   {
+    accessorKey: 'nombre',
+    header: 'Nombre',
+    cell: ({ row }) => {
+        const h = row.original;
+        const variable = variables.find(v => v.var_id === h.var_id);
+        return h.nombre || variable?.var_nombre || h.var_id || '—';
+    }
+  },
+  {
     accessorKey: 'sistema_id',
     header: 'Sistema',
     cell: ({ row }) => {
         const systemId = row.getValue('sistema_id');
         const system = systems.find(s => s.sistema_id === systemId);
-        return system ? system.objetivo : systemId;
+        return system ? system.objetivo : (systemId || 'Sin sistema');
     }
   },
   {
@@ -38,6 +47,7 @@ export const getHabitColumns = (areas: Area[], systems: System[], variables: Var
     cell: ({ row }) => (
       <Checkbox
         checked={row.getValue('minimo_viable')}
+        disabled
         aria-readonly
       />
     ),

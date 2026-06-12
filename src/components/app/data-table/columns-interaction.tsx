@@ -17,7 +17,10 @@ export const getInteractionColumns = (relations: Relation[]): ColumnDef<Interact
     accessorKey: 'fecha',
     header: 'Fecha',
     cell: ({ row }) => {
-      const date = new Date(row.getValue('fecha'));
+      const raw = row.getValue('fecha');
+      if (!raw) return '—';
+      const date = new Date(raw as string);
+      if (isNaN(date.getTime())) return '—';
       return format(date, "d MMM, yyyy 'a las' HH:mm", { locale: es });
     },
   },

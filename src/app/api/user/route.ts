@@ -33,11 +33,17 @@ export async function PUT(req: NextRequest) {
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const body = await req.json();
+  // Allowlist de campos editables: nunca dejar que el cliente sobrescriba
+  // credenciales/identidad (hashedPassword, email, emailVerified, _id, role…).
+  const ALLOWED_FIELDS = ['name', 'image', 'displayName', 'preferences', 'settings'];
+  const safeUpdate: Record<string, unknown> = {};
+  for (const key of ALLOWED_FIELDS) {
+    if (key in body) safeUpdate[key] = body[key];
+  }
   const db = await getDb();
   await db.collection('users').updateOne(
     { _id: toObjectId(userId) },
-    { $set: { ...body, updatedAt: new Date().toISOString() } },
-    { upsert: true }
+    { $set: { ...safeUpdate, updatedAt: new Date().toISOString() } },
   );
   return NextResponse.json({ ok: true });
 }

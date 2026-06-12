@@ -91,11 +91,18 @@ export default function EditDebtForm({ entity: debt, closeDialog }: EditDebtForm
     if (!uid) return;
     
     const debtId = isEditMode ? debt.debt_id : `DEBT_${Date.now()}`;
-    const finalData = { 
-        ...data, 
+    const finalData: any = {
+        ...data,
         debt_id: debtId,
         fecha_inicio: data.fecha_inicio.toISOString(),
     };
+    // Campos derivados que faltaban al crear: sin ellos la deuda no aparecía en el
+    // selector de "Deuda Asociada" (filtra por estado_deuda === 'Activa').
+    if (!isEditMode) {
+        finalData.saldo_pendiente = data.saldo_actual;
+        finalData.porcentaje_pagado = 0;
+        finalData.estado_deuda = 'Activa';
+    }
 
     if (isEditMode) {
             setDocumentNonBlocking('debts', debt.id, finalData, { merge: true });

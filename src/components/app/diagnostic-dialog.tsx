@@ -5,6 +5,7 @@ import { AlertTriangle, ArrowDown, ArrowUp, Zap } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { OverallState, UserData } from '@/lib/types';
+import { clinicalMarkerLabel } from '@/lib/clinical-labels';
 
 interface DiagnosticDialogProps {
   open: boolean;
@@ -193,7 +194,7 @@ export default function DiagnosticDialog({ open, onClose, userData, dominantVari
                     const sev = userData.clinical_v2!.marker_severities?.[m] ?? 0;
                     return (
                       <div key={i} className="flex items-center justify-between text-xs rounded-md bg-muted/40 px-2.5 py-1.5">
-                        <span className="text-muted-foreground">{m.replace(/_/g, ' ')}</span>
+                        <span className="text-muted-foreground">{clinicalMarkerLabel(m)}</span>
                         <div className="w-16 h-1.5 rounded-full bg-muted overflow-hidden">
                           <div
                             className={cn('h-full rounded-full', sev > 0.7 ? 'bg-red-500' : sev > 0.4 ? 'bg-orange-500' : 'bg-yellow-500')}
