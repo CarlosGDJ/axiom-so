@@ -97,8 +97,10 @@ Tu misión es devolver un JSON estrictamente válido con la configuración inici
    - Si el usuario está estresado o agobiado, EMOCION o SALUD_MENT deben estar en 'RIESGO' o 'CRITICO'.
 
 3. **recommendedSkills / Systems / Habits**: Diseña un plan de choque de 3-4 habilidades con sus sistemas y hábitos.
-   - Elige var_id de los siguientes válidos: SUEÑO_OK, FUERZA, DEEP_WORK, CTRL_FIN, SOCIAL_OK, ORDEN, OCIO_OK, ALIM_OK, DESCARGA_OK, VALORES_OK.
-   - Para los hábitos negativos (evitación) como DOPA_RAP o GASTO_IMP, el objetivo es evitarlos.
+   - IMPORTANTE: usa ÚNICAMENTE var_id de esta lista (son las variables reales del sistema; cualquier otro valor se ignora):
+     Positivos: SUEÑO_PROF, FUERZA, CARDIO, WALK, BREATHING, MEDITATION, LEARNING, DEEP_WORK, DEEP_READING, SKILL_PRACTICE, CREATIVITY, SOCIAL_OK, DEEP_CONV, HEALTHY_MEAL, READING, HOBBY_ACTIVE, ENV_ORDER, PURPOSE_SENSE, VALUES_ACTION, HELP_OTHERS, GRATITUDE, BUDGET_REVIEW, SAVINGS_ACT, IMPULSE_RESISTED.
+     Negativos (hábitos de evitación): DOOMSCROLLING, SOCIAL_MEDIA_BRIEF, GAMING_INTENSE, PORNO, PROCRAST, ALIM_BASURA, AZUCAR, ALCOHOL_HIGH, FINANCIAL_STRESS.
+   - Para los hábitos de evitación, el objetivo es evitarlos.
 
 Responde siempre en español y asegúrate de que todos los campos requeridos en el esquema de salida estén presentes.`,
 });

@@ -128,7 +128,7 @@ function buildVirtualVariableFromEvent(event: Event): Variable {
   const tipo: Variable['tipo'] =
     isFinancial ? 'Financiera' :
     isSocial ? 'Social' :
-    isPhysical ? 'FÃ­sica' :
+    isPhysical ? 'Física' :
     isEnvironmental ? 'Entorno' :
     'Conductual';
 
@@ -143,10 +143,13 @@ function buildVirtualVariableFromEvent(event: Event): Variable {
     ? Math.min(2, Math.max(0.08, event.duracion_min / 60 / 24))
     : 0.25;
 
+  // Un protocolo o una acción DELIBERADA (no impulsiva, p.ej. completar un hábito)
+  // es positiva; solo lo impulsivo drena. Antes ambas ramas eran -1, así que
+  // completar un hábito con var_id desconocido aparecía como drenaje del sistema.
   const polarity: 1 | -1 =
     event.tipo === 'Protocolo'
       ? 1
-      : (event.impulsivo ? -1 : -1);
+      : (event.impulsivo ? -1 : 1);
 
   return {
     id: `virtual_${event.var_id}`,
