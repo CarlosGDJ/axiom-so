@@ -174,35 +174,10 @@ export default function OnboardingPage() {
             documents.push({ collection: 'areas', data: { ...area, estado: adjusted?.status || 'OK' } });
         });
 
-        // Skills y Systems (estructura). Los HÁBITOS ya NO se generan automáticamente:
-        // son sugerencias personalizadas que pueden no aplicar al usuario, así que
-        // los crea él mismo desde el Habit Tracker. La base para los cálculos del
-        // motor (variables, hormonas, áreas, sensibilidades) sí se pre-rellena abajo.
-        setup.recommendedSkills.forEach(skillRec => {
-            const skillId = `SKILL_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-            documents.push({ collection: 'skills', data: {
-                habilidad_id: skillId,
-                nombre: skillRec.nombre,
-                area_id: skillRec.area_id,
-                nivel_actual: 1,
-                nivel_objetivo: 7,
-                estado: 'Activa',
-                kpi: skillRec.kpi
-            }});
-
-            const systemRec = setup.recommendedSystems.find(s => s.habilidad_name === skillRec.nombre);
-            if (systemRec) {
-                const systemId = `SYS_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-                documents.push({ collection: 'systems', data: {
-                    sistema_id: systemId,
-                    habilidad_id: skillId,
-                    objetivo: systemRec.objetivo,
-                    frecuencia: systemRec.frecuencia,
-                    estado: 'Activo',
-                    protocolo_fallo: 'P_RESET_5'
-                }});
-            }
-        });
+        // La capa personal (hábitos, habilidades y sistemas) NO se genera
+        // automáticamente: son sugerencias de la IA que pueden no aplicar al
+        // usuario. Las crea él mismo. Solo pre-rellenamos lo que el MOTOR necesita
+        // para calcular (variables, hormonas, áreas, sensibilidades, protocolos).
 
         // Essentials
         protocolPresets.forEach(p => documents.push({ collection: 'protocols', data: p as Record<string, unknown> }));
