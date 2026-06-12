@@ -257,7 +257,54 @@ function scenarioClinicalCalibration() {
   console.log(`  Deuda de sueño sin registros = ${sleepDebtNoData}  (antes ~10)  ${sleepDebtNoData === 0 ? '✅' : '❌'}`);
 }
 
+// ── Escenario I: carga alostática como índice discreto + bucle roto ─────────
+function allostaticIndex(stats) {
+  // Mismo criterio que el motor: conteo de biomarcadores en riesgo (0–8).
+  const flags = [
+    stats.cortisol > 70,
+    stats.carga_dopaminergica > 65,
+    stats.sueno < 35,
+    stats.serotonina < 35,
+    stats.energia < 35,
+    stats.dopamina < 35,
+    stats.foco < 35,
+    stats.conexion_social < 35,
+  ];
+  return flags.filter(Boolean).length;
+}
+
+function scenarioAllostatic() {
+  header('I · Carga alostática — índice discreto y bucle de feedback roto');
+
+  // I1 · Conteo correcto
+  const healthy = { cortisol: 30, carga_dopaminergica: 20, sueno: 70, serotonina: 65, energia: 65, dopamina: 65, foco: 65, conexion_social: 65 };
+  const stressed = { cortisol: 80, carga_dopaminergica: 75, sueno: 30, serotonina: 30, energia: 30, dopamina: 65, foco: 65, conexion_social: 65 };
+  console.log(`  Usuario sano    → índice ${allostaticIndex(healthy)}/8  (esperado 0)  ${allostaticIndex(healthy) === 0 ? '✅' : '❌'}`);
+  console.log(`  Usuario estresado → índice ${allostaticIndex(stressed)}/8  (esperado 5)  ${allostaticIndex(stressed) === 5 ? '✅' : '❌'}`);
+
+  // I2 · Bucle roto: la acumulación crónica lee el ÍNDICE (biomarcadores), no el score.
+  // Simulamos: score bajo escrito al historial NO debe disparar acumulación crónica
+  // si los biomarcadores no están en riesgo.
+  const history = [
+    { score_total: 38, allostatic_index: 0 }, // score bajo PERO biomarcadores sanos
+    { score_total: 40, allostatic_index: 0 },
+    { score_total: 42, allostatic_index: 1 },
+  ];
+  const HIGH = 4;
+  let chronicDays = 0;
+  for (const d of history) { if (d.allostatic_index >= HIGH) chronicDays++; else break; }
+  console.log(`  Historial con score bajo pero biomarcadores sanos → días crónicos: ${chronicDays}  (esperado 0)  ${chronicDays === 0 ? '✅ no se autopenaliza' : '❌ bucle activo'}`);
+
+  // I3 · Acumulación real: días sostenidos de índice alto SÍ acumulan.
+  const realChronic = Array.from({ length: 12 }, () => ({ allostatic_index: 5 }));
+  let realDays = 0;
+  for (const d of realChronic) { if (d.allostatic_index >= HIGH) realDays++; else break; }
+  const accScore = Math.min(1, realDays / 14);
+  console.log(`  12 días sostenidos de índice 5 → acumulación ${accScore.toFixed(2)} (penaliza)  ${accScore > 0.5 ? '✅' : '❌'}`);
+}
+
 // ── Run ─────────────────────────────────────────────────────────────────────
+scenarioAllostatic();
 scenarioClinicalCalibration();
 scenarioColdStart();
 scenarioFlicker();

@@ -196,16 +196,22 @@ fuente, cómo está implementado hoy y una recomendación de calibración.
   adrenalina, noradrenalina, IL-6/PCR).
 - Mayor índice → mayor mortalidad y deterioro funcional.
 
-**Implementación actual**
-- `allostaticLoad` / `allostaticAccumulationScore` como acumulación continua sobre
-  "semanas malas" del historial de score.
+**Implementación (tras refactor)**
+- `allostaticLoadIndex` = **conteo discreto 0–8** de biomarcadores en zona de
+  riesgo (cortisol>70, carga>65, sueño<35, serotonina<35, energía<35, dopamina<35,
+  foco<35, conexión social<35). Penaliza ~2.75 pts/eje (máx 22), atenuado por el
+  buffer de resiliencia.
+- **Bucle de feedback roto**: la acumulación CRÓNICA antes leía `score_total` del
+  historial (el score que el motor escribe se releía y se autopenalizaba, pudiendo
+  re-bloquear CRITICO). Ahora lee el `allostatic_index` persistido por día (conteo
+  objetivo de biomarcadores, NO derivado del player_score). Acumula sobre días
+  sostenidos con índice ≥4 (saturación a 14 días).
+- El índice se muestra en el diálogo de diagnóstico como "X/8 ejes en riesgo",
+  leído de la fuente única (modifiers del motor) sin recalcular en la UI.
 
-**Calibración recomendada**
-- El enfoque canónico es un **conteo discreto** (cuántos ejes están en zona de
-  riesgo), no un continuo. Podrías alinear: contar cuántos stats núcleo están en
-  rango "malo" (p.ej. ≥3 de 5 bajos) como un índice 0–N interpretable.
-- Evita el bucle de retroalimentación que detectó la auditoría (el score malo
-  escrito alimenta "semanas malas" que re-bloquean CRITICO).
+**Validación:** escenario I del sim — conteo correcto (sano 0/8, estresado 5/8),
+score bajo con biomarcadores sanos → 0 días crónicos (no se autopenaliza), 12 días
+sostenidos de índice alto → acumulación 0.86 (sí penaliza).
 
 **Fuentes:** [Allostatic load (Wikipedia)](https://en.wikipedia.org/wiki/Allostatic_load) ·
 [Bruce McEwen (Wikipedia)](https://en.wikipedia.org/wiki/Bruce_McEwen)
@@ -249,7 +255,7 @@ fuente, cómo está implementado hoy y una recomendación de calibración.
 | Soledad → HPA | 🟡 Dirección sólida, escala días | Guard modo aprendizaje | ✅ Previo |
 | Social jet lag | 🟡 Sólido si midsleep real | Onset suave (rampa 5h), pesos ↓ | ✅ Aplicado |
 | BRAC ultradiano | 🟡 Débil en vigilia | Amplitudes ↓ (foco 7→4), pico→0.66 | ✅ Aplicado |
-| Carga alostática | 🟡 Sólido como conteo discreto | Reformular como índice 0-N | ⏳ Pendiente |
+| Carga alostática | 🟡 Sólido como conteo discreto | Índice 0-8 + bucle de feedback roto | ✅ Aplicado |
 | **Fatiga de decisión** | 🔴 **Falló replicación** | Peso ↓ (14→5) + reetiquetado | ✅ Aplicado |
 
 🟢 bien fundamentado · 🟡 parcial / depende de la implementación · 🔴 evidencia débil

@@ -1422,37 +1422,35 @@ export function useComputedDataWriter(ext?: WriterPrefetch) {
       });
     }
 
-    // ── Carga Alostática Acumulada ────────────────────────────────────────────
-    // Semanas consecutivas en RIESGO/CRÍTICO degradan la capacidad de recuperación.
-    // El eje HPA hiperreactivado mantiene un baseline de cortisol elevado entre
-    // episodios agudos. La neuroplasticidad disminuye → el rebote es más corto y débil.
+    // ── Carga Alostática Acumulada (crónica) ──────────────────────────────────
+    // Operacionalización tipo Seeman et al. (2001): la carga alostática es el
+    // CONTEO de biomarcadores en zona de riesgo. La carga CRÓNICA es ese conteo
+    // sostenido en el tiempo. Antes esto leía `score_total` del historial → bucle
+    // de retroalimentación (el score que el motor escribe se releía y se penalizaba
+    // a sí mismo, pudiendo re-bloquear CRITICO). Ahora lee el `allostatic_index`
+    // (conteo objetivo de biomarcadores), que NO deriva del player_score.
     const safeDailyScores = calibrationScores ?? [];
-    const weeklyAvgs: number[] = [];
-    for (let w = 0; w < 4; w++) {
-      const windowScores = safeDailyScores.filter(ds => {
+    const HIGH_LOAD_THRESHOLD = 4; // ≥4 de 8 ejes en riesgo = día de carga alta
+    let chronicLoadDays = 0;
+    const recentByDate = [...safeDailyScores]
+      .filter(ds => {
         const daysAgo = differenceInDays(now, parseISO(ds.fecha));
-        return daysAgo >= w * 7 && daysAgo < (w + 1) * 7;
-      });
-      if (windowScores.length >= 3) {
-        const avg = windowScores.reduce((sum, ds) => sum + (ds.score_total ?? 50), 0) / windowScores.length;
-        weeklyAvgs.push(avg);
-      } else {
-        break;
-      }
-    }
-    let consecutiveBadWeeks = 0;
-    for (const avg of weeklyAvgs) {
-      if (avg < 45) consecutiveBadWeeks++;
+        return daysAgo >= 0 && daysAgo < 28;
+      })
+      .sort((a, b) => parseISO(b.fecha).getTime() - parseISO(a.fecha).getTime());
+    // Cuenta días recientes consecutivos con índice de carga alto.
+    for (const ds of recentByDate) {
+      if ((ds.allostatic_index ?? 0) >= HIGH_LOAD_THRESHOLD) chronicLoadDays++;
       else break;
     }
-    // 0 sem = sin carga acumulada · 4+ sem = saturación máxima
-    const allostaticAccumulationScore = Math.min(1, consecutiveBadWeeks / 4);
+    // 0 días = sin carga crónica · 14+ días sostenidos = saturación máxima
+    const allostaticAccumulationScore = Math.min(1, chronicLoadDays / 14);
     if (allostaticAccumulationScore > 0) {
       s.cortisol   = clamp(s.cortisol   + allostaticAccumulationScore * 8); // HPA hiperreactivado
       s.serotonina = clamp(s.serotonina - allostaticAccumulationScore * 7); // depleción crónica
       s.energia    = clamp(s.energia    - allostaticAccumulationScore * 5); // fatiga estructural
       variableContrib.set('ALLOSTATIC_ACCUMULATION', {
-        name: `Carga alostática crónica (${consecutiveBadWeeks} sem.)`,
+        name: `Carga alostática crónica (${chronicLoadDays}d sostenidos)`,
         total: -(allostaticAccumulationScore * 8),
         hoursRemaining: 168,
       });
@@ -1755,12 +1753,23 @@ export function useComputedDataWriter(ext?: WriterPrefetch) {
       (s.cortisol * 0.65) +
       (s.carga_dopaminergica * 0.35);
 
-    const allostaticLoadRaw =
-      (Math.max(0, finalDistressCortisol - 62) * 0.18) +
-      (Math.max(0, s.carga_dopaminergica - 52) * 0.16) +
-      (Math.max(0, 30 - s[SLEEP_KEY]) * 0.14);
-    // Resilience buffer attenuates allostatic load: a healthy baseline absorbs acute spikes better
-    const allostaticLoad = Math.min(22, allostaticLoadRaw) * (1 - resilienceBufferScore * 0.4);
+    // Índice de carga alostática (operacionalización tipo Seeman et al. 2001):
+    // CONTEO de biomarcadores en zona de riesgo (cuartil de mayor riesgo), 0–8.
+    // Discreto e interpretable ("X de 8 ejes en riesgo") en vez de un continuo.
+    const allostaticRiskFlags = [
+      finalDistressCortisol > 70,        // cortisol de distress alto
+      s.carga_dopaminergica > 65,        // saturación dopaminérgica
+      s[SLEEP_KEY] < 35,                 // sueño deficiente
+      s.serotonina < 35,                 // tono serotonérgico bajo
+      s.energia < 35,                    // energía baja
+      s.dopamina < 35,                   // motivación baja
+      s.foco < 35,                       // control ejecutivo bajo
+      s.conexion_social < 35,            // buffer social bajo
+    ];
+    const allostaticLoadIndex = allostaticRiskFlags.filter(Boolean).length; // 0–8
+    // Penalización al score: ~2.75 pts por eje en riesgo (máx 22 a 8 ejes),
+    // atenuada por el buffer de resiliencia (un baseline sano absorbe mejor).
+    const allostaticLoad = allostaticLoadIndex * 2.75 * (1 - resilienceBufferScore * 0.4);
 
     const recoveryReserveRaw =
       (Math.max(0, s.serotonina - 55) * 0.22) +
@@ -1993,7 +2002,8 @@ export function useComputedDataWriter(ext?: WriterPrefetch) {
           ...(brokenStreakLength >= 3 ? [`STREAK_BROKEN:${brokenStreakLength}`] : []),
           ...(habituationEffect > 0.5 ? [`HABITUATION:${habituationEffect.toFixed(1)}`] : []),
           ...(noveltyEffect > 0.5 ? [`NOVELTY_STRESS:${noveltyEffect.toFixed(1)}`] : []),
-          ...(consecutiveBadWeeks > 0 ? [`ALLOSTATIC_WEEKS:${consecutiveBadWeeks}`] : []),
+          `ALLOSTATIC_INDEX:${allostaticLoadIndex}/8`,
+          ...(chronicLoadDays > 0 ? [`ALLOSTATIC_CHRONIC:${chronicLoadDays}d`] : []),
           ...(positiveHabitDays > 0 ? [`RESILIENCE_BUFFER:${positiveHabitDays}d`] : []),
           `LONELINESS_DAYS:${daysSincePositiveContact.toFixed(1)}`,
           `ANTICIPATORY_LOAD:${anticipatoryCortisolEffect.toFixed(1)}`,
@@ -2086,6 +2096,7 @@ export function useComputedDataWriter(ext?: WriterPrefetch) {
     writes.push({ collection: 'computed_daily_score', docId: todayStr, data: {
       fecha: todayStr,
       score_total: player_score,
+      allostatic_index: allostaticLoadIndex, // conteo de biomarcadores en riesgo (0–8)
     } });
 
     // Mark as processed BEFORE the async write so any re-render during the round-trip

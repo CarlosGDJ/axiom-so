@@ -363,6 +363,8 @@ export interface ComputedDailyScore {
     id: string;
     fecha: string;
     score_total: number;
+    /** Índice de carga alostática del día (conteo de biomarcadores en riesgo, 0–8). */
+    allostatic_index?: number;
 }
 
 export interface WeeklySnapshot {

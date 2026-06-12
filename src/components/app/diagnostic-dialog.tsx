@@ -45,6 +45,15 @@ export default function DiagnosticDialog({ open, onClose, userData, dominantVari
     .sort((a, b) => a.score - b.score)
     .slice(0, 3);
 
+  // Índice de carga alostática (0–8), leído de la fuente única: los modifiers
+  // del motor (`ALLOSTATIC_INDEX:X/8`). No se recalcula aquí para no divergir.
+  const allostaticIndex = (() => {
+    const m = explanation?.modifiers?.find(x => x.startsWith('ALLOSTATIC_INDEX:'));
+    if (!m) return null;
+    const n = parseInt(m.split(':')[1], 10);
+    return Number.isFinite(n) ? n : null;
+  })();
+
   return (
     <Dialog open={open} onOpenChange={v => { if (!v) onClose(); }}>
       <DialogContent className="max-w-md">
@@ -126,6 +135,36 @@ export default function DiagnosticDialog({ open, onClose, userData, dominantVari
                       </div>
                     );
                   })}
+                </div>
+              </section>
+            )}
+
+            {allostaticIndex !== null && (
+              <section className="space-y-2">
+                <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Carga alostática</h4>
+                <div className="flex items-center justify-between rounded-md bg-muted/40 px-3 py-2">
+                  <span className="text-xs text-muted-foreground">Ejes biológicos en zona de riesgo</span>
+                  <div className="flex items-center gap-2">
+                    <div className="flex gap-0.5">
+                      {Array.from({ length: 8 }).map((_, i) => (
+                        <div
+                          key={i}
+                          className={cn(
+                            'h-3 w-1.5 rounded-sm',
+                            i < allostaticIndex
+                              ? allostaticIndex >= 5 ? 'bg-red-500' : allostaticIndex >= 3 ? 'bg-orange-500' : 'bg-yellow-500'
+                              : 'bg-muted',
+                          )}
+                        />
+                      ))}
+                    </div>
+                    <span className={cn(
+                      'text-xs font-bold tabular-nums',
+                      allostaticIndex >= 5 ? 'text-red-500' : allostaticIndex >= 3 ? 'text-orange-500' : allostaticIndex > 0 ? 'text-yellow-600' : 'text-green-600',
+                    )}>
+                      {allostaticIndex}/8
+                    </span>
+                  </div>
                 </div>
               </section>
             )}
