@@ -103,6 +103,7 @@ export default function DashboardPage() {
             dominantVariables={userData.dominantVariables}
             onActivateProtocol={() => setShowAIProtocol(true)}
             userData={userData}
+            isLearningMode={userData.isLearningMode}
           />
         </div>
         <div className="min-w-0 overflow-hidden transition-all duration-200 hover:-translate-y-1 hover:drop-shadow-lg rounded-xl">

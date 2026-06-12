@@ -1031,9 +1031,10 @@ export function useComputedDataWriter(ext?: WriterPrefetch) {
     const lastPositiveInteraction = safeInteractions
       .filter(i => i.energia_resultante > 0)
       .sort((a, b) => b.fecha.localeCompare(a.fecha))[0];
+    const isLearningMode = safeEvents.length < 15;
     const daysSincePositiveContact = lastPositiveInteraction
       ? Math.max(0, differenceInHours(now, parseISO(lastPositiveInteraction.fecha)) / 24)
-      : 7; // sin datos en ventana 7d → aislamiento máximo observable
+      : isLearningMode ? 0 : 7; // nuevos usuarios sin historial → no penalizar aislamiento
     if (daysSincePositiveContact > 2) {
       const lonelinessFactor = Math.min(1, (daysSincePositiveContact - 2) / 6); // 0 en día 2, 1 en día 8+
       const lonelinessDrain = tanhNorm(lonelinessFactor, 0.7) * lonelinessFactor;
@@ -1774,7 +1775,7 @@ export function useComputedDataWriter(ext?: WriterPrefetch) {
     const player_score = clamp(Math.round((previousScore * 0.55) + (adjustedRawScore * 0.45)));
     // Velocity proxy: single-step EMA delta as a rapid-fall signal
     const velocityProxy = player_score - previousScore;
-    const isVelocityWarning = velocityProxy <= -5 && player_score >= 40 && player_score < 57;
+    const isVelocityWarning = !isLearningMode && velocityProxy <= -5 && player_score >= 40 && player_score < 57;
     // Clinical V2 state escalation
     const clinicalEscalation = !!(clinicalV2?.enabled &&
       (clinicalV2.confidence ?? 0) >= 0.5 &&
@@ -1839,6 +1840,7 @@ export function useComputedDataWriter(ext?: WriterPrefetch) {
       }
     }
 
+    if (isLearningMode) nextState = 'OK';
     if (nextState === 'CRITICO') is_locked = true;
 
     const scoreDiff = Math.abs(player_score - lastStoredScore);

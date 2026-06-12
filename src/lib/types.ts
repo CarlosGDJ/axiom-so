@@ -443,6 +443,7 @@ export interface UserData {
     lock_reason: string;
     estimated_unlock_time: number;
     clinical_v2: ClinicalV2ModelOutput | null;
+    isLearningMode: boolean;
 }
 export { ColumnDef };
 

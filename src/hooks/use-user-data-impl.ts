@@ -327,6 +327,7 @@ export function useUserDataImpl() {
       lock_reason: computedGlobalState?.lock_reason || '',
       estimated_unlock_time: computedGlobalState?.estimated_unlock_time || 0,
       clinical_v2: computedGlobalState?.clinical_v2 ?? null,
+      isLearningMode: (computedGlobalState?.data_quality ?? 0) < 0.2,
     };
   }, [
     isLoading, uid, user, userProfile, playerProfile, rawAreas, rawHormones, rawVariables,

@@ -50,6 +50,7 @@ interface OverviewCardProps {
   dominantVariables: UserData['dominantVariables'];
   onActivateProtocol: () => void;
   userData: UserData;
+  isLearningMode?: boolean;
 }
 
 function VelocityBadge({ velocity }: { velocity: UserData['kpis']['scoreVelocity'] }) {
@@ -70,7 +71,7 @@ function VelocityBadge({ velocity }: { velocity: UserData['kpis']['scoreVelocity
   );
 }
 
-export default function OverviewCard({ overallState, dominantVariables = [], onActivateProtocol, userData }: OverviewCardProps) {
+export default function OverviewCard({ overallState, dominantVariables = [], onActivateProtocol, userData, isLearningMode }: OverviewCardProps) {
   const config = stateConfig[overallState || 'OK'];
   const { user, uid } = useUser();
   const { toast } = useToast();
@@ -190,6 +191,14 @@ export default function OverviewCard({ overallState, dominantVariables = [], onA
     <>
     <Card className={cn('h-full flex flex-col shadow-sm border-primary/10 border-l-4', config.accent)}>
       <CardHeader className="pb-3 space-y-3">
+        {/* Modo aprendizaje */}
+        {isLearningMode && (
+          <div className="flex items-center gap-2 rounded-lg bg-blue-500/10 border border-blue-500/20 px-3 py-2 text-xs text-blue-400">
+            <Info className="h-3.5 w-3.5 shrink-0" />
+            <span>El motor está calibrando. Registra eventos durante unos días para obtener métricas precisas.</span>
+          </div>
+        )}
+
         {/* Estado + score */}
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
