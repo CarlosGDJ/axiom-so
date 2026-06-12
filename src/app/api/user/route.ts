@@ -49,10 +49,9 @@ export async function DELETE() {
     USER_COLLECTIONS.map(col => db.collection(col).deleteMany({ userId }))
   );
 
-  // Delete NextAuth adapter records
+  // Delete NextAuth adapter records (accounts already deleted via USER_COLLECTIONS loop above)
   await Promise.all([
     db.collection('users').deleteOne({ _id: userId as any }),
-    db.collection('accounts').deleteMany({ userId }),
     db.collection('sessions').deleteMany({ userId }),
   ]);
 

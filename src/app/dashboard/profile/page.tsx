@@ -36,7 +36,6 @@ import ExportPdfButton from '@/components/app/export-pdf-button';
 import { useUser } from '@/hooks/use-session-user';
 import { useDoc } from '@/hooks/use-mongo-collection';
 import { signOut } from 'next-auth/react';
-import { clearGdprConsent } from '@/components/app/gdpr-gate';
 export default function ProfilePage() {
   const { user, uid } = useUser();
   const router = useRouter();
@@ -185,7 +184,7 @@ export default function ProfilePage() {
     setIsResetting(true);
     try {
       await fetch('/api/user/reset', { method: 'POST' });
-      clearGdprConsent(uid);
+      localStorage.clear();
       toast({ title: "Sistema Reseteado", description: "Iniciando proceso de bio-calibración..." });
       window.location.href = '/onboarding';
     } catch (error) {
@@ -198,7 +197,7 @@ export default function ProfilePage() {
     if (!user) return;
     try {
       await fetch('/api/user', { method: 'DELETE' });
-      if (uid) clearGdprConsent(uid);
+      localStorage.clear();
       toast({ title: "Cuenta eliminada", description: "Tu cuenta ha sido eliminada." });
       await signOut({ callbackUrl: '/login' });
     } catch (error: any) {
