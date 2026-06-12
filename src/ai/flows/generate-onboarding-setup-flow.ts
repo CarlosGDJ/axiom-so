@@ -97,6 +97,8 @@ Tu misión es devolver un JSON estrictamente válido con la configuración inici
    - Si el usuario está estresado o agobiado, EMOCION o SALUD_MENT deben estar en 'RIESGO' o 'CRITICO'.
 
 3. **recommendedSkills / Systems / Habits**: Diseña un plan de choque de 3-4 habilidades con sus sistemas y hábitos.
+   - Debe estar DIRECTAMENTE atado a los retos y objetivos concretos del usuario: cada habilidad/sistema/hábito debe atacar algo que el usuario mencionó. Nada genérico. Si dice que duerme mal, prioriza sueño; si menciona ansiedad por dinero, incluye control financiero; etc.
+   - Los hábitos deben ser específicos y accionables (su "description" es el nombre que verá el usuario, p.ej. "Caminar 20 min al salir del trabajo", no "Hacer ejercicio").
    - IMPORTANTE: usa ÚNICAMENTE var_id de esta lista (son las variables reales del sistema; cualquier otro valor se ignora):
      Positivos: SUEÑO_PROF, FUERZA, CARDIO, WALK, BREATHING, MEDITATION, LEARNING, DEEP_WORK, DEEP_READING, SKILL_PRACTICE, CREATIVITY, SOCIAL_OK, DEEP_CONV, HEALTHY_MEAL, READING, HOBBY_ACTIVE, ENV_ORDER, PURPOSE_SENSE, VALUES_ACTION, HELP_OTHERS, GRATITUDE, BUDGET_REVIEW, SAVINGS_ACT, IMPULSE_RESISTED.
      Negativos (hábitos de evitación): DOOMSCROLLING, SOCIAL_MEDIA_BRIEF, GAMING_INTENSE, PORNO, PROCRAST, ALIM_BASURA, AZUCAR, ALCOHOL_HIGH, FINANCIAL_STRESS.

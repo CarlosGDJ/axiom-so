@@ -174,10 +174,53 @@ export default function OnboardingPage() {
             documents.push({ collection: 'areas', data: { ...area, estado: adjusted?.status || 'OK' } });
         });
 
-        // La capa personal (hábitos, habilidades y sistemas) NO se genera
-        // automáticamente: son sugerencias de la IA que pueden no aplicar al
-        // usuario. Las crea él mismo. Solo pre-rellenamos lo que el MOTOR necesita
-        // para calcular (variables, hormonas, áreas, sensibilidades, protocolos).
+        // Plan personalizado de la IA: habilidades, sistemas y hábitos según los
+        // detalles que el usuario dio en el onboarding. Red de seguridad: la IA
+        // debe usar var_id reales; si alucina uno inexistente, el hábito se crea
+        // sin variable (sigue funcionando como tracker) en vez de quedar roto.
+        const validVarIds = new Set(variablePresets.map(v => v.var_id));
+
+        setup.recommendedSkills.forEach(skillRec => {
+            const skillId = `SKILL_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+            documents.push({ collection: 'skills', data: {
+                habilidad_id: skillId,
+                nombre: skillRec.nombre,
+                area_id: skillRec.area_id,
+                nivel_actual: 1,
+                nivel_objetivo: 7,
+                estado: 'Activa',
+                kpi: skillRec.kpi
+            }});
+
+            const systemRec = setup.recommendedSystems.find(s => s.habilidad_name === skillRec.nombre);
+            if (systemRec) {
+                const systemId = `SYS_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+                documents.push({ collection: 'systems', data: {
+                    sistema_id: systemId,
+                    habilidad_id: skillId,
+                    objetivo: systemRec.objetivo,
+                    frecuencia: systemRec.frecuencia,
+                    estado: 'Activo',
+                    protocolo_fallo: 'P_RESET_5'
+                }});
+
+                setup.recommendedHabits.forEach(habitRec => {
+                    if (habitRec.system_objective === systemRec.objetivo) {
+                        const validVar = habitRec.var_id && validVarIds.has(habitRec.var_id);
+                        documents.push({ collection: 'habits', data: {
+                            habito_id: `HB_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                            nombre: habitRec.description,
+                            sistema_id: systemId,
+                            ...(validVar ? { var_id: habitRec.var_id } : {}),
+                            frecuencia: habitRec.frecuencia,
+                            duracion_min: habitRec.duracion_min,
+                            minimo_viable: habitRec.minimo_viable,
+                            description: habitRec.description
+                        }});
+                    }
+                });
+            }
+        });
 
         // Essentials
         protocolPresets.forEach(p => documents.push({ collection: 'protocols', data: p as Record<string, unknown> }));
