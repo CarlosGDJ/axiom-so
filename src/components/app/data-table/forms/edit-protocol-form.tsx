@@ -105,7 +105,7 @@ export default function EditProtocolForm({ entity: protocol, closeDialog }: Edit
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Estado Disparador</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecciona un estado disparador" />

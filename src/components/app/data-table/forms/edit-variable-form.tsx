@@ -118,7 +118,7 @@ export default function EditVariableForm({ entity: variable, closeDialog, areas 
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Área de Vida</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                     <SelectContent>
                       {areas?.map(area => <SelectItem key={area.area_id} value={area.area_id}>{area.area_nombre}</SelectItem>)}
@@ -135,7 +135,7 @@ export default function EditVariableForm({ entity: variable, closeDialog, areas 
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Tipo</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                     <SelectContent>
                       {['Física', 'Mental', 'Emocional', 'Social', 'Financiera', 'Entorno', 'Conductual'].map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}
@@ -182,7 +182,7 @@ export default function EditVariableForm({ entity: variable, closeDialog, areas 
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Curva de Impacto</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                     <SelectContent>
                       {['Lineal', 'Umbral', 'Exponencial'].map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}
@@ -235,7 +235,7 @@ export default function EditVariableForm({ entity: variable, closeDialog, areas 
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Controlabilidad</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                     <SelectContent>
                       {['Alta', 'Media', 'Baja'].map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}

@@ -28,6 +28,7 @@ import { systemPresets, variablePresets } from '@/lib/seed-data';
 import { useUser } from '@/hooks/use-session-user';
 import { addDocumentNonBlocking } from '@/lib/api-writes';
 const formSchema = z.object({
+  nombre: z.string().min(1, 'El nombre es obligatorio.'),
   sistema_id: z.string({ required_error: 'Por favor, selecciona un sistema.' }),
   var_id: z.string({ required_error: 'Por favor, selecciona una variable.' }),
   frecuencia: z.enum(['Diaria', '3xSemana', 'Semanal', 'Mensual']),
@@ -47,6 +48,7 @@ export default function QuickHabitForm({ closeDialog }: QuickHabitFormProps) {
   const form = useForm<QuickHabitFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+        nombre: '',
         sistema_id: systemPresets[0].sistema_id,
         var_id: variablePresets[0].var_id,
         frecuencia: 'Diaria',
@@ -77,11 +79,23 @@ export default function QuickHabitForm({ closeDialog }: QuickHabitFormProps) {
         <div className="space-y-4 p-1 max-h-[65vh] overflow-y-auto pr-4">
           <FormField
             control={form.control}
+            name="nombre"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Nombre del hábito</FormLabel>
+                <FormControl><Input {...field} placeholder="Ej: Meditar 10 min al despertar" /></FormControl>
+                <FormDescription>Un nombre claro que reconozcas en el tracker.</FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
             name="sistema_id"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Sistema</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl><SelectTrigger><SelectValue placeholder="Selecciona un sistema" /></SelectTrigger></FormControl>
                   <SelectContent>
                     {systemPresets.map(s => <SelectItem key={s.sistema_id} value={s.sistema_id}>{s.objetivo}</SelectItem>)}
@@ -98,7 +112,7 @@ export default function QuickHabitForm({ closeDialog }: QuickHabitFormProps) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Variable</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl><SelectTrigger><SelectValue placeholder="Selecciona una variable" /></SelectTrigger></FormControl>
                   <SelectContent>
                     {variablePresets.map(v => <SelectItem key={v.var_id} value={v.var_id}>{v.var_nombre}</SelectItem>)}
@@ -115,7 +129,7 @@ export default function QuickHabitForm({ closeDialog }: QuickHabitFormProps) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Frecuencia</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                   <SelectContent>
                       {['Diaria', '3xSemana', 'Semanal', 'Mensual'].map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}

@@ -157,7 +157,7 @@ export default function EditMilestoneForm({ entity, closeDialog, skills, systems
               render={({ field }) => (
                   <FormItem>
                   <FormLabel>Tipo</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                       <SelectContent>
                           <SelectItem value="single">Hito Único (se completa una vez)</SelectItem>
@@ -259,7 +259,7 @@ export default function EditMilestoneForm({ entity, closeDialog, skills, systems
                   render={({ field }) => (
                       <FormItem>
                       <FormLabel>Estado</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                           <SelectContent>
                               {['Pendiente', 'Completado', 'Omitido'].map(e => <SelectItem key={e} value={e}>{e}</SelectItem>)}

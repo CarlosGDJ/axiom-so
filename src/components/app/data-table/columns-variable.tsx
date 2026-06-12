@@ -37,6 +37,10 @@ export const getVariableColumns = (areas: Area[]): ColumnDef<Variable>[] => [
   {
     accessorKey: 'polaridad',
     header: 'Polaridad',
+    cell: ({ row }) => {
+      const p = Number(row.getValue('polaridad'));
+      return p > 0 ? 'Positiva' : p < 0 ? 'Negativa' : 'Neutra';
+    },
   },
     {
     accessorKey: 'impacto_base',

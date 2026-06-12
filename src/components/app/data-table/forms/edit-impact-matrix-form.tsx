@@ -92,7 +92,7 @@ export default function EditImpactMatrixForm({ entity, closeDialog, variables, h
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Variable (Causa)</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl><SelectTrigger><SelectValue placeholder="Selecciona una variable" /></SelectTrigger></FormControl>
                     <SelectContent>
                       {variables?.map(v => <SelectItem key={v.id} value={v.var_id}>{v.var_nombre}</SelectItem>)}
@@ -109,7 +109,7 @@ export default function EditImpactMatrixForm({ entity, closeDialog, variables, h
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Hormona (Efecto)</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl><SelectTrigger><SelectValue placeholder="Selecciona una hormona" /></SelectTrigger></FormControl>
                     <SelectContent>
                       {hormones?.map(a => <SelectItem key={a.id} value={a.hormone_id}>{a.name}</SelectItem>)}

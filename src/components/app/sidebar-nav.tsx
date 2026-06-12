@@ -182,15 +182,13 @@ export function AppSidebarNav() {
           <SidebarGroupLabel>Sistema</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              <div className="hidden lg:block">
-                <NavItem
-                  href="/dashboard/data"
-                  icon={Database}
-                  label="Gestión de Datos"
-                  disabled={isCriticalMode}
-                  restrictedReason="Acceso restringido por estado CRÍTICO."
-                />
-              </div>
+              <NavItem
+                href="/dashboard/data"
+                icon={Database}
+                label="Gestión de Datos"
+                disabled={isCriticalMode}
+                restrictedReason="Acceso restringido por estado CRÍTICO."
+              />
               <NavItem href="/dashboard/profile" icon={User} label="Perfil" />
             </SidebarMenu>
           </SidebarGroupContent>

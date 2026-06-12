@@ -27,9 +27,13 @@ export function useCollection<T = Record<string, unknown>>(
   const url = collection ? `/api/data/${collection}${qs ? `?${qs}` : ''}` : null;
 
   const { data, isLoading, isValidating, error, mutate } = useSWR<T[]>(url, fetcher, {
-    refreshInterval: 30_000,
-    revalidateOnFocus: true,
-    dedupingInterval: 5_000,
+    // Las escrituras revalidan su colección al instante (api-writes + el writer de
+    // computed), así que el poll de fondo es solo una red de seguridad: 90s en vez
+    // de 30s. revalidateOnFocus desactivado evita la ráfaga de ~18 peticiones cada
+    // vez que la pestaña recupera el foco.
+    refreshInterval: 90_000,
+    revalidateOnFocus: false,
+    dedupingInterval: 10_000,
   });
 
   return {
@@ -51,9 +55,13 @@ export function useDoc<T = Record<string, unknown>>(
       : null;
 
   const { data, isLoading, isValidating, error, mutate } = useSWR<T>(url, fetcher, {
-    refreshInterval: 30_000,
-    revalidateOnFocus: true,
-    dedupingInterval: 5_000,
+    // Las escrituras revalidan su colección al instante (api-writes + el writer de
+    // computed), así que el poll de fondo es solo una red de seguridad: 90s en vez
+    // de 30s. revalidateOnFocus desactivado evita la ráfaga de ~18 peticiones cada
+    // vez que la pestaña recupera el foco.
+    refreshInterval: 90_000,
+    revalidateOnFocus: false,
+    dedupingInterval: 10_000,
   });
 
   return {

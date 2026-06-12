@@ -43,7 +43,7 @@ export function AppHeader() {
       return 'Finanzas';
     }
     if (pathname.startsWith('/dashboard/milestones')) {
-      return 'Habit Tracker';
+      return 'Hábitos y Objetivos';
     }
     if (pathname.startsWith('/dashboard/profile')) {
       return 'Perfil';
@@ -58,7 +58,7 @@ export function AppHeader() {
       return 'Relaciones';
     }
     if (pathname.startsWith('/dashboard/dopamine')) {
-      return 'Dopamina & Ocio';
+      return 'Dopamina y Ocio';
     }
     if (pathname.startsWith('/dashboard/creativity')) {
       return 'Creatividad';
@@ -70,7 +70,7 @@ export function AppHeader() {
       return 'Propósito';
     }
     if (pathname.startsWith('/dashboard/environment')) {
-      return 'Entorno';
+      return 'Entorno y Orden';
     }
     if (pathname.startsWith('/dashboard/simulator')) {
       return 'Simulador';
@@ -224,7 +224,7 @@ export function AppHeader() {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => router.push('/dashboard/profile')}>Perfil</DropdownMenuItem>
-            <DropdownMenuItem>Ajustes</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => router.push('/dashboard/settings')}>Ajustes</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleSignOut}>Cerrar sesión</DropdownMenuItem>
           </DropdownMenuContent>

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useMemo } from 'react';
 import { useUserData } from '@/hooks/use-user-data';
@@ -117,7 +117,7 @@ export default function StudiesPage() {
 
       {/* Header */}
       <div className="space-y-1">
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap" data-tour="area-header">
           <GraduationCap className="h-5 w-5 text-primary" />
           <h1 className="text-2xl font-bold tracking-tight">Estudios</h1>
           {areaScore !== null && (

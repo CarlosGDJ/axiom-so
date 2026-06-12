@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useUser } from '@/hooks/use-session-user';
-import { useCollection, useDoc } from '@/hooks/use-mongo-collection';
+import { useCollection, useDoc, revalidateCollection } from '@/hooks/use-mongo-collection';
 import {
   Area,
   Hormone,
@@ -2146,6 +2146,14 @@ export function useComputedDataWriter(ext?: WriterPrefetch) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ writes }),
+    }).then(() => {
+      // Revalida los datos computados inmediatamente tras escribirlos, en vez de
+      // esperar al poll de fondo. Así el HUD/score se actualizan al instante tras
+      // un recálculo y podemos permitirnos un refreshInterval mucho más largo.
+      revalidateCollection('computed_global_state');
+      revalidateCollection('computed_areas');
+      revalidateCollection('computed_hormones');
+      revalidateCollection('computed_daily_score');
     }).catch(err => {
       console.error('Axiom Core: write failed, will retry on next data change.', err);
       lastProcessedSignature.current = null; // reset so next genuine change retries

@@ -134,7 +134,7 @@ export default function EditDebtForm({ entity: debt, closeDialog }: EditDebtForm
                     <FormItem>
                     <FormLabel>Tipo</FormLabel>
                     <FormControl>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value}>
                         <SelectTrigger>
                             <SelectValue />
                         </SelectTrigger>
@@ -214,7 +214,7 @@ export default function EditDebtForm({ entity: debt, closeDialog }: EditDebtForm
                     <FormItem>
                     <FormLabel>Tipo de Amortización</FormLabel>
                      <FormControl>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value}>
                             <SelectTrigger><SelectValue /></SelectTrigger>
                             <SelectContent> {['Francés', 'Alemán', 'Revolving', 'Otro'].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)} </SelectContent>
                         </Select>
@@ -249,7 +249,7 @@ export default function EditDebtForm({ entity: debt, closeDialog }: EditDebtForm
                         <FormItem>
                         <FormLabel>Opción Amortización</FormLabel>
                         <FormControl>
-                            <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!form.watch('permite_amortizacion')}>
+                            <Select onValueChange={field.onChange} value={field.value} disabled={!form.watch('permite_amortizacion')}>
                             <SelectTrigger><SelectValue /></SelectTrigger>
                             <SelectContent> {['Reducir cuota', 'Reducir plazo', 'Ambos'].map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)} </SelectContent>
                             </Select>
@@ -268,7 +268,7 @@ export default function EditDebtForm({ entity: debt, closeDialog }: EditDebtForm
                         <FormItem>
                             <FormLabel>Prioridad Manual</FormLabel>
                             <FormControl>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <Select onValueChange={field.onChange} value={field.value}>
                                 <SelectTrigger><SelectValue /></SelectTrigger>
                                 <SelectContent> {['Alta', 'Media', 'Baja'].map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)} </SelectContent>
                                 </Select>
@@ -283,7 +283,7 @@ export default function EditDebtForm({ entity: debt, closeDialog }: EditDebtForm
                         <FormItem>
                             <FormLabel>Estrés Psicológico</FormLabel>
                             <FormControl>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <Select onValueChange={field.onChange} value={field.value}>
                                 <SelectTrigger><SelectValue /></SelectTrigger>
                                 <SelectContent> {['Alto', 'Medio', 'Bajo'].map(e => <SelectItem key={e} value={e}>{e}</SelectItem>)} </SelectContent>
                                 </Select>

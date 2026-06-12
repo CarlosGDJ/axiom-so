@@ -114,7 +114,7 @@ export default function AreaDetailPanel({ areaNameMatch }: AreaDetailPanelProps)
     'bg-green-500/10 text-green-600 border-green-500/30';
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" data-tour="area-variables">
 
       {/* ── Area KPI card ── */}
       <Card className="border-primary/10 shadow-sm">

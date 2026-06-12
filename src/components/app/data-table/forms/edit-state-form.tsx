@@ -80,7 +80,7 @@ export default function EditStateForm({ entity: state, closeDialog }: EditStateF
             render={({ field }) => (
               <FormItem>
                 <FormLabel>ID de Estado</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isEditMode}>
+                <Select onValueChange={field.onChange} value={field.value} disabled={isEditMode}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecciona un ID de estado" />

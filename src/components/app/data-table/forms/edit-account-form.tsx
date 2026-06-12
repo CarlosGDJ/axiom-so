@@ -49,15 +49,17 @@ export default function EditAccountForm({ entity: account, closeDialog }: EditAc
   const form = useForm<EditAccountFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: isEditMode
-      ? { nombre: account.cuenta_id, tipo: account.tipo as any, saldo: account.saldo ?? 0 }
+      ? { nombre: account.nombre ?? account.cuenta_id, tipo: account.tipo as any, saldo: account.saldo ?? 0 }
       : { tipo: 'Banco', saldo: 0, nombre: '' },
   });
 
   async function onSubmit(data: EditAccountFormValues) {
     if (!uid) return;
 
-    const cuenta_id = isEditMode ? account.cuenta_id : data.nombre.trim();
-    const finalData = { cuenta_id, tipo: data.tipo, saldo: data.saldo };
+    // cuenta_id es un id ESTABLE (no el nombre): así dos cuentas con el mismo
+    // nombre no colisionan y el nombre se puede editar sin romper transacciones.
+    const cuenta_id = isEditMode ? account.cuenta_id : `ACC_${Date.now()}`;
+    const finalData = { cuenta_id, nombre: data.nombre.trim(), tipo: data.tipo, saldo: data.saldo };
 
     if (isEditMode) {
       setDocumentNonBlocking('accounts', account.id, finalData, { merge: true });
@@ -65,7 +67,7 @@ export default function EditAccountForm({ entity: account, closeDialog }: EditAc
     } else {
       addDocumentNonBlocking('accounts', finalData);
       revalidateCollection('accounts');
-      toast({ title: 'Cuenta creada', description: `"${cuenta_id}" lista para usar.` });
+      toast({ title: 'Cuenta creada', description: `"${data.nombre.trim()}" lista para usar.` });
     }
 
     closeDialog();
@@ -81,11 +83,8 @@ export default function EditAccountForm({ entity: account, closeDialog }: EditAc
             <FormItem>
               <FormLabel>Nombre de la cuenta</FormLabel>
               <FormControl>
-                <Input placeholder="ej. Santander, Efectivo, BBVA…" {...field} disabled={isEditMode} />
+                <Input placeholder="ej. Santander, Efectivo, BBVA…" {...field} />
               </FormControl>
-              {isEditMode && (
-                <FormDescription>El nombre no se puede cambiar una vez creada.</FormDescription>
-              )}
               <FormMessage />
             </FormItem>
           )}
@@ -97,7 +96,7 @@ export default function EditAccountForm({ entity: account, closeDialog }: EditAc
           render={({ field }) => (
             <FormItem>
               <FormLabel>Tipo</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select onValueChange={field.onChange} value={field.value}>
                 <FormControl>
                   <SelectTrigger><SelectValue placeholder="Selecciona un tipo" /></SelectTrigger>
                 </FormControl>

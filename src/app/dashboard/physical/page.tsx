@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useMemo } from 'react';
 import { useUserData } from '@/hooks/use-user-data';
@@ -151,9 +151,9 @@ export default function PhysicalPage() {
 
       {/* Header */}
       <div className="space-y-1">
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap" data-tour="area-header">
           <Dumbbell className="h-5 w-5 text-primary" />
-          <h1 className="text-2xl font-bold tracking-tight">Salud física</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Salud Física</h1>
           {areaScore !== null && (
             <Badge variant="outline" className={cn('font-mono font-bold', scoreColor)}>
               {areaScore}/100

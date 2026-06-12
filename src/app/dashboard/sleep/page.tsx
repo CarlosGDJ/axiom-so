@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useMemo, useState } from 'react';
 import { useUserData } from '@/hooks/use-user-data';
@@ -116,11 +116,16 @@ export default function SleepPage() {
       impulsivo: false,
       duracion_horas: sleepHours,
     });
+    const SLEEP_EFFECTS: Record<string, string> = {
+      'Profundo':  'Recuperación completa · Serotonina +25, Energía +35',
+      'Bueno':     'Buena recuperación · Serotonina +15, Energía +20',
+      'Regular':   'Recuperación parcial · Energía ligeramente al alza',
+      'Malo':      'Déficit · Cortisol +20, Energía −20',
+      'Muy malo':  'Déficit severo · Cortisol +30, Energía −35',
+    };
     toast({
       title: `Sueño registrado: ${opt.label} (${sleepHours}h)`,
-      description: opt.var_id === 'SUEÑO_PROF'
-        ? 'Serotonina +20, Energía +35 por 12h.'
-        : 'Cortisol +30, Energía −35 por 12h.',
+      description: SLEEP_EFFECTS[opt.label] ?? '',
     });
   };
 
@@ -151,7 +156,7 @@ export default function SleepPage() {
 
       {/* Header */}
       <div className="space-y-1">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2" data-tour="area-header">
           <Moon className="h-5 w-5 text-primary" />
           <h1 className="text-2xl font-bold tracking-tight">Sueño</h1>
           <Badge variant="outline" className={cn('ml-2 font-mono font-bold', suenoColor)}>
@@ -258,6 +263,7 @@ export default function SleepPage() {
             </div>
             <div className="flex items-center gap-3">
               <button
+                aria-label="Restar media hora de sueño"
                 onClick={() => setSleepHours(h => Math.max(3, parseFloat((h - 0.5).toFixed(1))))}
                 className="h-7 w-7 rounded-full border flex items-center justify-center hover:bg-muted transition-colors"
               >
@@ -265,6 +271,7 @@ export default function SleepPage() {
               </button>
               <span className="text-xl font-black tabular-nums w-12 text-center">{sleepHours}h</span>
               <button
+                aria-label="Sumar media hora de sueño"
                 onClick={() => setSleepHours(h => Math.min(12, parseFloat((h + 0.5).toFixed(1))))}
                 className="h-7 w-7 rounded-full border flex items-center justify-center hover:bg-muted transition-colors"
               >

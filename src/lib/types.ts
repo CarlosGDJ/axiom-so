@@ -195,7 +195,8 @@ export interface Interaction {
 
 export interface Account {
     id: string;
-    cuenta_id: string;
+    cuenta_id: string;       // id estable (no cambia); las transacciones lo referencian
+    nombre?: string;         // nombre visible editable (antes se confundía con cuenta_id)
     tipo: 'Banco' | 'Efectivo' | 'Inversion' | 'Otro';
     saldo: number;
 }

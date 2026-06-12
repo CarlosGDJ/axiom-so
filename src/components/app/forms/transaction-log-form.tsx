@@ -119,13 +119,14 @@ export default function TransactionLogForm({ entity: transaction, accounts, debt
 
   function handleCreateAccount() {
     if (!newAccNombre.trim() || !uid) return;
-    const cuenta_id = newAccNombre.trim();
+    const nombre = newAccNombre.trim();
+    const cuenta_id = `ACC_${Date.now()}`; // id estable, no el nombre
     const saldo = parseFloat(newAccSaldo) || 0;
-    addDocumentNonBlocking('accounts', { cuenta_id, tipo: newAccTipo, saldo });
+    addDocumentNonBlocking('accounts', { cuenta_id, nombre, tipo: newAccTipo, saldo });
     revalidateCollection('accounts');
     setLocalAccounts(prev => [
       ...prev,
-      { id: `local_${Date.now()}`, cuenta_id, tipo: newAccTipo, saldo } as Account,
+      { id: `local_${Date.now()}`, cuenta_id, nombre, tipo: newAccTipo, saldo } as Account,
     ]);
     form.setValue('cuenta_id', cuenta_id);
     setShowNewAccount(false);
@@ -199,7 +200,7 @@ export default function TransactionLogForm({ entity: transaction, accounts, debt
                   <SelectContent>
                     {localAccounts.map((acc) => (
                       <SelectItem key={acc.id ?? acc.cuenta_id} value={acc.cuenta_id}>
-                        {acc.cuenta_id} ({acc.tipo})
+                        {acc.nombre ?? acc.cuenta_id} ({acc.tipo})
                       </SelectItem>
                     ))}
                   </SelectContent>

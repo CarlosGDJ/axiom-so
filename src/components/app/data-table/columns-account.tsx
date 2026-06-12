@@ -17,14 +17,15 @@ export const columns: ColumnDef<Account>[] = [
     ),
   },
   {
-    accessorKey: 'cuenta_id',
-    header: 'ID de Cuenta',
+    accessorKey: 'nombre',
+    header: 'Nombre',
+    cell: ({ row }) => row.original.nombre ?? row.original.cuenta_id,
   },
   {
     accessorKey: 'saldo',
     header: 'Saldo',
      cell: ({ row }) => {
-      const amount = parseFloat(row.getValue('saldo') || '0');
+      const amount = Number(row.getValue('saldo')) || 0;
       const formatted = new Intl.NumberFormat('es-ES', {
         style: 'currency',
         currency: 'EUR',

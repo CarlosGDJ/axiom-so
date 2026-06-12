@@ -191,7 +191,7 @@ export default function EditSystemForm({ entity: system, closeDialog, skills, va
           <>
             <div className="space-y-6 p-1 max-h-[65vh] overflow-y-auto pr-4">
               <FormField control={form.control} name="objetivo" render={({ field }) => ( <FormItem> <FormLabel>Objetivo del Sistema</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-              <FormField control={form.control} name="habilidad_id" render={({ field }) => ( <FormItem> <FormLabel>Habilidad Principal</FormLabel> <Select onValueChange={field.onChange} defaultValue={field.value}> <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl> <SelectContent> {skills?.map(skill => <SelectItem key={skill.id} value={skill.habilidad_id}>{skill.nombre}</SelectItem>)} </SelectContent> </Select> <FormMessage /> </FormItem> )} />
+              <FormField control={form.control} name="habilidad_id" render={({ field }) => ( <FormItem> <FormLabel>Habilidad Principal</FormLabel> <Select onValueChange={field.onChange} value={field.value}> <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl> <SelectContent> {skills?.map(skill => <SelectItem key={skill.id} value={skill.habilidad_id}>{skill.nombre}</SelectItem>)} </SelectContent> </Select> <FormMessage /> </FormItem> )} />
 
               {!isEditMode && aiPlan && (
                 <>
@@ -229,10 +229,10 @@ export default function EditSystemForm({ entity: system, closeDialog, skills, va
               )}
                 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField control={form.control} name="frecuencia" render={({ field }) => ( <FormItem> <FormLabel>Frecuencia</FormLabel> <Select onValueChange={field.onChange} defaultValue={field.value}> <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl> <SelectContent> {['Diaria', '3xSemana', 'Semanal', 'Mensual'].map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)} </SelectContent> </Select> </FormItem> )} />
-                <FormField control={form.control} name="estado" render={({ field }) => ( <FormItem> <FormLabel>Estado</FormLabel> <Select onValueChange={field.onChange} defaultValue={field.value}> <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl> <SelectContent> <SelectItem value="Activo">Activo</SelectItem> <SelectItem value="Pausa">Pausa</SelectItem> </SelectContent> </Select> </FormItem> )} />
+                <FormField control={form.control} name="frecuencia" render={({ field }) => ( <FormItem> <FormLabel>Frecuencia</FormLabel> <Select onValueChange={field.onChange} value={field.value}> <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl> <SelectContent> {['Diaria', '3xSemana', 'Semanal', 'Mensual'].map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)} </SelectContent> </Select> </FormItem> )} />
+                <FormField control={form.control} name="estado" render={({ field }) => ( <FormItem> <FormLabel>Estado</FormLabel> <Select onValueChange={field.onChange} value={field.value}> <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl> <SelectContent> <SelectItem value="Activo">Activo</SelectItem> <SelectItem value="Pausa">Pausa</SelectItem> </SelectContent> </Select> </FormItem> )} />
               </div>
-              <FormField control={form.control} name="protocolo_fallo" render={({ field }) => ( <FormItem> <FormLabel>Protocolo de Fallo</FormLabel> <Select onValueChange={field.onChange} defaultValue={field.value}> <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl> <SelectContent> {protocolPresets.map(p => <SelectItem key={p.protocolo_id} value={p.protocolo_id}>{p.nombre}</SelectItem>)} </SelectContent> </Select> </FormItem> )} />
+              <FormField control={form.control} name="protocolo_fallo" render={({ field }) => ( <FormItem> <FormLabel>Protocolo de Fallo</FormLabel> <Select onValueChange={field.onChange} value={field.value}> <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl> <SelectContent> {protocolPresets.map(p => <SelectItem key={p.protocolo_id} value={p.protocolo_id}>{p.nombre}</SelectItem>)} </SelectContent> </Select> </FormItem> )} />
             </div>
             <div className="flex justify-end space-x-2 pt-4 border-t mt-4">
                 <Button type="button" variant="outline" onClick={closeDialog}>Cancelar</Button>

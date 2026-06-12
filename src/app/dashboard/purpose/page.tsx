@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useMemo } from 'react';
 import { useUserData } from '@/hooks/use-user-data';
@@ -20,10 +20,10 @@ import { addDocumentNonBlocking } from '@/lib/api-writes';
 const PURPOSE_VARS = ['PURPOSE_SENSE', 'VALUES_ACTION', 'HELP_OTHERS', 'ACHIEVEMENT'];
 
 const QUICK_ACTIONS = [
-  { var_id: 'PURPOSE_SENSE', label: 'Sentido', icon: Compass, context: 'Momento de claridad y sentido de propósito.', color: 'text-purple-500', border: 'hover:border-purple-500/40', badge: 'Serotonina +25 · 72h' },
-  { var_id: 'VALUES_ACTION', label: 'Valores', icon: Star, context: 'Acción alineada con mis valores.', color: 'text-amber-500', border: 'hover:border-amber-500/40', badge: 'Serotonina +20 · 48h' },
-  { var_id: 'HELP_OTHERS', label: 'Ayudar', icon: Heart, context: 'Ayudé a alguien de forma significativa.', color: 'text-rose-500', border: 'hover:border-rose-500/40', badge: 'Oxitocina +20 · 48h' },
-  { var_id: 'ACHIEVEMENT', label: 'Logro', icon: Zap, context: 'Logro importante alcanzado.', color: 'text-green-500', border: 'hover:border-green-500/40', badge: 'Dopamina +25 · 48h' },
+  { var_id: 'PURPOSE_SENSE', label: 'Sentido', icon: Compass, context: 'Momento de claridad y sentido de propósito.', color: 'text-purple-500', border: 'hover:border-purple-500/40', badge: 'Serotonina +25 · 72h', intensidad: 8 },
+  { var_id: 'VALUES_ACTION', label: 'Valores', icon: Star, context: 'Acción alineada con mis valores.', color: 'text-amber-500', border: 'hover:border-amber-500/40', badge: 'Serotonina +20 · 48h', intensidad: 7 },
+  { var_id: 'HELP_OTHERS', label: 'Ayudar', icon: Heart, context: 'Ayudé a alguien de forma significativa.', color: 'text-rose-500', border: 'hover:border-rose-500/40', badge: 'Oxitocina +20 · 48h', intensidad: 7 },
+  { var_id: 'ACHIEVEMENT', label: 'Logro', icon: Zap, context: 'Logro importante alcanzado.', color: 'text-green-500', border: 'hover:border-green-500/40', badge: 'Dopamina +25 · 48h', intensidad: 8 },
 ];
 
 export default function PurposePage() {
@@ -61,18 +61,18 @@ export default function PurposePage() {
     return (userData?.events ?? []).filter(e => ids.includes(e.var_id) && new Date(e.fecha).getTime() > cutoff).length;
   }, [userData, purposeVarIds]);
 
-  const logAction = (varId: string, label: string, context: string) => {
+  const logAction = (varId: string, label: string, context: string, intensidad: number, badge: string) => {
     if (!uid) return;
     addDocumentNonBlocking('events', {
       fecha: new Date().toISOString(),
       evento_id: `EVT_PURPOSE_${Date.now()}`,
       var_id: varId,
-      intensidad: 7,
+      intensidad,
       contexto: context,
       tipo: 'Variable',
       impulsivo: false,
     });
-    toast({ title: `${label} registrado`, description: 'El motor actualizará el estado en breve.' });
+    toast({ title: `${label} registrado`, description: badge });
   };
 
   const scoreColor = areaScore === null ? 'text-muted-foreground'
@@ -88,7 +88,7 @@ export default function PurposePage() {
 
       {/* Header */}
       <div className="space-y-1">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2" data-tour="area-header">
           <Compass className="h-5 w-5 text-primary" />
           <h1 className="text-2xl font-bold tracking-tight">Propósito</h1>
           {areaScore !== null && (
@@ -116,12 +116,12 @@ export default function PurposePage() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {QUICK_ACTIONS.map(({ var_id, label, icon: Icon, context, color, border, badge }) => (
+            {QUICK_ACTIONS.map(({ var_id, label, icon: Icon, context, color, border, badge, intensidad }) => (
               <Button
                 key={var_id}
                 variant="outline"
                 className={cn('flex flex-col h-auto py-4 gap-2', border)}
-                onClick={() => logAction(var_id, label, context)}
+                onClick={() => logAction(var_id, label, context, intensidad, badge)}
               >
                 <Icon className={cn('h-5 w-5', color)} />
                 <span className="text-xs font-semibold">{label}</span>

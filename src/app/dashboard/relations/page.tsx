@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useMemo, useState } from 'react';
 import { useUserData } from '@/hooks/use-user-data';
@@ -130,7 +130,7 @@ export default function RelationsPage() {
 
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-1">
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap" data-tour="area-header">
             <Users className="h-5 w-5 text-primary" />
             <h1 className="text-2xl font-bold tracking-tight">Relaciones</h1>
             {areaScore !== null && (

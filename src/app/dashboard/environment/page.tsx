@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useMemo } from 'react';
 import { useUserData } from '@/hooks/use-user-data';
@@ -20,10 +20,10 @@ import { addDocumentNonBlocking } from '@/lib/api-writes';
 const ENTORNO_VARS = ['ENV_ORDER', 'ENV_CHAOS', 'NATURE_VIEW', 'WALK'];
 
 const QUICK_ACTIONS = [
-  { var_id: 'ENV_ORDER', label: 'Orden', icon: LayoutGrid, context: 'Organicé y ordené mi espacio.', color: 'text-green-500', border: 'hover:border-green-500/40', badge: 'Cortisol −6 · 24h', positive: true },
-  { var_id: 'NATURE_VIEW', label: 'Naturaleza', icon: TreePine, context: 'Contemplé o estuve en contacto con la naturaleza.', color: 'text-emerald-500', border: 'hover:border-emerald-500/40', badge: 'Serotonina +25 · 12h', positive: true },
-  { var_id: 'WALK', label: 'Caminata', icon: TrendingUp, context: 'Caminata al aire libre o en naturaleza.', color: 'text-blue-500', border: 'hover:border-blue-500/40', badge: 'Cortisol −20 · 12h', positive: true },
-  { var_id: 'ENV_CHAOS', label: 'Caos', icon: AlertTriangle, context: 'Entorno desordenado o caótico.', color: 'text-orange-500', border: 'hover:border-orange-500/40', badge: 'Cortisol +8 · 24h', positive: false },
+  { var_id: 'ENV_ORDER', label: 'Orden', icon: LayoutGrid, context: 'Organicé y ordené mi espacio.', color: 'text-green-500', border: 'hover:border-green-500/40', badge: 'Cortisol −6 · 24h', intensidad: 6, positive: true },
+  { var_id: 'NATURE_VIEW', label: 'Naturaleza', icon: TreePine, context: 'Contemplé o estuve en contacto con la naturaleza.', color: 'text-emerald-500', border: 'hover:border-emerald-500/40', badge: 'Serotonina +25 · 12h', intensidad: 7, positive: true },
+  { var_id: 'WALK', label: 'Caminata', icon: TrendingUp, context: 'Caminata al aire libre o en naturaleza.', color: 'text-blue-500', border: 'hover:border-blue-500/40', badge: 'Cortisol −20 · 12h', intensidad: 6, positive: true },
+  { var_id: 'ENV_CHAOS', label: 'Caos', icon: AlertTriangle, context: 'Entorno desordenado o caótico.', color: 'text-orange-500', border: 'hover:border-orange-500/40', badge: 'Cortisol +8 · 24h', intensidad: 5, positive: false },
 ];
 
 export default function EnvironmentPage() {
@@ -59,18 +59,18 @@ export default function EnvironmentPage() {
     return { order, chaos, total: recent.length };
   }, [userData]);
 
-  const logAction = (varId: string, label: string, context: string) => {
+  const logAction = (varId: string, label: string, context: string, intensidad: number, badge: string) => {
     if (!uid) return;
     addDocumentNonBlocking('events', {
       fecha: new Date().toISOString(),
       evento_id: `EVT_ENV_${Date.now()}`,
       var_id: varId,
-      intensidad: 6,
+      intensidad,
       contexto: context,
       tipo: 'Variable',
       impulsivo: false,
     });
-    toast({ title: `${label} registrado`, description: 'El motor actualizará el estado en breve.' });
+    toast({ title: `${label} registrado`, description: badge });
   };
 
   const scoreColor = areaScore === null ? 'text-muted-foreground'
@@ -92,7 +92,7 @@ export default function EnvironmentPage() {
 
       {/* Header */}
       <div className="space-y-1">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2" data-tour="area-header">
           <LayoutGrid className="h-5 w-5 text-primary" />
           <h1 className="text-2xl font-bold tracking-tight">Entorno y Orden</h1>
           {areaScore !== null && (
@@ -151,12 +151,12 @@ export default function EnvironmentPage() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {QUICK_ACTIONS.map(({ var_id, label, icon: Icon, context, color, border, badge }) => (
+            {QUICK_ACTIONS.map(({ var_id, label, icon: Icon, context, color, border, badge, intensidad }) => (
               <Button
                 key={var_id}
                 variant="outline"
                 className={cn('flex flex-col h-auto py-4 gap-2', border)}
-                onClick={() => logAction(var_id, label, context)}
+                onClick={() => logAction(var_id, label, context, intensidad, badge)}
               >
                 <Icon className={cn('h-5 w-5', color)} />
                 <span className="text-xs font-semibold">{label}</span>

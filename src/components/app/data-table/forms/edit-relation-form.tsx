@@ -107,7 +107,7 @@ export default function EditRelationForm({ entity: relation, closeDialog }: Edit
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Rol</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger><SelectValue placeholder="Selecciona un rol" /></SelectTrigger>
                   </FormControl>
@@ -164,7 +164,7 @@ export default function EditRelationForm({ entity: relation, closeDialog }: Edit
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Frecuencia de Contacto</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger><SelectValue placeholder="Selecciona una frecuencia" /></SelectTrigger>
                   </FormControl>

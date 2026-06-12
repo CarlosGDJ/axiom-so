@@ -136,7 +136,7 @@ export default function EditHabitForm({ entity: habit, closeDialog, systems, var
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Variable Afectada</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl><SelectTrigger><SelectValue placeholder="Selecciona una variable" /></SelectTrigger></FormControl>
                   <SelectContent>
                     {variables?.map(v => <SelectItem key={v.id} value={v.var_id}>{v.var_nombre}</SelectItem>)}
@@ -167,7 +167,7 @@ export default function EditHabitForm({ entity: habit, closeDialog, systems, var
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Frecuencia</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                   <SelectContent>
                       {['Diaria', '3xSemana', 'Semanal', 'Mensual'].map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}

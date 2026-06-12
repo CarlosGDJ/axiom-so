@@ -106,7 +106,7 @@ export default function EditSkillForm({ entity: skill, closeDialog, areas }: Edi
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Área de Vida</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl><SelectTrigger><SelectValue placeholder="Selecciona un área" /></SelectTrigger></FormControl>
                   <SelectContent>
                     {areas?.map(area => <SelectItem key={area.area_id} value={area.area_id}>{area.area_nombre}</SelectItem>)}
@@ -147,7 +147,7 @@ export default function EditSkillForm({ entity: skill, closeDialog, areas }: Edi
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Estado</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                   <SelectContent>
                     <SelectItem value="Activa">Activa</SelectItem>

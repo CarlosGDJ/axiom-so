@@ -52,7 +52,7 @@ const DEFAULT_ENGINE: EngineSettings = { lookback_days: 90 };
 const NOTIFICATION_LABELS: Record<keyof NotificationPrefs, { label: string; description: string }> = {
   finance: { label: 'Finanzas', description: 'Alertas de flujo negativo, gasto impulsivo y deuda elevada.' },
   habits: { label: 'Hábitos', description: 'Recordatorios de hábitos vencidos y rachas por romper.' },
-  milestones: { label: 'Milestones', description: 'Aviso cuando un objetivo está retrasado o próximo a cumplirse.' },
+  milestones: { label: 'Hitos', description: 'Aviso cuando un objetivo está retrasado o próximo a cumplirse.' },
   system: { label: 'Sistema', description: 'Cambios de estado global (RIESGO/CRÍTICO) y recalibraciones.' },
   morning_briefing: { label: 'Misión diaria', description: 'Notificación matutina con el objetivo del día.' },
 };

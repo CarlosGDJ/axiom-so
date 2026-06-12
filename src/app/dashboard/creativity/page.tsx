@@ -111,7 +111,7 @@ export default function CreativityPage() {
 
       {/* Header */}
       <div className="space-y-1">
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap" data-tour="area-header">
           <Palette className="h-5 w-5 text-primary" />
           <h1 className="text-2xl font-bold tracking-tight">Creatividad</h1>
           {areaScore !== null && (

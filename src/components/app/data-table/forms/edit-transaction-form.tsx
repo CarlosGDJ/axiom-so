@@ -162,7 +162,7 @@ export default function TransactionLogForm({ entity: transaction, accounts, debt
                   <SelectContent>
                     {accounts?.map((acc) => (
                       <SelectItem key={acc.id} value={acc.cuenta_id}>
-                        {acc.cuenta_id} ({acc.tipo})
+                        {acc.nombre ?? acc.cuenta_id} ({acc.tipo})
                       </SelectItem>
                     ))}
                   </SelectContent>

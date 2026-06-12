@@ -42,6 +42,11 @@ export const getTransactionColumns = (accounts: Account[], debts: Debt[]): Colum
   {
     accessorKey: 'cuenta_id',
     header: 'Cuenta',
+    cell: ({ row }) => {
+      const cid = row.getValue('cuenta_id');
+      const acc = accounts.find(a => a.cuenta_id === cid);
+      return acc?.nombre ?? acc?.cuenta_id ?? cid ?? '—';
+    },
   },
   {
     accessorKey: 'monto',
