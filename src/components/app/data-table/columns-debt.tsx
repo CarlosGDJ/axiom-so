@@ -3,19 +3,12 @@
 
 import { ColumnDef } from '@tanstack/react-table';
 import { Debt } from '@/lib/types';
-import { ArrowUpDown } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 
 export const columns: ColumnDef<Debt>[] = [
   {
     accessorKey: 'nombre',
-    header: ({ column }) => (
-      <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>
-        Nombre
-        <ArrowUpDown className="ml-2 h-4 w-4" />
-      </Button>
-    ),
+    header: 'Nombre',
   },
   {
     accessorKey: 'saldo_pendiente',

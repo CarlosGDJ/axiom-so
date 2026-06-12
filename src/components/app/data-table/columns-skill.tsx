@@ -3,23 +3,11 @@
 
 import { ColumnDef } from '@tanstack/react-table';
 import { Area, Skill } from '@/lib/types';
-import { ArrowUpDown } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 
 export const getSkillColumns = (areas: Area[]): ColumnDef<Skill>[] => [
   {
     accessorKey: 'nombre',
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-        >
-          Nombre
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
+    header: 'Nombre',
   },
   {
     accessorKey: 'area_id',

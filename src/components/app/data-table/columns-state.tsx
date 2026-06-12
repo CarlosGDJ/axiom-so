@@ -3,8 +3,6 @@
 
 import { ColumnDef } from '@tanstack/react-table';
 import { State } from '@/lib/types';
-import { ArrowUpDown } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
@@ -18,17 +16,7 @@ const STATE_CLASSES: Record<string, string> = {
 export const columns: ColumnDef<State>[] = [
   {
     accessorKey: 'estado_id',
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-        >
-          Estado
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
+    header: 'Estado',
     cell: ({ row }) => {
       const id = String(row.getValue('estado_id'));
       return (

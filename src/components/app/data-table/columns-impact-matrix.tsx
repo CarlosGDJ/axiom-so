@@ -3,23 +3,11 @@
 
 import { ColumnDef } from '@tanstack/react-table';
 import { ImpactMatrix, Variable, Hormone } from '@/lib/types';
-import { ArrowUpDown } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 
 export const getImpactMatrixColumns = (variables: Variable[], hormones: Hormone[]): ColumnDef<ImpactMatrix>[] => [
   {
     accessorKey: 'var_id',
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-        >
-          Variable (Causa)
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
+    header: 'Variable (Causa)',
     cell: ({ row }) => {
         const varId = row.getValue('var_id') as string;
         const variable = variables.find(v => v.var_id === varId);

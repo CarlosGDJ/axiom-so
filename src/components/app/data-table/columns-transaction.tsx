@@ -27,8 +27,13 @@ export const getTransactionColumns = (accounts: Account[], debts: Debt[]): Colum
       const type = row.getValue('tipo') as string;
       return (
         <Badge
-          variant={type === 'Gasto' ? 'destructive' : 'default'}
-          className={cn(type === 'Gasto' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800')}
+          variant="outline"
+          className={cn(
+            'font-semibold',
+            type === 'Gasto'
+              ? 'bg-red-500/10 text-red-600 border-red-500/30'
+              : 'bg-green-500/10 text-green-600 border-green-500/30'
+          )}
         >
           {type}
         </Badge>

@@ -3,7 +3,7 @@
 
 import { ColumnDef } from '@tanstack/react-table';
 import { Milestone, Skill, System } from '@/lib/types';
-import { ArrowUpDown, Calendar, Check, Plus, Trash2, Zap, Sparkles } from 'lucide-react';
+import { Calendar, Check, Plus, Trash2, Zap, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
@@ -126,12 +126,7 @@ const MilestoneProgress = ({ row, skills }: { row: { original: Milestone }, skil
 export const getMilestoneColumns = (skills: Skill[], systems: System[]): ColumnDef<Milestone>[] => [
   {
     accessorKey: 'nombre',
-    header: ({ column }) => (
-      <Button variant="ghost" size="sm" className="-ml-3" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>
-        Hito
-        <ArrowUpDown className="ml-2 h-3 w-3" />
-      </Button>
-    ),
+    header: 'Hito',
     cell: ({ row }) => <div className="font-medium text-sm">{row.original.nombre}</div>,
   },
   {

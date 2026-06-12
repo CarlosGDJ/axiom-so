@@ -3,8 +3,7 @@
 
 import { ColumnDef } from '@tanstack/react-table';
 import { Relation } from '@/lib/types';
-import { ArrowUpDown, Minus, ArrowUp, ArrowDown } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Minus, ArrowUp, ArrowDown } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
@@ -12,12 +11,7 @@ import { cn } from '@/lib/utils';
 export const columns: ColumnDef<Relation>[] = [
   {
     accessorKey: 'nombre',
-    header: ({ column }) => (
-      <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>
-        Nombre
-        <ArrowUpDown className="ml-2 h-4 w-4" />
-      </Button>
-    ),
+    header: 'Nombre',
   },
   {
     accessorKey: 'rol',

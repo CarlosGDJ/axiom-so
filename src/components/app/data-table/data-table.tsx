@@ -39,7 +39,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { MoreHorizontal, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { MoreHorizontal, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Plus, Search, X, SearchX, Inbox } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -234,15 +234,28 @@ export function DataTable<TData extends EntityWithId, TValue>({
     <div>
       {/* ── Toolbar ─────────────────────────────────────────────── */}
       <div className="flex items-center justify-between gap-3 py-4">
-        <Input
-          placeholder="Buscar en todas las columnas..."
-          value={globalFilter}
-          onChange={e => table.setGlobalFilter(e.target.value)}
-          className="max-w-xs h-9"
-        />
+        <div className="relative w-full max-w-xs">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+          <Input
+            placeholder="Buscar…"
+            value={globalFilter}
+            onChange={e => table.setGlobalFilter(e.target.value)}
+            className="h-9 pl-9 pr-9"
+          />
+          {globalFilter && (
+            <button
+              type="button"
+              aria-label="Limpiar búsqueda"
+              onClick={() => table.setGlobalFilter('')}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
         {!hideCreateButton && entityName && AddNewForm && (
           <Button size="sm" onClick={() => setIsAddDialogOpen(true)} className="shrink-0">
-            Añadir {singularEntityName}
+            <Plus className="h-4 w-4 mr-1.5" /> Añadir {singularEntityName}
           </Button>
         )}
       </div>
@@ -304,8 +317,32 @@ export function DataTable<TData extends EntityWithId, TValue>({
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center text-muted-foreground">
-                  Sin resultados.
+                <TableCell colSpan={columns.length} className="h-32 text-center">
+                  <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                    {globalFilter ? (
+                      <>
+                        <SearchX className="h-8 w-8 opacity-40" />
+                        <p className="text-sm">Sin resultados para «{globalFilter}».</p>
+                        <button
+                          type="button"
+                          onClick={() => table.setGlobalFilter('')}
+                          className="text-xs text-primary hover:underline"
+                        >
+                          Limpiar búsqueda
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <Inbox className="h-8 w-8 opacity-40" />
+                        <p className="text-sm">Aún no hay {singularEntityName?.toLowerCase() ?? 'registros'}.</p>
+                        {!hideCreateButton && entityName && AddNewForm && (
+                          <Button variant="outline" size="sm" className="mt-1" onClick={() => setIsAddDialogOpen(true)}>
+                            <Plus className="h-4 w-4 mr-1.5" /> Crear el primero
+                          </Button>
+                        )}
+                      </>
+                    )}
+                  </div>
                 </TableCell>
               </TableRow>
             )}

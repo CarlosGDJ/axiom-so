@@ -3,23 +3,11 @@
 
 import { ColumnDef } from '@tanstack/react-table';
 import { System, Skill } from '@/lib/types';
-import { ArrowUpDown } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 
 export const getSystemColumns = (skills: Skill[]): ColumnDef<System>[] => [
   {
     accessorKey: 'objetivo',
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-        >
-          Objetivo
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
+    header: 'Objetivo',
   },
   {
     accessorKey: 'habilidad_id',
