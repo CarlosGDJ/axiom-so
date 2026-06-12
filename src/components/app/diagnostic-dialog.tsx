@@ -23,6 +23,10 @@ const STAT_LABELS: Record<string, { label: string; highIsBad?: boolean }> = {
   sueno:      { label: 'Sueño' },
 };
 
+function formatPrimaryCause(raw: string): string {
+  return raw.replace(/^[A-Z_]+:/, '');
+}
+
 export default function DiagnosticDialog({ open, onClose, userData, dominantVariables }: DiagnosticDialogProps) {
   const score = userData.rpg_stats?.player_score ?? 0;
   const explanation = userData.explanation;
@@ -31,8 +35,9 @@ export default function DiagnosticDialog({ open, onClose, userData, dominantVari
   const isFalling = velocity?.direction === 'falling' || velocity?.direction === 'plunging';
 
   const affectedStats = Object.entries(STAT_LABELS).filter(([key, cfg]) => {
-    const val = (stats as any)?.[key] as number | undefined;
-    if (val === undefined) return false;
+    const raw = (stats as any)?.[key] as number | undefined;
+    if (raw === undefined) return false;
+    const val = Math.round(raw);
     return cfg.highIsBad ? val > 65 : val < 50;
   });
 
@@ -64,7 +69,7 @@ export default function DiagnosticDialog({ open, onClose, userData, dominantVari
             {explanation?.primary_cause && (
               <section className="space-y-1.5">
                 <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Causa principal</h4>
-                <p className="text-sm leading-snug">{explanation.primary_cause}</p>
+                <p className="text-sm leading-snug">{formatPrimaryCause(explanation.primary_cause)}</p>
               </section>
             )}
 
@@ -106,7 +111,7 @@ export default function DiagnosticDialog({ open, onClose, userData, dominantVari
                 <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Biomarcadores fuera de rango</h4>
                 <div className="grid grid-cols-2 gap-1.5">
                   {affectedStats.map(([key, cfg]) => {
-                    const val = (stats as any)[key] as number;
+                    const val = Math.round((stats as any)[key] as number);
                     const isBad = cfg.highIsBad ? val > 65 : val < 50;
                     return (
                       <div key={key} className={cn(
