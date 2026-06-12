@@ -26,11 +26,12 @@ import {
 } from '@/components/ui/select';
 import { useUser } from '@/hooks/use-session-user';
 import { addDocumentNonBlocking, setDocumentNonBlocking } from '@/lib/api-writes';
+import { revalidateCollection } from '@/hooks/use-mongo-collection';
 
 const formSchema = z.object({
+  nombre: z.string().min(1, 'El nombre es obligatorio.'),
   tipo: z.enum(['Banco', 'Efectivo', 'Inversion', 'Otro']),
-  saldo: z.coerce.number().optional(),
-  cuenta_id: z.string().optional(), // Made optional
+  saldo: z.coerce.number().default(0),
 });
 
 type EditAccountFormValues = z.infer<typeof formSchema>;
@@ -41,49 +42,55 @@ interface EditAccountFormProps {
 }
 
 export default function EditAccountForm({ entity: account, closeDialog }: EditAccountFormProps) {
-  const { toast } = useToast();  const { user, uid } = useUser();
+  const { toast } = useToast();
+  const { uid } = useUser();
   const isEditMode = !!account;
 
   const form = useForm<EditAccountFormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: isEditMode ? {
-      ...account,
-    } : {
-      tipo: 'Banco',
-      saldo: 0,
-    },
+    defaultValues: isEditMode
+      ? { nombre: account.cuenta_id, tipo: account.tipo as any, saldo: account.saldo ?? 0 }
+      : { tipo: 'Banco', saldo: 0, nombre: '' },
   });
 
   async function onSubmit(data: EditAccountFormValues) {
     if (!uid) return;
-    
-    const accountId = isEditMode ? account.cuenta_id : `ACC_${Date.now()}`;
 
-    const finalData = {
-        ...data,
-        cuenta_id: accountId
-    };
+    const cuenta_id = isEditMode ? account.cuenta_id : data.nombre.trim();
+    const finalData = { cuenta_id, tipo: data.tipo, saldo: data.saldo };
 
     if (isEditMode) {
-            setDocumentNonBlocking('accounts', account.id, data, { merge: true });
-      toast({
-        title: 'Cuenta Actualizada',
-        description: `La cuenta ha sido actualizada.`,
-      });
+      setDocumentNonBlocking('accounts', account.id, finalData, { merge: true });
+      toast({ title: 'Cuenta actualizada' });
     } else {
-            addDocumentNonBlocking('accounts', finalData);
-      toast({
-        title: 'Cuenta Creada',
-        description: `La nueva cuenta ha sido creada.`,
-      });
+      addDocumentNonBlocking('accounts', finalData);
+      revalidateCollection('accounts');
+      toast({ title: 'Cuenta creada', description: `"${cuenta_id}" lista para usar.` });
     }
-    
+
     closeDialog();
   }
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="nombre"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Nombre de la cuenta</FormLabel>
+              <FormControl>
+                <Input placeholder="ej. Santander, Efectivo, BBVA…" {...field} disabled={isEditMode} />
+              </FormControl>
+              {isEditMode && (
+                <FormDescription>El nombre no se puede cambiar una vez creada.</FormDescription>
+              )}
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         <FormField
           control={form.control}
           name="tipo"
@@ -95,8 +102,8 @@ export default function EditAccountForm({ entity: account, closeDialog }: EditAc
                   <SelectTrigger><SelectValue placeholder="Selecciona un tipo" /></SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {['Banco', 'Efectivo', 'Inversion', 'Otro'].map(tipo => (
-                    <SelectItem key={tipo} value={tipo}>{tipo}</SelectItem>
+                  {(['Banco', 'Efectivo', 'Inversion', 'Otro'] as const).map(t => (
+                    <SelectItem key={t} value={t}>{t}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -104,23 +111,27 @@ export default function EditAccountForm({ entity: account, closeDialog }: EditAc
             </FormItem>
           )}
         />
+
         <FormField
           control={form.control}
           name="saldo"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Saldo Inicial (€)</FormLabel>
+              <FormLabel>Saldo inicial (€)</FormLabel>
               <FormControl>
                 <Input type="number" step="0.01" {...field} />
               </FormControl>
-              <FormDescription>El saldo de partida de la cuenta. El saldo actual se calculará dinámicamente con las transacciones.</FormDescription>
+              <FormDescription>
+                El saldo de partida. Las transacciones actualizarán el saldo real automáticamente.
+              </FormDescription>
               <FormMessage />
             </FormItem>
           )}
         />
-        <div className="flex justify-end space-x-2">
-            <Button type="button" variant="outline" onClick={closeDialog}>Cancelar</Button>
-            <Button type="submit">Guardar cambios</Button>
+
+        <div className="flex justify-end gap-2 pt-2">
+          <Button type="button" variant="outline" onClick={closeDialog}>Cancelar</Button>
+          <Button type="submit">{isEditMode ? 'Guardar cambios' : 'Crear cuenta'}</Button>
         </div>
       </form>
     </Form>

@@ -1,15 +1,15 @@
 
 'use client';
 
-import { Suspense, useState, useEffect, useLayoutEffect, useRef } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { Suspense, useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { DashboardLayout as DashboardLayoutComponent } from '@/components/app/dashboard-layout';
 import DashboardClientLogic from '@/components/app/dashboard-client-logic';
 import DashboardLoading from './loading';
 import { useComputedDataWriter } from '@/hooks/use-computed-data-writer';
 import { useSmartNotifications } from '@/hooks/use-smart-notifications';
 import { useUserData } from '@/hooks/use-user-data';
-import { DashboardNavigationLoadingProvider } from '@/components/app/dashboard-navigation-loading';
+import { DashboardNavigationLoadingProvider, useDashboardNavigationLoading } from '@/components/app/dashboard-navigation-loading';
 import { GdprGate } from '@/components/app/gdpr-gate';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ShieldX, Unlock, Loader2, WifiOff } from 'lucide-react';
@@ -149,18 +149,7 @@ function OfflineBanner() {
 }
 
 function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
-  const [entering, setEntering] = useState(false);
-  const pathname = usePathname();
-  const prevPathname = useRef(pathname);
-
-  useLayoutEffect(() => {
-    if (pathname !== prevPathname.current) {
-      prevPathname.current = pathname;
-      setEntering(true);
-      const t = setTimeout(() => setEntering(false), 300);
-      return () => clearTimeout(t);
-    }
-  }, [pathname]);
+  const { isNavigating } = useDashboardNavigationLoading();
 
   return (
     <DashboardClientLogic>
@@ -170,11 +159,19 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
         <DemoBanner />
         <NotificationPrompt />
         <GlobalCrisisBanner />
-        <div className={entering ? 'animate-in fade-in slide-in-from-bottom-3 duration-300 fill-mode-both' : ''}>
+        {/* Children must always render so the destination page mounts and its
+            <NavigationReady> fires stopNavigation(). The loading screen sits
+            on top as an overlay while navigating. */}
+        <div className="animate-in fade-in slide-in-from-bottom-3 duration-300 fill-mode-both">
           <Suspense fallback={<DashboardLoading />}>
             {children}
           </Suspense>
         </div>
+        {isNavigating && (
+          <div className="fixed inset-0 z-[60] bg-background flex items-start justify-center overflow-y-auto">
+            <DashboardLoading />
+          </div>
+        )}
       </DashboardLayoutComponent>
       <QuickLogFab />
     </DashboardClientLogic>

@@ -86,6 +86,8 @@ import DebtStrategyComparison from '@/components/app/debt-strategy/debt-strategy
 import type { DashboardConfig, Transaction } from '@/lib/types';
 import NavigationReady from '@/components/app/navigation-ready';
 import TransactionLogForm from '@/components/app/forms/transaction-log-form';
+import EditAccountForm from '@/components/app/data-table/forms/edit-account-form';
+import EditDebtForm from '@/components/app/data-table/forms/edit-debt-form';
 import { useUser } from '@/hooks/use-session-user';
 import { setDocumentNonBlocking } from '@/lib/api-writes';
 import { useCollection } from '@/hooks/use-mongo-collection';
@@ -131,6 +133,8 @@ export default function FinancesPage() {
     const [localStrategy, setLocalStrategy] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState('summary');
     const [isTransactionDialogOpen, setIsTransactionDialogOpen] = useState(false);
+    const [isAccountDialogOpen, setIsAccountDialogOpen] = useState(false);
+    const [isDebtDialogOpen, setIsDebtDialogOpen] = useState(false);
     const [editingTransaction, setEditingTransaction] = useState<Transaction | undefined>(undefined);
     const [transactionPrefill, setTransactionPrefill] = useState<any>(null);
     const [movementTypeFilter, setMovementTypeFilter] = useState<'all' | 'Ingreso' | 'Gasto'>('all');
@@ -704,7 +708,15 @@ export default function FinancesPage() {
                         Inteligencia financiera operativa: flujo de caja, control de gasto, deuda y patrimonio neto en tiempo real.
                     </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                    <Button
+                        variant="outline"
+                        onClick={() => setIsAccountDialogOpen(true)}
+                        className="gap-2"
+                    >
+                        <Wallet size={16} />
+                        Nueva cuenta
+                    </Button>
                     <Button
                         data-tour="finances-add"
                         onClick={() => openTransactionDialog()}
@@ -720,23 +732,27 @@ export default function FinancesPage() {
 
             {!hasAccounts && (
                 <Card className="border-amber-500/30 bg-amber-500/5">
-                    <CardContent className="p-4 flex items-center gap-3 text-sm">
-                        <AlertTriangle className="text-amber-600 shrink-0" size={18} />
-                        <p>
-                            Necesitas crear al menos una cuenta para registrar movimientos desde Finanzas.
-                        </p>
+                    <CardContent className="p-4 flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3 text-sm">
+                            <AlertTriangle className="text-amber-600 shrink-0" size={18} />
+                            <p>Crea una cuenta para empezar a registrar movimientos.</p>
+                        </div>
+                        <Button size="sm" onClick={() => setIsAccountDialogOpen(true)} className="shrink-0 gap-1.5">
+                            <Wallet size={14} />
+                            Nueva cuenta
+                        </Button>
                     </CardContent>
                 </Card>
             )}
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-                <TabsList data-tour="finances-tabs" className="bg-muted/50 p-1 flex w-full sm:w-auto sm:inline-flex">
-                    <TabsTrigger value="summary" className="gap-1.5 flex-1 sm:flex-none"><Activity size={14}/><span className="hidden sm:inline">Resumen</span></TabsTrigger>
-                    <TabsTrigger value="pockets" className="gap-1.5 flex-1 sm:flex-none"><Target size={14}/><span className="hidden sm:inline">Pockets</span></TabsTrigger>
-                    <TabsTrigger value="income" className="gap-1.5 flex-1 sm:flex-none"><TrendingUp size={14}/><span className="hidden sm:inline">Ingresos</span></TabsTrigger>
-                    <TabsTrigger value="evolution" className="gap-1.5 flex-1 sm:flex-none"><Zap size={14}/><span className="hidden sm:inline">Evolución</span></TabsTrigger>
-                    <TabsTrigger value="movements" className="gap-1.5 flex-1 sm:flex-none"><ArrowRightLeft size={14}/><span className="hidden sm:inline">Movimientos</span></TabsTrigger>
-                    <TabsTrigger value="debt" className="gap-1.5 flex-1 sm:flex-none"><CreditCard size={14}/><span className="hidden sm:inline">Deuda</span></TabsTrigger>
+                <TabsList data-tour="finances-tabs" className="bg-muted/50 p-1 flex w-full overflow-x-auto sm:w-auto sm:inline-flex">
+                    <TabsTrigger value="summary" className="gap-1.5 shrink-0"><Activity size={14}/><span>Resumen</span></TabsTrigger>
+                    <TabsTrigger value="pockets" className="gap-1.5 shrink-0"><Target size={14}/><span>Pockets</span></TabsTrigger>
+                    <TabsTrigger value="income" className="gap-1.5 shrink-0"><TrendingUp size={14}/><span>Ingresos</span></TabsTrigger>
+                    <TabsTrigger value="evolution" className="gap-1.5 shrink-0"><Zap size={14}/><span>Evolución</span></TabsTrigger>
+                    <TabsTrigger value="movements" className="gap-1.5 shrink-0"><ArrowRightLeft size={14}/><span>Movimientos</span></TabsTrigger>
+                    <TabsTrigger value="debt" className="gap-1.5 shrink-0"><CreditCard size={14}/><span>Deuda</span></TabsTrigger>
                 </TabsList>
 
                 {!stats ? (
@@ -1541,6 +1557,12 @@ export default function FinancesPage() {
                         </TabsContent>
 
                         <TabsContent value="debt" className="space-y-6">
+                            <div className="flex justify-end">
+                                <Button size="sm" variant="outline" onClick={() => setIsDebtDialogOpen(true)} className="gap-1.5">
+                                    <CreditCard size={14} />
+                                    Nueva deuda
+                                </Button>
+                            </div>
                             <Tabs defaultValue={effectiveStrategy || 'comparison'} className="space-y-4">
                                 <TabsList className="grid w-full grid-cols-3 max-w-sm">
                                     <TabsTrigger value="comparison" className="gap-1.5 text-xs">
@@ -1603,6 +1625,26 @@ export default function FinancesPage() {
                         accounts={userData?.accounts || []}
                         debts={userData?.debts || []}
                     />
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={isDebtDialogOpen} onOpenChange={setIsDebtDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Nueva deuda</DialogTitle>
+                        <DialogDescription>Registra un préstamo, hipoteca o tarjeta de crédito para hacer seguimiento.</DialogDescription>
+                    </DialogHeader>
+                    <EditDebtForm closeDialog={() => setIsDebtDialogOpen(false)} />
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={isAccountDialogOpen} onOpenChange={setIsAccountDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Nueva cuenta</DialogTitle>
+                        <DialogDescription>Añade una cuenta bancaria, de efectivo o de inversión.</DialogDescription>
+                    </DialogHeader>
+                    <EditAccountForm closeDialog={() => setIsAccountDialogOpen(false)} />
                 </DialogContent>
             </Dialog>
         </div>

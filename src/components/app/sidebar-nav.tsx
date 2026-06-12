@@ -26,16 +26,22 @@ import { useUserData } from '@/hooks/use-user-data';
 import { useTour } from '@/components/app/tour/tour-context';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useDashboardNavigationLoading } from '@/components/app/dashboard-navigation-loading';
 export function AppSidebarNav() {
   const pathname = usePathname();
   const { data: userData } = useUserData();
   const { setOpenMobile } = useSidebar();
   const { startTour } = useTour();
+  const { startNavigation } = useDashboardNavigationLoading();
   const isCriticalMode = userData?.overallState === 'CRITICO';
 
-  const handleLinkClick = (e: React.MouseEvent, disabled: boolean) => {
+  const handleLinkClick = (e: React.MouseEvent, disabled: boolean, href?: string) => {
     if (disabled) { e.preventDefault(); return; }
     setOpenMobile(false);
+    // Don't show the loading overlay when clicking the section we're already on —
+    // the page won't remount, so stopNavigation() would only fire on the 4s fallback.
+    if (href && href === pathname) return;
+    startNavigation();
   };
 
   const NavItem = ({
@@ -63,7 +69,7 @@ export function AppSidebarNav() {
               {isCriticalMode && <ShieldAlert className="ml-auto h-3 w-3 text-destructive" />}
             </div>
           ) : (
-            <Link href={href} onClick={e => handleLinkClick(e, !!disabled)}>
+            <Link href={href} onClick={e => handleLinkClick(e, !!disabled, href)}>
               <Icon />
               <span>{label}</span>
             </Link>
@@ -93,7 +99,7 @@ export function AppSidebarNav() {
       <SidebarHeader>
         <div className="flex items-center gap-2">
           <SidebarMenuButton className="!h-10 !w-10 rounded-full" asChild>
-            <Link href="/dashboard" onClick={e => handleLinkClick(e, false)}>
+            <Link href="/dashboard" onClick={e => handleLinkClick(e, false, '/dashboard')}>
               <BrainCircuit />
             </Link>
           </SidebarMenuButton>
@@ -176,13 +182,15 @@ export function AppSidebarNav() {
           <SidebarGroupLabel>Sistema</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              <NavItem
-                href="/dashboard/data"
-                icon={Database}
-                label="Gestión de Datos"
-                disabled={isCriticalMode}
-                restrictedReason="Acceso restringido por estado CRÍTICO."
-              />
+              <div className="hidden lg:block">
+                <NavItem
+                  href="/dashboard/data"
+                  icon={Database}
+                  label="Gestión de Datos"
+                  disabled={isCriticalMode}
+                  restrictedReason="Acceso restringido por estado CRÍTICO."
+                />
+              </div>
               <NavItem href="/dashboard/profile" icon={User} label="Perfil" />
             </SidebarMenu>
           </SidebarGroupContent>
@@ -191,18 +199,18 @@ export function AppSidebarNav() {
       </SidebarContent>
 
       <SidebarFooter className="p-4">
-        <div className="rounded-lg bg-muted/50 p-3 text-[10px] leading-relaxed text-muted-foreground border border-border/50">
+        <div className="hidden [@media(min-height:760px)]:block rounded-lg bg-muted/50 p-3 text-[10px] leading-relaxed text-muted-foreground border border-border/50">
           <div className="flex items-center gap-1.5 mb-1 text-amber-600 dark:text-amber-400 font-semibold uppercase tracking-wider">
             <AlertCircle size={12} />
             <span>Aviso Importante</span>
           </div>
           Axiom es una herramienta de organización personal. <strong>No es un servicio médico ni psicológico.</strong> No sustituye la terapia profesional, el diagnóstico ni el tratamiento clínico.
         </div>
-        <Separator className="my-2" />
+        <Separator className="my-2 hidden [@media(min-height:760px)]:block" />
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton asChild isActive={pathname === '/dashboard/settings'}>
-              <Link href="/dashboard/settings" onClick={e => handleLinkClick(e, false)}>
+              <Link href="/dashboard/settings" onClick={e => handleLinkClick(e, false, '/dashboard/settings')}>
                 <Settings />
                 <span>Ajustes</span>
               </Link>

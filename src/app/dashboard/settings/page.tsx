@@ -11,7 +11,11 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   Moon, Sun, Monitor, Bell, BellOff, Info, CheckCircle2,
   Download, SlidersHorizontal, Database, Clock, Upload, AlertCircle,
+  BookText, Shield, PlusCircle,
 } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import EditProtocolForm from '@/components/app/data-table/forms/edit-protocol-form';
+import EditStateForm from '@/components/app/data-table/forms/edit-state-form';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import NavigationReady from '@/components/app/navigation-ready';
@@ -115,6 +119,8 @@ export default function SettingsPage() {
   const [mounted, setMounted] = useState(false);
   const [gdprRecord, setGdprRecord] = useState<{ accepted: boolean; timestamp: string; version: string } | null>(null);
   const [pushPermission, setPushPermission] = useState<NotificationPermission>('default');
+  const [isCreateProtocolOpen, setIsCreateProtocolOpen] = useState(false);
+  const [isCreateStateOpen, setIsCreateStateOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -242,6 +248,27 @@ export default function SettingsPage() {
           </RadioGroup>
           <Button onClick={saveEngine} disabled={engineSaved} size="sm">
             {engineSaved ? <><CheckCircle2 className="h-4 w-4 mr-2" />Guardado</> : 'Aplicar horizonte'}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* ── Configuración del sistema ── */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <BookText className="h-4 w-4 text-muted-foreground" />
+            Configuración del sistema
+          </CardTitle>
+          <CardDescription>Crea protocolos de rutina y define los estados del sistema.</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-3">
+          <Button variant="outline" size="sm" onClick={() => setIsCreateProtocolOpen(true)} className="gap-1.5">
+            <PlusCircle size={14} />
+            Nuevo protocolo
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setIsCreateStateOpen(true)} className="gap-1.5">
+            <Shield size={14} />
+            Nuevo estado
           </Button>
         </CardContent>
       </Card>
@@ -486,6 +513,26 @@ export default function SettingsPage() {
 
       {/* ── Importación CSV ── */}
       <CsvImportCard />
+
+      <Dialog open={isCreateProtocolOpen} onOpenChange={setIsCreateProtocolOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Nuevo protocolo</DialogTitle>
+            <DialogDescription>Define una rutina o secuencia de acciones que quieras seguir.</DialogDescription>
+          </DialogHeader>
+          <EditProtocolForm closeDialog={() => setIsCreateProtocolOpen(false)} />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isCreateStateOpen} onOpenChange={setIsCreateStateOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Nuevo estado</DialogTitle>
+            <DialogDescription>Define un estado del sistema como ESTABLE, RIESGO o CRÍTICO.</DialogDescription>
+          </DialogHeader>
+          <EditStateForm closeDialog={() => setIsCreateStateOpen(false)} />
+        </DialogContent>
+      </Dialog>
 
     </div>
   );

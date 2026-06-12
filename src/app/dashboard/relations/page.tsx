@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useUserData } from '@/hooks/use-user-data';
 import { useToast } from '@/hooks/use-toast';
 import AreaPageSkeleton from '@/components/app/area-page-skeleton';
@@ -10,13 +10,15 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Users, Heart, MessageCircle, Laugh, Flame, TrendingDown, AlertTriangle, ArrowRight } from 'lucide-react';
+import { Users, Heart, MessageCircle, Laugh, Flame, TrendingDown, AlertTriangle, ArrowRight, UserPlus } from 'lucide-react';
 import Link from 'next/link';
 import AreaDetailPanel from '@/components/app/area-detail-panel';
 import EventHistoryList from '@/components/app/event-history-list';
 import { cn } from '@/lib/utils';
 import { useUser } from '@/hooks/use-session-user';
 import { addDocumentNonBlocking } from '@/lib/api-writes';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import EditRelationForm from '@/components/app/data-table/forms/edit-relation-form';
 const POSITIVE_ACTIONS = [
   {
     var_id: 'SOCIAL_OK', label: 'Social nutritivo', icon: Users,
@@ -72,6 +74,7 @@ export default function RelationsPage() {
   const { data: userData, isLoading } = useUserData();
   const { user, uid } = useUser();
   const { toast } = useToast();
+  const [isCreateRelationOpen, setIsCreateRelationOpen] = useState(false);
 
   const areaScore = useMemo(
     () => userData?.kpis.scoresByArea.find(a => a.area.toLowerCase().includes('relac'))?.score ?? null,
@@ -125,22 +128,28 @@ export default function RelationsPage() {
     <div className="space-y-8 pb-16">
       <NavigationReady />
 
-      <div className="space-y-1">
-        <div className="flex items-center gap-2 flex-wrap">
-          <Users className="h-5 w-5 text-primary" />
-          <h1 className="text-2xl font-bold tracking-tight">Relaciones</h1>
-          {areaScore !== null && (
-            <Badge variant="outline" className={cn('font-mono font-bold', scoreColor)}>{areaScore}/100</Badge>
-          )}
+      <div className="flex items-start justify-between gap-3">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Users className="h-5 w-5 text-primary" />
+            <h1 className="text-2xl font-bold tracking-tight">Relaciones</h1>
+            {areaScore !== null && (
+              <Badge variant="outline" className={cn('font-mono font-bold', scoreColor)}>{areaScore}/100</Badge>
+            )}
+          </div>
+          <div className="text-sm text-muted-foreground flex items-center gap-2 flex-wrap">
+            <span>Conexión social, calidad de vínculos e intimidad.</span>
+            {streak > 0 && (
+              <Badge variant="outline" className="font-mono text-[10px] text-amber-500 border-amber-500/40">
+                🔥 {streak}d racha
+              </Badge>
+            )}
+          </div>
         </div>
-        <div className="text-sm text-muted-foreground flex items-center gap-2 flex-wrap">
-          <span>Conexión social, calidad de vínculos e intimidad.</span>
-          {streak > 0 && (
-            <Badge variant="outline" className="font-mono text-[10px] text-amber-500 border-amber-500/40">
-              🔥 {streak}d racha
-            </Badge>
-          )}
-        </div>
+        <Button size="sm" variant="outline" onClick={() => setIsCreateRelationOpen(true)} className="gap-1.5 shrink-0">
+          <UserPlus size={14} />
+          Nueva relación
+        </Button>
       </div>
 
       <AreaDetailPanel areaNameMatch="relac" />
@@ -268,6 +277,16 @@ export default function RelationsPage() {
           );
         }}
       />
+
+      <Dialog open={isCreateRelationOpen} onOpenChange={setIsCreateRelationOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Nueva relación</DialogTitle>
+            <DialogDescription>Añade una persona a tu red de relaciones para que el modelo pueda calibrarse.</DialogDescription>
+          </DialogHeader>
+          <EditRelationForm closeDialog={() => setIsCreateRelationOpen(false)} />
+        </DialogContent>
+      </Dialog>
 
       <Separator />
 

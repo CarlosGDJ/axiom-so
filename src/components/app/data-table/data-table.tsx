@@ -142,6 +142,7 @@ export function DataTable<TData extends EntityWithId, TValue>({
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = React.useState('');
+  const [pagination, setPagination] = React.useState({ pageIndex: 0, pageSize: 10 });
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [currentEntity, setCurrentEntity] = React.useState<TData | undefined>(undefined);
@@ -185,13 +186,28 @@ export function DataTable<TData extends EntityWithId, TValue>({
     onSortingChange: setSorting,
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    onGlobalFilterChange: setGlobalFilter,
+    onGlobalFilterChange: (value) => {
+      setGlobalFilter(value);
+      setPagination(p => ({ ...p, pageIndex: 0 }));
+    },
     globalFilterFn: 'includesString',
+    onPaginationChange: setPagination,
+    autoResetPageIndex: false,
     state: {
       sorting,
       globalFilter,
+      pagination,
     },
   });
+
+  // With autoResetPageIndex disabled, deleting rows on the last page can leave
+  // pageIndex out of range (showing an empty table). Clamp it back into range.
+  const pageCount = table.getPageCount();
+  React.useEffect(() => {
+    if (pagination.pageIndex > 0 && pagination.pageIndex > pageCount - 1) {
+      setPagination(p => ({ ...p, pageIndex: Math.max(0, pageCount - 1) }));
+    }
+  }, [pageCount, pagination.pageIndex]);
 
   const AddNewForm = entityName ? formComponents[entityName] : null;
   const EditForm = entityName ? formComponents[entityName] : null;
@@ -204,7 +220,7 @@ export function DataTable<TData extends EntityWithId, TValue>({
         <Input
           placeholder="Buscar en todas las columnas..."
           value={globalFilter}
-          onChange={e => setGlobalFilter(e.target.value)}
+          onChange={e => table.setGlobalFilter(e.target.value)}
           className="max-w-xs h-9"
         />
         {!hideCreateButton && entityName && AddNewForm && (
@@ -281,11 +297,7 @@ export function DataTable<TData extends EntityWithId, TValue>({
       </div>
 
       {/* ── Pagination ────────────────────────────────────────── */}
-      <div className="flex items-center justify-between py-4 pb-24 sm:pb-4">
-        <span className="text-xs text-muted-foreground tabular-nums">
-          {table.getFilteredRowModel().rows.length} fila{table.getFilteredRowModel().rows.length !== 1 ? 's' : ''}
-          {' · '}pág. {table.getState().pagination.pageIndex + 1}/{Math.max(1, table.getPageCount())}
-        </span>
+      <div className="flex items-center gap-3 py-4 pb-24 sm:pb-4">
         <div className="flex items-center gap-1">
           <Button
             variant="outline"
@@ -308,6 +320,10 @@ export function DataTable<TData extends EntityWithId, TValue>({
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
+        <span className="text-xs text-muted-foreground tabular-nums">
+          {table.getFilteredRowModel().rows.length} fila{table.getFilteredRowModel().rows.length !== 1 ? 's' : ''}
+          {' · '}pág. {table.getState().pagination.pageIndex + 1}/{Math.max(1, table.getPageCount())}
+        </span>
       </div>
 
       {AddNewForm && (

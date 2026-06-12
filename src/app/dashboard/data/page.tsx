@@ -46,6 +46,7 @@ import { columns as accountColumns } from '@/components/app/data-table/columns-a
 import { columns as debtColumns } from '@/components/app/data-table/columns-debt';
 import { DataTable } from '@/components/app/data-table/data-table';
 import AreaPageSkeleton from '@/components/app/area-page-skeleton';
+import NavigationReady from '@/components/app/navigation-ready';
 
 const tabsConfig = [
     { value: 'areas', label: 'Áreas', icon: Compass },
@@ -134,6 +135,7 @@ export default function DataManagementPage() {
 
   return (
     <div className="space-y-6">
+        <NavigationReady />
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div className="space-y-1">
                 <p className="text-muted-foreground text-sm">Administra la configuración base de tus áreas, variables y protocolos del sistema Axiom.</p>

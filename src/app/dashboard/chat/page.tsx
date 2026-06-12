@@ -12,6 +12,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useUser } from '@/hooks/use-session-user';
 import { setDocumentNonBlocking } from '@/lib/api-writes';
+import NavigationReady from '@/components/app/navigation-ready';
 const SUGGESTED_PROMPTS = [
   '¿Cuál es mi mayor punto débil esta semana?',
   '¿Qué hábito debería priorizar hoy?',
@@ -373,6 +374,7 @@ export default function ChatPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)] max-h-[900px]">
+      <NavigationReady />
       {/* Header */}
       <div className="flex items-center justify-between mb-4 shrink-0">
         <div className="flex items-center gap-3">
