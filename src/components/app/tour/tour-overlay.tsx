@@ -53,54 +53,80 @@ export function TourOverlay() {
 
   useLayoutEffect(() => {
     if (!isActive || !step) return;
-    const el = document.querySelector(`[data-tour="${step.target}"]`);
-    if (!el) {
+
+    const target = step.target;
+    let cancelled = false;
+
+    const measureAndSet = (el: Element) => {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
       const t = setTimeout(() => {
+        if (cancelled) return;
+        const r = el.getBoundingClientRect();
+        setRect({ top: r.top, left: r.left, width: r.width, height: r.height });
+      }, 350);
+      return t;
+    };
+
+    const skipStep = (delay = 400) => {
+      const t = setTimeout(() => {
+        if (cancelled) return;
         if (currentStep < steps.length - 1) nextStep(); else endTour();
-      }, 400);
-      return () => clearTimeout(t);
+      }, delay);
+      return t;
+    };
+
+    // On mobile (<768 px) the sidebar is a Sheet that unmounts when closed.
+    // If the target element is missing, try opening the sidebar first.
+    const isMobile = window.innerWidth < 768;
+    const trigger = document.querySelector('[data-sidebar="trigger"]') as HTMLButtonElement | null;
+    const mobileSidebarClosed = isMobile && !document.querySelector('[data-sidebar="sidebar"]');
+
+    let el = document.querySelector(`[data-tour="${target}"]`) as Element | null;
+
+    if (!el && mobileSidebarClosed && trigger) {
+      // Element not in DOM because the mobile Sheet is closed — open it first
+      trigger.click();
+      const t = setTimeout(() => {
+        if (cancelled) return;
+        const found = document.querySelector(`[data-tour="${target}"]`) as Element | null;
+        if (found) {
+          const r = found.getBoundingClientRect();
+          if (r.width > 0) {
+            measureAndSet(found);
+          } else {
+            skipStep(0);
+          }
+        } else {
+          skipStep(0);
+        }
+      }, 800);
+      return () => { cancelled = true; clearTimeout(t); };
+    }
+
+    if (!el) {
+      // Element not in DOM and not a sidebar issue — skip
+      const t = skipStep();
+      return () => { cancelled = true; clearTimeout(t); };
     }
 
     const r = el.getBoundingClientRect();
     if (r.width === 0 && r.height === 0) {
-      // Check if the element is inside the sidebar Sheet (collapsed on mobile)
-      const sidebarPanel = document.querySelector('[data-sidebar="sidebar"]');
-      const isInSidebar = sidebarPanel ? sidebarPanel.contains(el) : false;
-
-      if (isInSidebar) {
-        // Open the sidebar, then re-measure
-        const trigger = document.querySelector('[data-sidebar="trigger"]') as HTMLButtonElement | null;
-        if (trigger) {
-          trigger.click();
-          const t = setTimeout(() => {
-            const r2 = el.getBoundingClientRect();
-            if (r2.width > 0) {
-              el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              setTimeout(() => {
-                const r3 = el.getBoundingClientRect();
-                setRect({ top: r3.top, left: r3.left, width: r3.width, height: r3.height });
-              }, 300);
-            } else {
-              if (currentStep < steps.length - 1) nextStep(); else endTour();
-            }
-          }, 700);
-          return () => clearTimeout(t);
-        }
+      // Element is in DOM but hidden (e.g. sidebar Sheet just opened and animating)
+      if (mobileSidebarClosed && trigger) {
+        trigger.click();
+        const t = setTimeout(() => {
+          if (cancelled) return;
+          const r2 = el!.getBoundingClientRect();
+          if (r2.width > 0) measureAndSet(el!); else skipStep(0);
+        }, 800);
+        return () => { cancelled = true; clearTimeout(t); };
       }
-
-      // Not in sidebar or no trigger — skip step
-      const t = setTimeout(() => {
-        if (currentStep < steps.length - 1) nextStep(); else endTour();
-      }, 400);
-      return () => clearTimeout(t);
+      const t = skipStep();
+      return () => { cancelled = true; clearTimeout(t); };
     }
 
-    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    const t = setTimeout(() => {
-      const r2 = el.getBoundingClientRect();
-      setRect({ top: r2.top, left: r2.left, width: r2.width, height: r2.height });
-    }, 350);
-    return () => clearTimeout(t);
+    const t = measureAndSet(el);
+    return () => { cancelled = true; clearTimeout(t); };
   }, [isActive, currentStep, step, nextStep, endTour, steps.length]);
 
   useEffect(() => {
