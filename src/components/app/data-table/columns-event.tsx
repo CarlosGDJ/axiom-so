@@ -20,13 +20,14 @@ export const getEventColumns = (variables: Variable[]): ColumnDef<Event>[] => [
     },
   },
   {
-    accessorKey: 'var_id',
+    id: 'var_id',
+    // accessorFn devuelve el nombre resuelto → el buscador y el orden operan
+    // sobre el texto visible, no sobre el var_id crudo.
+    accessorFn: (row) => {
+      const variable = variables.find(v => v.var_id === row.var_id);
+      return variable ? variable.var_nombre : row.var_id;
+    },
     header: 'Variable',
-    cell: ({ row }) => {
-        const varId = row.getValue('var_id') as string;
-        const variable = variables.find(v => v.var_id === varId);
-        return variable ? variable.var_nombre : varId;
-    }
   },
   {
     accessorKey: 'intensidad',

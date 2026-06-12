@@ -25,13 +25,12 @@ export const getInteractionColumns = (relations: Relation[]): ColumnDef<Interact
     },
   },
   {
-    accessorKey: 'persona_id',
+    id: 'persona_id',
+    accessorFn: (row) => {
+        const relation = relations.find(r => r.persona_id === row.persona_id);
+        return relation ? relation.nombre : row.persona_id;
+    },
     header: 'Persona',
-    cell: ({ row }) => {
-        const personaId = row.getValue('persona_id') as string;
-        const relation = relations.find(r => r.persona_id === personaId);
-        return relation ? relation.nombre : personaId;
-    }
   },
   {
     accessorKey: 'energia_resultante',

@@ -7,31 +7,28 @@ import { Checkbox } from '@/components/ui/checkbox';
 
 export const getHabitColumns = (areas: Area[], systems: System[], variables: Variable[]): ColumnDef<Habit>[] => [
   {
-    accessorKey: 'nombre',
+    id: 'nombre',
+    accessorFn: (row) => {
+        const variable = variables.find(v => v.var_id === row.var_id);
+        return row.nombre || variable?.var_nombre || row.var_id || '—';
+    },
     header: 'Nombre',
-    cell: ({ row }) => {
-        const h = row.original;
-        const variable = variables.find(v => v.var_id === h.var_id);
-        return h.nombre || variable?.var_nombre || h.var_id || '—';
-    }
   },
   {
-    accessorKey: 'sistema_id',
+    id: 'sistema_id',
+    accessorFn: (row) => {
+        const system = systems.find(s => s.sistema_id === row.sistema_id);
+        return system ? system.objetivo : (row.sistema_id || 'Sin sistema');
+    },
     header: 'Sistema',
-    cell: ({ row }) => {
-        const systemId = row.getValue('sistema_id');
-        const system = systems.find(s => s.sistema_id === systemId);
-        return system ? system.objetivo : (systemId || 'Sin sistema');
-    }
   },
   {
-    accessorKey: 'var_id',
+    id: 'var_id',
+    accessorFn: (row) => {
+        const variable = variables.find(v => v.var_id === row.var_id);
+        return variable ? variable.var_nombre : row.var_id;
+    },
     header: 'Variable',
-    cell: ({ row }) => {
-        const varId = row.getValue('var_id');
-        const variable = variables.find(v => v.var_id === varId);
-        return variable ? variable.var_nombre : varId;
-    }
   },
   {
     accessorKey: 'frecuencia',

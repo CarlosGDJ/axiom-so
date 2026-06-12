@@ -136,15 +136,25 @@ export const getMilestoneColumns = (skills: Skill[], systems: System[]): ColumnD
   },
   {
     id: 'related_to',
-    header: 'Contexto',
-    cell: ({ row }) => {
-      const milestone = row.original;
-      if (milestone.skill_id) {
-        const skill = skills.find(s => s.habilidad_id === milestone.skill_id);
-        return <Badge variant="outline" className="text-[10px] font-normal">{skill ? skill.nombre : milestone.skill_id}</Badge>;
+    // accessorFn resuelve skill O sistema → filtrable por nombre y muestra ambos.
+    accessorFn: (row) => {
+      if (row.skill_id) {
+        const skill = skills.find(s => s.habilidad_id === row.skill_id);
+        return skill ? skill.nombre : row.skill_id;
       }
-      return <span className="text-muted-foreground text-xs">-</span>;
-    }
+      if (row.system_id) {
+        const system = systems.find(s => s.sistema_id === row.system_id);
+        return system ? system.objetivo : row.system_id;
+      }
+      return '';
+    },
+    header: 'Contexto',
+    cell: ({ getValue }) => {
+      const label = getValue() as string;
+      return label
+        ? <Badge variant="outline" className="text-[10px] font-normal">{label}</Badge>
+        : <span className="text-muted-foreground text-xs">-</span>;
+    },
   },
   {
     accessorKey: 'fecha_objetivo',

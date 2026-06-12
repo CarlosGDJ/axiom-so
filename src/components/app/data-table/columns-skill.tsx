@@ -10,13 +10,12 @@ export const getSkillColumns = (areas: Area[]): ColumnDef<Skill>[] => [
     header: 'Nombre',
   },
   {
-    accessorKey: 'area_id',
+    id: 'area_id',
+    accessorFn: (row) => {
+        const area = areas.find(a => a.area_id === row.area_id);
+        return area ? area.area_nombre : row.area_id;
+    },
     header: 'Área',
-    cell: ({ row }) => {
-        const areaId = row.getValue('area_id');
-        const area = areas.find(a => a.area_id === areaId);
-        return area ? area.area_nombre : areaId;
-    }
   },
   {
     accessorKey: 'nivel_actual',

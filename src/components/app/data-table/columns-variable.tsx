@@ -10,13 +10,12 @@ export const getVariableColumns = (areas: Area[]): ColumnDef<Variable>[] => [
     header: 'Nombre',
   },
   {
-    accessorKey: 'area_id',
-    header: 'Área',
-    cell: ({ row }) => {
-      const areaId = row.getValue('area_id');
-      const area = areas.find((a) => a.area_id === areaId);
-      return area ? area.area_nombre : areaId;
+    id: 'area_id',
+    accessorFn: (row) => {
+      const area = areas.find((a) => a.area_id === row.area_id);
+      return area ? area.area_nombre : row.area_id;
     },
+    header: 'Área',
   },
   {
     accessorKey: 'tipo',

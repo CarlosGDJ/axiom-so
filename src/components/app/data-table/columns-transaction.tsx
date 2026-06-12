@@ -45,13 +45,12 @@ export const getTransactionColumns = (accounts: Account[], debts: Debt[]): Colum
     header: 'Categoría',
   },
   {
-    accessorKey: 'cuenta_id',
-    header: 'Cuenta',
-    cell: ({ row }) => {
-      const cid = row.getValue('cuenta_id');
-      const acc = accounts.find(a => a.cuenta_id === cid);
-      return acc?.nombre ?? acc?.cuenta_id ?? cid ?? '—';
+    id: 'cuenta_id',
+    accessorFn: (row) => {
+      const acc = accounts.find(a => a.cuenta_id === row.cuenta_id);
+      return acc?.nombre ?? acc?.cuenta_id ?? row.cuenta_id ?? '—';
     },
+    header: 'Cuenta',
   },
   {
     accessorKey: 'monto',

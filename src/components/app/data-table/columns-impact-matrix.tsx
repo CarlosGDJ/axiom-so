@@ -6,22 +6,20 @@ import { ImpactMatrix, Variable, Hormone } from '@/lib/types';
 
 export const getImpactMatrixColumns = (variables: Variable[], hormones: Hormone[]): ColumnDef<ImpactMatrix>[] => [
   {
-    accessorKey: 'var_id',
+    id: 'var_id',
+    accessorFn: (row) => {
+        const variable = variables.find(v => v.var_id === row.var_id);
+        return variable ? variable.var_nombre : row.var_id;
+    },
     header: 'Variable (Causa)',
-    cell: ({ row }) => {
-        const varId = row.getValue('var_id') as string;
-        const variable = variables.find(v => v.var_id === varId);
-        return variable ? variable.var_nombre : varId;
-    }
   },
   {
-    accessorKey: 'hormone_id',
+    id: 'hormone_id',
+    accessorFn: (row) => {
+        const hormone = hormones.find(a => a.hormone_id === row.hormone_id);
+        return hormone ? hormone.name : row.hormone_id;
+    },
     header: 'Hormona (Efecto)',
-     cell: ({ row }) => {
-        const hormoneId = row.getValue('hormone_id') as string;
-        const hormone = hormones.find(a => a.hormone_id === hormoneId);
-        return hormone ? hormone.name : hormoneId;
-    }
   },
   {
     accessorKey: 'effect_size',

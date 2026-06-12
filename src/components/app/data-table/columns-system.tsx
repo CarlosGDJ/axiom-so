@@ -10,13 +10,12 @@ export const getSystemColumns = (skills: Skill[]): ColumnDef<System>[] => [
     header: 'Objetivo',
   },
   {
-    accessorKey: 'habilidad_id',
+    id: 'habilidad_id',
+    accessorFn: (row) => {
+        const skill = skills.find(s => s.habilidad_id === row.habilidad_id);
+        return skill ? skill.nombre : row.habilidad_id;
+    },
     header: 'Habilidad',
-    cell: ({ row }) => {
-        const skillId = row.getValue('habilidad_id');
-        const skill = skills.find(s => s.habilidad_id === skillId);
-        return skill ? skill.nombre : skillId;
-    }
   },
   {
     accessorKey: 'frecuencia',
