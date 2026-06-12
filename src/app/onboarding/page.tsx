@@ -174,6 +174,11 @@ export default function OnboardingPage() {
             documents.push({ collection: 'areas', data: { ...area, estado: adjusted?.status || 'OK' } });
         });
 
+        // Red de seguridad: la IA debe usar var_id reales, pero si alucina uno
+        // inexistente lo dejamos sin variable (el hábito sigue funcionando como
+        // tracker) en vez de crear un var_id fantasma que no mapea a ningún área.
+        const validVarIds = new Set(variablePresets.map(v => v.var_id));
+
         // Skills, Systems, Habits
         setup.recommendedSkills.forEach(skillRec => {
             const skillId = `SKILL_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
@@ -201,10 +206,12 @@ export default function OnboardingPage() {
 
                 setup.recommendedHabits.forEach(habitRec => {
                     if (habitRec.system_objective === systemRec.objetivo) {
+                        const validVar = habitRec.var_id && validVarIds.has(habitRec.var_id);
                         documents.push({ collection: 'habits', data: {
                             habito_id: `HB_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                            nombre: habitRec.description,
                             sistema_id: systemId,
-                            var_id: habitRec.var_id,
+                            ...(validVar ? { var_id: habitRec.var_id } : {}),
                             frecuencia: habitRec.frecuencia,
                             duracion_min: habitRec.duracion_min,
                             minimo_viable: habitRec.minimo_viable,
