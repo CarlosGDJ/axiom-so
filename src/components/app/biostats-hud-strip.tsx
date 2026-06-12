@@ -20,17 +20,30 @@ const STATS = [
   { key: 'sueno',      label: 'Sueño',       icon: Moon,          invert: false },
 ] as const;
 
+// Niveles por biomarcador, alineados con cómo el motor interpreta los valores:
+// 50 es la LÍNEA BASE neutra (ni buena ni mala) y el riesgo real empieza <35.
+// Antes 40-59 se pintaba de naranja "riesgo", así que un usuario en baseline veía
+// todo alarmante mientras el score era verde — la incoherencia reportada.
 function getLevel(value: number, invert: boolean) {
   const effective = invert ? 100 - value : value;
-  if (effective >= 60) return 'ok';
-  if (effective >= 40) return 'risk';
+  if (effective >= 60) return 'ok';       // claramente bueno
+  if (effective >= 45) return 'neutral';  // línea base — ni alarma ni mérito
+  if (effective >= 35) return 'risk';     // empieza a flojear
+  return 'critical';                       // zona de riesgo real (<35)
+}
+
+// El score global usa su propia escala (bandas del motor: OK ≥62, RIESGO, CRÍTICO <40).
+function getScoreLevel(score: number) {
+  if (score >= 62) return 'ok';
+  if (score >= 40) return 'risk';
   return 'critical';
 }
 
 const LEVEL_STYLES = {
-  ok:       { text: 'text-green-500 dark:text-green-400',  bar: 'bg-green-500',  bg: 'bg-green-500/10' },
-  risk:     { text: 'text-orange-500 dark:text-orange-400', bar: 'bg-orange-500', bg: 'bg-orange-500/10' },
-  critical: { text: 'text-red-500 dark:text-red-400',      bar: 'bg-red-500',    bg: 'bg-red-500/10'   },
+  ok:       { text: 'text-green-500 dark:text-green-400',   bar: 'bg-green-500',   bg: 'bg-green-500/10' },
+  neutral:  { text: 'text-muted-foreground',                bar: 'bg-muted-foreground/40', bg: 'bg-muted/10' },
+  risk:     { text: 'text-orange-500 dark:text-orange-400', bar: 'bg-orange-500',  bg: 'bg-orange-500/10' },
+  critical: { text: 'text-red-500 dark:text-red-400',       bar: 'bg-red-500',     bg: 'bg-red-500/10'   },
 };
 
 const VELOCITY_CONFIG: Record<string, { label: string; icon: typeof TrendingUp; cls: string }> = {
@@ -43,7 +56,7 @@ const VELOCITY_CONFIG: Record<string, { label: string; icon: typeof TrendingUp; 
 
 export default function BiostatsHudStrip({ rpgStats, scoreVelocity }: BiostatsHudStripProps) {
   const score = Math.round(rpgStats.player_score ?? 0);
-  const scoreLevel = getLevel(score, false);
+  const scoreLevel = getScoreLevel(score);
   const velCfg = scoreVelocity ? VELOCITY_CONFIG[scoreVelocity.direction] : null;
 
   return (
