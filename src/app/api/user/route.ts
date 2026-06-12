@@ -1,6 +1,11 @@
 import { auth } from '@/auth';
 import { getDb } from '@/lib/mongodb';
+import { ObjectId } from 'mongodb';
 import { NextRequest, NextResponse } from 'next/server';
+
+function toObjectId(id: string) {
+  try { return new ObjectId(id); } catch { return id as any; }
+}
 
 const USER_COLLECTIONS = [
   'areas', 'hormones', 'variables', 'events', 'transactions', 'interactions',
@@ -16,7 +21,7 @@ export async function GET() {
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const db = await getDb();
-  const user = await db.collection('users').findOne({ _id: userId as any });
+  const user = await db.collection('users').findOne({ _id: toObjectId(userId) });
   if (!user) return NextResponse.json(null);
   const { _id, ...rest } = user;
   return NextResponse.json({ ...rest, id: _id.toString() });
@@ -30,7 +35,7 @@ export async function PUT(req: NextRequest) {
   const body = await req.json();
   const db = await getDb();
   await db.collection('users').updateOne(
-    { _id: userId as any },
+    { _id: toObjectId(userId) },
     { $set: { ...body, updatedAt: new Date().toISOString() } },
     { upsert: true }
   );
@@ -51,7 +56,7 @@ export async function DELETE() {
 
   // Delete NextAuth adapter records (accounts already deleted via USER_COLLECTIONS loop above)
   await Promise.all([
-    db.collection('users').deleteOne({ _id: userId as any }),
+    db.collection('users').deleteOne({ _id: toObjectId(userId) }),
     db.collection('sessions').deleteMany({ userId }),
   ]);
 
