@@ -31,10 +31,12 @@ export async function GET(req: NextRequest, { params }: Params) {
 
   const { searchParams } = req.nextUrl;
   const docId = searchParams.get('docId');
-  // `limit` robusto: NaN/negativos no deben desactivar el límite (Mongo trata
-  // limit(NaN) como 0 = sin límite → devolvía la colección entera).
-  const limitRaw = Number(searchParams.get('limit'));
-  const limitVal = Number.isFinite(limitRaw) ? Math.min(Math.max(Math.trunc(limitRaw), 1), 1000) : 1000;
+  // `limit` robusto: sin parámetro → 1000 (por defecto). Un valor inválido
+  // (NaN/≤0) también cae a 1000 — antes Number(null)=0 se colaba como finito y
+  // clampaba a 1, devolviendo ¡un solo documento! por colección.
+  const limitParam = searchParams.get('limit');
+  const limitNum = limitParam !== null ? Number(limitParam) : 1000;
+  const limitVal = Number.isFinite(limitNum) && limitNum > 0 ? Math.min(Math.trunc(limitNum), 1000) : 1000;
   // `orderBy` validado: solo nombres de campo simples (evita sorts sobre paths
   // arbitrarios / no indexados que un cliente podría forzar).
   const orderByRaw = searchParams.get('orderBy');
