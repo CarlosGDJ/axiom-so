@@ -226,8 +226,16 @@ const MIN_CALIBRATION_TRANSITIONS = 10;
 const SLEEP_KEY = 'sueno';
 const FORCE_ENABLE_CLINICAL_V2 = true;
 
-const clamp = (value: number, min = 0, max = 100) => Math.max(min, Math.min(max, value));
-const tanhNorm = (value: number, scale = 1) => Math.tanh(value / Math.max(0.0001, scale));
+const clamp = (value: number, min = 0, max = 100) => {
+  // Neutraliza NaN/Infinity: un único valor no finito aguas arriba (fecha mal
+  // formada, división 0/0, monto undefined) contaminaría todos los stats y el score.
+  const v = Number.isFinite(value) ? value : min;
+  return Math.max(min, Math.min(max, v));
+};
+const tanhNorm = (value: number, scale = 1) => {
+  const v = Number.isFinite(value) ? value : 0;
+  return Math.tanh(v / Math.max(0.0001, scale));
+};
 
 function circadianMultiplier(hormoneId: string, currentHour: number): number {
   const phase = CIRCADIAN_PHASES[hormoneId];
@@ -464,6 +472,10 @@ export function useComputedDataWriter(ext?: WriterPrefetch) {
   const lastGlobalState  = ext?.lastGlobalState ?? _lastGlobalState;
 
   const lastProcessedSignature = useRef<string | null>(null);
+  // Firma de los DATOS reales (eventos/interacciones/...). A diferencia de
+  // lastProcessedSignature, el timer NO la anula: nos permite distinguir un
+  // recálculo por datos nuevos de uno por simple paso del tiempo.
+  const lastDataSignature = useRef<string | null>(null);
   const lastWriteTime = useRef<number>(0);
 
   // Recompute every 15 min so pharmacokinetic decay updates the HUD even when
@@ -630,6 +642,10 @@ export function useComputedDataWriter(ext?: WriterPrefetch) {
     if (currentDataSignature === lastProcessedSignature.current && timeSinceLastWrite < MIN_WRITE_INTERVAL) {
       return;
     }
+    // ¿Recálculo por datos nuevos o solo por paso del tiempo (timer/decay)?
+    // En el segundo caso suavizamos más el score y no dejamos que la deriva
+    // circadiana/farmacocinética lo arrastre cruzando umbrales de estado.
+    const isDataUnchanged = lastDataSignature.current !== null && currentDataSignature === lastDataSignature.current;
 
     const baseSensitivity = getSensitivity(playerProfile);
     const calibration = calibrateSensitivityFromHistory(baseSensitivity, safeHistoricalEvents, safeCalibrationScores, variableById);
@@ -1031,10 +1047,10 @@ export function useComputedDataWriter(ext?: WriterPrefetch) {
     const lastPositiveInteraction = safeInteractions
       .filter(i => i.energia_resultante > 0)
       .sort((a, b) => b.fecha.localeCompare(a.fecha))[0];
-    const isLearningMode = safeEvents.length < 15;
+    const isColdStart = safeEvents.length < 15;
     const daysSincePositiveContact = lastPositiveInteraction
       ? Math.max(0, differenceInHours(now, parseISO(lastPositiveInteraction.fecha)) / 24)
-      : isLearningMode ? 0 : 7; // nuevos usuarios sin historial → no penalizar aislamiento
+      : isColdStart ? 0 : 7; // nuevos usuarios sin historial → no penalizar aislamiento
     if (daysSincePositiveContact > 2) {
       const lonelinessFactor = Math.min(1, (daysSincePositiveContact - 2) / 6); // 0 en día 2, 1 en día 8+
       const lonelinessDrain = tanhNorm(lonelinessFactor, 0.7) * lonelinessFactor;
@@ -1651,13 +1667,20 @@ export function useComputedDataWriter(ext?: WriterPrefetch) {
     const physioCortisolContrib = hoursAwakeCAR <= 14
       ? Math.max(0, 30 * Math.exp(-0.25 * hoursAwakeCAR))
       : 0;
-    // Amplificador nocturno: cortisol elevado entre 23h–4h → señal de desregulación HPA
-    const isNightPhase = nowHour >= 23 || nowHour <= 4;
+    // Amplificador nocturno: cortisol elevado de noche → desregulación HPA.
+    // Ventana SUAVE (rampa 22→23.5 de entrada, 3.5→5 de salida) en vez de un
+    // escalón duro a las 23:00 que movía el cortisol de golpe al cambiar la hora
+    // (uno de los "cambios bruscos" reportados).
+    const nightWindow = (() => {
+      if (nowHour >= 22) return Math.min(1, (nowHour - 22) / 1.5);     // 22→0 … 23.5→1
+      if (nowHour <= 5)  return Math.min(1, Math.max(0, (5 - nowHour) / 1.5)); // 3.5→1 … 5→0
+      return 0;
+    })();
     let nightAmplifierActive = false;
-    if (isNightPhase && s.cortisol > 45) {
+    if (nightWindow > 0 && s.cortisol > 45) {
       const nightExcess = s.cortisol - 45;
-      s.cortisol   = clamp(s.cortisol   + nightExcess * 0.25); // amplifica el exceso
-      s.serotonina = clamp(s.serotonina - nightExcess * 0.15); // desregulación melatonina/serotonina
+      s.cortisol   = clamp(s.cortisol   + nightExcess * 0.25 * nightWindow); // amplifica el exceso
+      s.serotonina = clamp(s.serotonina - nightExcess * 0.15 * nightWindow); // desregulación melatonina/serotonina
       nightAmplifierActive = true;
     }
 
@@ -1740,6 +1763,12 @@ export function useComputedDataWriter(ext?: WriterPrefetch) {
       transactions7d: safeTransactions.length,
       calibrationConfidence: calibration.confidence,
     });
+
+    // Fuente ÚNICA de verdad del modo aprendizaje: pocos eventos O baja calidad
+    // de datos. Se persiste en el doc (is_learning_mode) y la UI lo consume tal
+    // cual, en vez de re-derivarlo con un criterio distinto que podría discrepar.
+    const isLearningMode = isColdStart || (clinicalV2?.data_quality ?? 0) < 0.2;
+
     // Penalización clínica: activa cuando riskScore > 55 con confianza suficiente.
     // Máx -10 pts. Confianza parcial reduce el efecto proporcionalmente.
     const clinicalPenalty = (() => {
@@ -1751,7 +1780,11 @@ export function useComputedDataWriter(ext?: WriterPrefetch) {
     })();
 
     const rawPlayerScore = clamp(Math.round(resources - load - allostaticLoad - resonancePenalty - clinicalPenalty + recoveryReserve + 50));
-    const previousScore = lastGlobalState?.rpg_stats?.player_score ?? rawPlayerScore;
+    const storedPrevScore = lastGlobalState?.rpg_stats?.player_score;
+    // `?? ` no atrapa NaN: un score corrupto guardado por un run anterior se
+    // autoperpetuaría a través del EMA. Exigimos un número finito.
+    const previousScore = Number.isFinite(storedPrevScore) ? (storedPrevScore as number) : rawPlayerScore;
+    const hasPriorState = Number.isFinite(storedPrevScore);
 
     // ── Bucle de retroalimentación conductual ────────────────────────────────
     // Un sistema ya debilitado enfrenta mayor resistencia para recuperarse:
@@ -1760,8 +1793,10 @@ export function useComputedDataWriter(ext?: WriterPrefetch) {
     // Opera sobre rawScore antes del EMA (máx ±5 pts) para capturar inercia
     // sin dominar sobre los datos reales del período actual.
     const prevScoreNorm  = (previousScore - 50) / 50; // -1 a +1
-    const downwardSpiral = prevScoreNorm < -0.1 && rawPlayerScore < 50;
-    const upwardSpiral   = prevScoreNorm >  0.2 && rawPlayerScore > 60;
+    // Sin estado previo real, previousScore == rawPlayerScore: no hay inercia que
+    // capturar y dispararía un falso castigo/bonus en el primer cálculo.
+    const downwardSpiral = hasPriorState && prevScoreNorm < -0.1 && rawPlayerScore < 50;
+    const upwardSpiral   = hasPriorState && prevScoreNorm >  0.2 && rawPlayerScore > 60;
     let feedbackAdjustment = 0;
     if (downwardSpiral) {
       const spiralIntensity = Math.abs(prevScoreNorm) * ((50 - rawPlayerScore) / 50);
@@ -1772,7 +1807,11 @@ export function useComputedDataWriter(ext?: WriterPrefetch) {
     }
     const adjustedRawScore = clamp(rawPlayerScore + feedbackAdjustment);
 
-    const player_score = clamp(Math.round((previousScore * 0.55) + (adjustedRawScore * 0.45)));
+    // Sin datos nuevos (tick del timer / decay), el EMA es mucho más conservador:
+    // 0.85·previo + 0.15·raw evita que la deriva temporal mueva el score lo
+    // suficiente para cruzar umbrales y provocar parpadeo de estado y escrituras.
+    const emaPrevWeight = isDataUnchanged ? 0.85 : 0.55;
+    const player_score = clamp(Math.round((previousScore * emaPrevWeight) + (adjustedRawScore * (1 - emaPrevWeight))));
     // Velocity proxy: single-step EMA delta as a rapid-fall signal
     const velocityProxy = player_score - previousScore;
     const isVelocityWarning = !isLearningMode && velocityProxy <= -5 && player_score >= 40 && player_score < 57;
@@ -1822,34 +1861,41 @@ export function useComputedDataWriter(ext?: WriterPrefetch) {
     const currentGlobalState = lastGlobalState?.estado_global || 'OK';
     let nextState: OverallState = 'OK';
 
+    // Máquina de estados con histéresis real (banda muerta 62↔70) para evitar
+    // parpadeo en el límite. La estructura por estado-actual garantiza que las
+    // bandas de entrada/salida no se solapen:
+    //   · entra a RIESGO desde OK    cuando score < 62 (o señal de alerta)
+    //   · sale  de RIESGO hacia OK   solo cuando score >= 70 y sin alertas
+    //   · CRITICO de-escala a RIESGO cuando score > 48 y sin colapso forzado
+    const escalationSignal = isVelocityWarning || clinicalEscalation;
+
     if (player_score < 40 || force_critical) {
       nextState = 'CRITICO';
-    } else if (player_score < 70 || isVelocityWarning || clinicalEscalation) {
-      if (currentGlobalState === 'CRITICO') {
-        nextState = player_score > 48 ? 'RIESGO' : 'CRITICO';
-      } else {
-        nextState = 'RIESGO';
-      }
+    } else if (currentGlobalState === 'CRITICO') {
+      nextState = player_score > 48 ? 'RIESGO' : 'CRITICO';
+    } else if (currentGlobalState === 'RIESGO') {
+      nextState = (player_score >= 70 && !escalationSignal) ? 'OK' : 'RIESGO';
     } else {
-      if (currentGlobalState === 'RIESGO') {
-        nextState = player_score >= 70 ? 'OK' : 'RIESGO';
-      } else if (currentGlobalState === 'OK') {
-        nextState = player_score < 62 ? 'RIESGO' : 'OK';
-      } else {
-        nextState = 'OK';
-      }
+      // currentGlobalState === 'OK'
+      nextState = (player_score < 62 || escalationSignal) ? 'RIESGO' : 'OK';
     }
 
-    if (isLearningMode) nextState = 'OK';
+    // Modo aprendizaje: doc internamente consistente — sin colapso ni lock.
+    if (isLearningMode) {
+      nextState = 'OK';
+      force_critical = false;
+      lock_reason = '';
+    }
     if (nextState === 'CRITICO') is_locked = true;
 
     const scoreDiff = Math.abs(player_score - lastStoredScore);
-    const hasSignificantChange = scoreDiff >= 1 || nextState !== currentGlobalState;
 
-    if (currentDataSignature === lastProcessedSignature.current) {
-      // Si no hay nuevos eventos registrados, permitimos una deriva menor de 1 punto en el score
-      // (ocasionada por fluctuaciones de milisegundos en decaimiento y BRAC) para evitar bucles infinitos de escritura.
-      if (scoreDiff < 2 && nextState === currentGlobalState) {
+    // Si los datos no han cambiado (tick del timer / decay), suprimimos la
+    // escritura salvo que el estado cambie o la deriva sea ≥3 pts. Antes este
+    // guard miraba lastProcessedSignature, que el timer anula → nunca suprimía,
+    // y cada tick de 15 min persistía la deriva circadiana (el "cambia solo").
+    if (isDataUnchanged) {
+      if (scoreDiff < 3 && nextState === currentGlobalState) {
         return;
       }
     }
@@ -1878,9 +1924,16 @@ export function useComputedDataWriter(ext?: WriterPrefetch) {
       .slice(0, 5)
       .map(v => v.name);
 
-    const primaryCause =
-      lock_reason ||
-      (dominant_drain_vars_7d[0] ? `DRIVER_DRAIN:${dominant_drain_vars_7d[0].nombre}` : 'BIO_BALANCE');
+    const primaryCause = isLearningMode
+      ? 'LEARNING_MODE'
+      : lock_reason ||
+        (dominant_drain_vars_7d[0] ? `DRIVER_DRAIN:${dominant_drain_vars_7d[0].nombre}` : 'BIO_BALANCE');
+
+    // Las ~25 cascadas posteriores al loop hormonal reescriben los stats con
+    // clamp() (que no redondea), dejando flotantes como serotonina:29.7695...
+    // Redondeamos los 8 stats núcleo justo antes de persistir.
+    (['dopamina', 'serotonina', 'cortisol', 'foco', 'energia', 'sueno', 'conexion_social', 'carga_dopaminergica'] as const)
+      .forEach(k => { if (k in s) s[k] = clamp(Math.round(s[k])); });
 
     const globalStateDoc: ComputedGlobalState = {
       id: 'latest',
@@ -1951,11 +2004,16 @@ export function useComputedDataWriter(ext?: WriterPrefetch) {
       rpg_stats: s as any,
       is_locked,
       lock_reason,
-      lock_started_at: is_locked && currentGlobalState !== 'CRITICO' ? now.toISOString() : (lastGlobalState?.lock_started_at || null),
-      estimated_unlock_time: estimated_unlock_hours,
+      // Al desbloquear (is_locked false) reseteamos lock_started_at; antes se
+      // preservaba el valor antiguo → el lock parecía no liberarse nunca.
+      lock_started_at: is_locked
+        ? (currentGlobalState !== 'CRITICO' ? now.toISOString() : (lastGlobalState?.lock_started_at || null))
+        : null,
+      estimated_unlock_time: is_locked ? estimated_unlock_hours : 0,
       model_version: 'kairos-v3.9',
       clinical_v2: clinicalV2,
       data_quality: clinicalV2?.data_quality ?? null,
+      is_learning_mode: isLearningMode,
     };
 
     writes.push({ collection: 'computed_global_state', docId: 'latest', data: globalStateDoc as unknown as Record<string, unknown> });
@@ -2015,6 +2073,9 @@ export function useComputedDataWriter(ext?: WriterPrefetch) {
     // Mark as processed BEFORE the async write so any re-render during the round-trip
     // finds the signature already consumed and bails out.
     lastProcessedSignature.current = currentDataSignature;
+    // lastDataSignature persiste entre ticks del timer (no se anula) para poder
+    // distinguir "datos nuevos" de "solo pasó el tiempo" en el próximo recálculo.
+    lastDataSignature.current = currentDataSignature;
     lastWriteTime.current = now.getTime();
 
     fetch('/api/data/computed', {

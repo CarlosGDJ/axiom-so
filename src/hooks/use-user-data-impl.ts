@@ -51,16 +51,20 @@ function deduplicate<T>(items: T[], key: keyof T): T[] {
   });
 }
 
+// Placeholder mostrado solo antes del primer cálculo del motor. Alineado con la
+// línea base que produce el motor para un usuario sin eventos (núcleo ~60-65,
+// cortisol/carga bajos) para que la transición predefinido→real sea suave y no
+// el salto brusco que se veía antes (75 uniforme → ~50 reales).
 const DEFAULT_STATS: RPGStats = {
-  dopamina: 75,
-  serotonina: 75,
-  cortisol: 20,
-  foco: 75,
-  energia: 75,
-  sueno: 75,
-  conexion_social: 75,
-  carga_dopaminergica: 20,
-  player_score: 75,
+  dopamina: 62,
+  serotonina: 62,
+  cortisol: 22,
+  foco: 62,
+  energia: 62,
+  sueno: 62,
+  conexion_social: 62,
+  carga_dopaminergica: 12,
+  player_score: 68,
 };
 
 export function useUserDataImpl() {
@@ -256,6 +260,13 @@ export function useUserDataImpl() {
             (a, b) => parseISO(b.fecha).getTime() - parseISO(a.fecha).getTime()
           )[0]?.score_total
         : undefined;
+    // Modo aprendizaje: lo decide el motor (única fuente de verdad) y lo persiste
+    // en el doc. Antes de la primera escritura (doc null) también es aprendizaje.
+    const isLearningMode =
+      computedGlobalState == null
+        ? true
+        : computedGlobalState.is_learning_mode ?? ((computedGlobalState.data_quality ?? 0) < 0.2);
+
     const globalScore = computedGlobalState?.rpg_stats?.player_score;
     let resolvedPlayerScore =
       typeof globalScore === 'number'
@@ -264,7 +275,10 @@ export function useUserDataImpl() {
         ? latestDailyScore
         : DEFAULT_STATS.player_score;
 
-    if (typeof globalScore === 'number' && typeof latestDailyScore === 'number') {
+    // La mezcla con el score diario crudo (65%) amplifica la volatilidad cuando
+    // hay poquísimos días de historial. En aprendizaje confiamos en el score
+    // suavizado del motor y no la aplicamos.
+    if (!isLearningMode && typeof globalScore === 'number' && typeof latestDailyScore === 'number') {
       const delta = Math.abs(globalScore - latestDailyScore);
       if (delta >= 12) {
         resolvedPlayerScore = Math.round(globalScore * 0.35 + latestDailyScore * 0.65);
@@ -283,11 +297,12 @@ export function useUserDataImpl() {
       player_score: resolvedPlayerScore,
     };
 
-    // When no computed data exists yet (new user), default to OK — avoid
-    // false RIESGO/CRITICO warnings before the engine has run even once.
+    // En aprendizaje o sin doc, OK fijo: nunca mostramos RIESGO/CRITICO con datos
+    // insuficientes. Solo derivamos estado por score cuando el motor no trae uno
+    // explícito Y ya hay datos fiables.
     const resolvedOverallState =
       computedGlobalState?.estado_global ||
-      (computedGlobalState === null
+      (isLearningMode || computedGlobalState == null
         ? 'OK'
         : resolvedPlayerScore < 40 ? 'CRITICO' : resolvedPlayerScore < 70 ? 'RIESGO' : 'OK');
 
@@ -327,7 +342,7 @@ export function useUserDataImpl() {
       lock_reason: computedGlobalState?.lock_reason || '',
       estimated_unlock_time: computedGlobalState?.estimated_unlock_time || 0,
       clinical_v2: computedGlobalState?.clinical_v2 ?? null,
-      isLearningMode: (computedGlobalState?.data_quality ?? 0) < 0.2,
+      isLearningMode,
     };
   }, [
     isLoading, uid, user, userProfile, playerProfile, rawAreas, rawHormones, rawVariables,

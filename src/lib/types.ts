@@ -342,6 +342,7 @@ export interface ComputedGlobalState {
     model_version?: string;
     clinical_v2?: ClinicalV2ModelOutput | null;
     data_quality?: number | null;
+    is_learning_mode?: boolean;
 }
 
 export interface ComputedArea {
