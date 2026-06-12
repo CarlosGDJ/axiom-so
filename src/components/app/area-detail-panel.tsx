@@ -75,7 +75,7 @@ export default function AreaDetailPanel({ areaNameMatch }: AreaDetailPanelProps)
     const sysIds = new Set(systems.map(s => s.sistema_id));
 
     // Habits for those systems
-    const habits: Habit[] = (userData.habits || []).filter(h => sysIds.has(h.sistema_id));
+    const habits: Habit[] = (userData.habits || []).filter(h => h.sistema_id && sysIds.has(h.sistema_id));
 
     // Today's logged events with var_ids from those habits
     const habitVarIds = new Set(habits.map(h => h.var_id));

@@ -30,7 +30,8 @@ import { useUser } from '@/hooks/use-session-user';
 import { addDocumentNonBlocking, setDocumentNonBlocking } from '@/lib/api-writes';
 const formSchema = z.object({
   habito_id: z.string().optional(),
-  sistema_id: z.string({ required_error: 'Por favor, selecciona un sistema.' }),
+  nombre: z.string().min(1, 'El nombre es obligatorio.'),
+  sistema_id: z.string().optional(),
   var_id: z.string({ required_error: 'Por favor, selecciona una variable.' }),
   frecuencia: z.enum(['Diaria', '3xSemana', 'Semanal', 'Mensual']),
   duracion_min: z.coerce.number().int().min(0),
@@ -54,7 +55,8 @@ export default function EditHabitForm({ entity: habit, closeDialog, systems, var
   const form = useForm<EditHabitFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: isEditMode ? { ...habit } : {
-        sistema_id: systems?.[0]?.sistema_id,
+        nombre: '',
+        sistema_id: systems?.[0]?.sistema_id ?? '',
         var_id: variables?.[0]?.var_id,
         frecuencia: 'Diaria',
         duracion_min: 10,
@@ -93,13 +95,28 @@ export default function EditHabitForm({ entity: habit, closeDialog, systems, var
         <div className="space-y-4 p-1 max-h-[65vh] overflow-y-auto pr-4">
           <FormField
             control={form.control}
+            name="nombre"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Nombre del hábito</FormLabel>
+                <FormControl>
+                  <Input {...field} placeholder="Ej: Revisar finanzas cada semana" />
+                </FormControl>
+                <FormDescription>Un nombre claro que reconozcas fácilmente en el tracker.</FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
             name="sistema_id"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Sistema</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl><SelectTrigger><SelectValue placeholder="Selecciona un sistema" /></SelectTrigger></FormControl>
+                <FormLabel>Sistema <span className="text-muted-foreground font-normal">(opcional)</span></FormLabel>
+                <Select onValueChange={field.onChange} value={field.value ?? ''}>
+                  <FormControl><SelectTrigger><SelectValue placeholder="Sin sistema" /></SelectTrigger></FormControl>
                   <SelectContent>
+                    <SelectItem value="">Sin sistema</SelectItem>
                     {systems?.map(s => <SelectItem key={s.id} value={s.sistema_id}>{s.objetivo}</SelectItem>)}
                   </SelectContent>
                 </Select>

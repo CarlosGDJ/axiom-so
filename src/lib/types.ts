@@ -149,7 +149,8 @@ export interface System {
 export interface Habit {
     id: string;
     habito_id: string;
-    sistema_id: string;
+    nombre?: string;
+    sistema_id?: string;
     var_id: string;
     frecuencia: 'Diaria' | '3xSemana' | 'Semanal' | 'Mensual';
     duracion_min: number;

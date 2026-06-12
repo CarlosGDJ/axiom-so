@@ -839,7 +839,7 @@ export default function AnalyticsPage() {
     userData.skills.forEach(skill => {
         const systemsForSkill = userData.systems.filter(s => s.habilidad_id === skill.habilidad_id);
         const systemIds = systemsForSkill.map(s => s.sistema_id);
-        const habitsForSystems = userData.habits.filter(h => systemIds.includes(h.sistema_id));
+        const habitsForSystems = userData.habits.filter(h => h.sistema_id && systemIds.includes(h.sistema_id));
         const varIds = new Set(habitsForSystems.map(h => h.var_id));
         const count = eventsInDateRange.filter(e => varIds.has(e.var_id)).length;
         freqMap[skill.habilidad_id] = count;
@@ -852,7 +852,7 @@ export default function AnalyticsPage() {
     const skillsWithVarIds = userData.skills.map(skill => {
         const systemsForSkill = userData.systems.filter(s => s.habilidad_id === skill.habilidad_id);
         const systemIds = systemsForSkill.map(s => s.sistema_id);
-        const habitsForSystems = userData.habits.filter(h => systemIds.includes(h.sistema_id));
+        const habitsForSystems = userData.habits.filter(h => h.sistema_id && systemIds.includes(h.sistema_id));
         const varIds = new Set(habitsForSystems.map(h => h.var_id));
         return { ...skill, varIds };
     });
@@ -868,7 +868,7 @@ export default function AnalyticsPage() {
     if (!skill) return { activeDays: [] };
     const systemsForSkill = userData.systems.filter(s => s.habilidad_id === skill.habilidad_id);
     const systemIds = systemsForSkill.map(s => s.sistema_id);
-    const habitsForSystems = userData.habits.filter(h => systemIds.includes(h.sistema_id));
+    const habitsForSystems = userData.habits.filter(h => h.sistema_id && systemIds.includes(h.sistema_id));
     const varIds = new Set(habitsForSystems.map(h => h.var_id));
     const activeDays = new Set<string>();
     eventsInDateRange.forEach(event => {
@@ -884,7 +884,7 @@ export default function AnalyticsPage() {
     const skillsWithVarIds = userData.skills.map(skill => {
         const systemsForSkill = userData.systems.filter(s => s.habilidad_id === skill.habilidad_id);
         const systemIds = systemsForSkill.map(s => s.sistema_id);
-        const habitsForSystems = userData.habits.filter(h => systemIds.includes(h.sistema_id));
+        const habitsForSystems = userData.habits.filter(h => h.sistema_id && systemIds.includes(h.sistema_id));
         const varIds = new Set(habitsForSystems.map(h => h.var_id));
         return { ...skill, varIds };
     });

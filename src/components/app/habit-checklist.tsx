@@ -121,7 +121,7 @@ export default function HabitChecklist({ habits, events, variables }: HabitCheck
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <CardTitle className="text-base font-bold truncate max-w-[180px]">
-                    {isNegative ? `Evitar: ` : ""}{variable?.var_nombre || habit.var_id}
+                    {isNegative ? `Evitar: ` : ""}{habit.nombre || variable?.var_nombre || habit.var_id}
                 </CardTitle>
                 <TooltipProvider>
                     <Tooltip>
