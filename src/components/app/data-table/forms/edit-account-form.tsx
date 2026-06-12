@@ -62,11 +62,11 @@ export default function EditAccountForm({ entity: account, closeDialog }: EditAc
     const finalData = { cuenta_id, nombre: data.nombre.trim(), tipo: data.tipo, saldo: data.saldo };
 
     if (isEditMode) {
-      setDocumentNonBlocking('accounts', account.id, finalData, { merge: true });
+      setDocumentNonBlocking('financialAccounts', account.id, finalData, { merge: true });
       toast({ title: 'Cuenta actualizada' });
     } else {
-      addDocumentNonBlocking('accounts', finalData);
-      revalidateCollection('accounts');
+      addDocumentNonBlocking('financialAccounts', finalData);
+      revalidateCollection('financialAccounts');
       toast({ title: 'Cuenta creada', description: `"${data.nombre.trim()}" lista para usar.` });
     }
 

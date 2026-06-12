@@ -103,7 +103,7 @@ const collectionNameMap: { [key: string]: string } = {
     'Estado': 'states',
     'Impacto': 'impactMatrix',
     'Relación': 'relations',
-    'Cuenta': 'accounts',
+    'Cuenta': 'financialAccounts',
     'Deuda': 'debts',
     'Hito / Tarea': 'milestones',
     'Evento': 'events',

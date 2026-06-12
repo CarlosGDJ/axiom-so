@@ -9,10 +9,10 @@ function toObjectId(id: string) {
 
 const USER_COLLECTIONS = [
   'areas', 'hormones', 'variables', 'events', 'transactions', 'interactions',
-  'relations', 'accounts', 'debts', 'skills', 'systems', 'habits', 'milestones',
+  'relations', 'financialAccounts', 'debts', 'skills', 'systems', 'habits', 'milestones',
   'protocols', 'states', 'impactMatrix', 'notifications', 'computed_global_state',
   'computed_areas', 'computed_hormones', 'computed_daily_score', 'playerProfile',
-  'settings', 'chatHistory', 'dashboardConfig',
+  'settings', 'chatHistory', 'dashboardConfig', 'dailyBriefing', 'userProfile',
 ];
 
 export async function GET() {
@@ -54,16 +54,20 @@ export async function DELETE() {
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const db = await getDb();
+  const oid = toObjectId(userId);
 
-  // Delete all user data across every collection
+  // Borra todos los datos de la app (userId string)
   await Promise.all(
     USER_COLLECTIONS.map(col => db.collection(col).deleteMany({ userId }))
   );
 
-  // Delete NextAuth adapter records (accounts already deleted via USER_COLLECTIONS loop above)
+  // Borra los registros del adaptador NextAuth. accounts/sessions guardan userId
+  // como ObjectId (no string), así que hay que filtrar por ObjectId — antes
+  // quedaban huérfanos (cuentas OAuth de usuarios borrados).
   await Promise.all([
-    db.collection('users').deleteOne({ _id: toObjectId(userId) }),
-    db.collection('sessions').deleteMany({ userId }),
+    db.collection('users').deleteOne({ _id: oid }),
+    db.collection('accounts').deleteMany({ userId: { $in: [oid, userId] } }),
+    db.collection('sessions').deleteMany({ userId: { $in: [oid, userId] } }),
   ]);
 
   return NextResponse.json({ ok: true });

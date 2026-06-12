@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 
 const USER_COLLECTIONS = [
   'areas', 'hormones', 'variables', 'events', 'transactions', 'interactions',
-  'relations', 'accounts', 'debts', 'skills', 'systems', 'habits', 'milestones',
+  'relations', 'financialAccounts', 'debts', 'skills', 'systems', 'habits', 'milestones',
   'protocols', 'states', 'impactMatrix', 'notifications', 'computed_global_state',
   'computed_areas', 'computed_hormones', 'computed_daily_score', 'playerProfile',
   'settings', 'chatHistory', 'dashboardConfig',

@@ -240,10 +240,10 @@ export async function seedDemoUser(): Promise<void> {
     ['MEN_1','Andrés','Mentor',6,9,'Mensual'],
   ].map(([id,nombre,rol,energia,respeto,freq]) => ({ persona_id:id, nombre, rol, energia_neta:energia, respeto, frecuencia:freq })));
 
-  await postMany('accounts', [
-    { cuenta_id: 'BANCO_1', tipo: 'Banco', saldo: 4850 },
-    { cuenta_id: 'INV_1', tipo: 'Inversion', saldo: 7200 },
-    { cuenta_id: 'CASH_1', tipo: 'Efectivo', saldo: 180 },
+  await postMany('financialAccounts', [
+    { cuenta_id: 'BANCO_1', nombre: 'Banco principal', tipo: 'Banco', saldo: 4850 },
+    { cuenta_id: 'INV_1', nombre: 'Inversiones', tipo: 'Inversion', saldo: 7200 },
+    { cuenta_id: 'CASH_1', nombre: 'Efectivo', tipo: 'Efectivo', saldo: 180 },
   ]);
 
   await postMany('debts', [

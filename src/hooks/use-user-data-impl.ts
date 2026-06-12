@@ -87,7 +87,7 @@ export function useUserDataImpl() {
   const { data: rawProtocols,    isLoading: isLoadingProtocols    } = useCollection<Protocol>(active ? 'protocols' : null);
   const { data: rawStates,       isLoading: isLoadingStates       } = useCollection<State>(active ? 'states' : null);
   const { data: relations,       isLoading: isLoadingRelations    } = useCollection<Relation>(active ? 'relations' : null);
-  const { data: accounts,        isLoading: isLoadingAccounts     } = useCollection<Account>(active ? 'accounts' : null);
+  const { data: accounts,        isLoading: isLoadingAccounts     } = useCollection<Account>(active ? 'financialAccounts' : null);
   const { data: rawDebts,        isLoading: isLoadingDebts        } = useCollection<Debt>(active ? 'debts' : null);
 
   const { data: rawTransactions, isLoading: isLoadingTransactions } = useCollection<Transaction>(

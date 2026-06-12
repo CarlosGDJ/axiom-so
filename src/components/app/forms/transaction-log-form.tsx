@@ -122,8 +122,8 @@ export default function TransactionLogForm({ entity: transaction, accounts, debt
     const nombre = newAccNombre.trim();
     const cuenta_id = `ACC_${Date.now()}`; // id estable, no el nombre
     const saldo = parseFloat(newAccSaldo) || 0;
-    addDocumentNonBlocking('accounts', { cuenta_id, nombre, tipo: newAccTipo, saldo });
-    revalidateCollection('accounts');
+    addDocumentNonBlocking('financialAccounts', { cuenta_id, nombre, tipo: newAccTipo, saldo });
+    revalidateCollection('financialAccounts');
     setLocalAccounts(prev => [
       ...prev,
       { id: `local_${Date.now()}`, cuenta_id, nombre, tipo: newAccTipo, saldo } as Account,
