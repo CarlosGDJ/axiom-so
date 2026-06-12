@@ -10,7 +10,9 @@ import ScoreCalendarHeatmap from '@/components/app/score-calendar-heatmap';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Target, History, CalendarDays, Repeat, PlusCircle, Star, Layers } from 'lucide-react';
+import { Target, History, CalendarDays, Repeat, PlusCircle, Star, Layers, ChevronDown, Settings2 } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { cn } from '@/lib/utils';
 import NavigationReady from '@/components/app/navigation-ready';
 import { computeStreakMultiplier } from '@/lib/progression';
 import EditHabitForm from '@/components/app/data-table/forms/edit-habit-form';
@@ -37,6 +39,7 @@ export default function HabitTrackerPage() {
   const [isCreateMilestoneOpen, setIsCreateMilestoneOpen] = useState(false);
   const [isCreateSkillOpen, setIsCreateSkillOpen] = useState(false);
   const [isCreateSystemOpen, setIsCreateSystemOpen] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   if (isLoading && !userData) {
     return <AreaPageSkeleton />;
@@ -45,25 +48,23 @@ export default function HabitTrackerPage() {
   return (
     <div className="space-y-10 pb-20">
       <NavigationReady />
-      <div className="space-y-1">
-        <p className="text-muted-foreground text-sm">Gestiona tus hábitos diarios y hitos estratégicos para mantener el sistema equilibrado.</p>
-      </div>
-
       <div data-tour="milestones-habits">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-1">
           <div className="flex items-center gap-2">
             <Repeat className="h-5 w-5 text-primary" />
-            <h2 className="text-xl font-semibold">Hábitos diarios</h2>
+            <h2 className="text-xl font-semibold">Mis hábitos</h2>
           </div>
-          <Button size="sm" variant="outline" onClick={() => setIsCreateHabitOpen(true)} className="gap-1.5">
+          <Button size="sm" onClick={() => setIsCreateHabitOpen(true)} className="gap-1.5">
             <PlusCircle size={14} />
             Nuevo hábito
           </Button>
         </div>
+        <p className="text-muted-foreground text-sm mb-5">Marca tus hábitos cada día y construye rachas. Crear uno es tan simple como ponerle nombre.</p>
         <HabitChecklist
             habits={habits || []}
             events={events || []}
             variables={variables || []}
+            onCreate={() => setIsCreateHabitOpen(true)}
         />
       </div>
 
@@ -127,31 +128,41 @@ export default function HabitTrackerPage() {
       </section>
       <Separator className="my-10" />
 
-      <section className="space-y-4">
-        <div className="flex items-center gap-2">
-          <Layers className="h-5 w-5 text-muted-foreground" />
-          <div>
-            <h2 className="text-xl font-semibold">Configuración</h2>
-            <p className="text-sm text-muted-foreground">Crea las habilidades y sistemas que estructuran tus objetivos.</p>
+      <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
+        <CollapsibleTrigger asChild>
+          <button
+            type="button"
+            className="flex w-full items-center justify-between rounded-lg border bg-muted/30 px-4 py-3 text-left hover:bg-muted/50 transition-colors"
+          >
+            <span className="flex items-center gap-2">
+              <Settings2 className="h-5 w-5 text-muted-foreground" />
+              <span>
+                <span className="text-sm font-semibold block">Avanzado: sistemas y habilidades</span>
+                <span className="text-xs text-muted-foreground">Opcional. Agrupa hábitos y objetivos en estructuras más grandes.</span>
+              </span>
+            </span>
+            <ChevronDown className={cn('h-4 w-4 text-muted-foreground transition-transform', showAdvanced && 'rotate-180')} />
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="pt-4">
+          <div className="flex flex-wrap gap-3">
+            <Button variant="outline" onClick={() => setIsCreateSkillOpen(true)} className="gap-1.5">
+              <Star size={14} />
+              Nueva habilidad
+            </Button>
+            <Button variant="outline" onClick={() => setIsCreateSystemOpen(true)} className="gap-1.5">
+              <Layers size={14} />
+              Nuevo sistema
+            </Button>
           </div>
-        </div>
-        <div className="flex flex-wrap gap-3">
-          <Button variant="outline" onClick={() => setIsCreateSkillOpen(true)} className="gap-1.5">
-            <Star size={14} />
-            Nueva habilidad
-          </Button>
-          <Button variant="outline" onClick={() => setIsCreateSystemOpen(true)} className="gap-1.5">
-            <Layers size={14} />
-            Nuevo sistema
-          </Button>
-        </div>
-      </section>
+        </CollapsibleContent>
+      </Collapsible>
 
       <Dialog open={isCreateHabitOpen} onOpenChange={setIsCreateHabitOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Nuevo hábito</DialogTitle>
-            <DialogDescription>Crea un hábito vinculado a un sistema y una variable.</DialogDescription>
+            <DialogDescription>Ponle un nombre y elige con qué frecuencia. Eso es todo.</DialogDescription>
           </DialogHeader>
           <EditHabitForm
             closeDialog={() => setIsCreateHabitOpen(false)}

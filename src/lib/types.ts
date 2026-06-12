@@ -122,6 +122,7 @@ export interface Event {
     monto: number;
     tipo: 'Variable' | 'Protocolo';
     milestone_id: string;
+    habito_id?: string; // si el evento se registró completando un hábito concreto
 }
 
 export interface Skill {
@@ -151,7 +152,7 @@ export interface Habit {
     habito_id: string;
     nombre?: string;
     sistema_id?: string;
-    var_id: string;
+    var_id?: string; // opcional: si está, completar el hábito alimenta el motor
     frecuencia: 'Diaria' | '3xSemana' | 'Semanal' | 'Mensual';
     duracion_min: number;
     minimo_viable: boolean;

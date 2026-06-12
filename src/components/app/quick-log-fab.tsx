@@ -319,7 +319,7 @@ export function QuickLogFab() {
 
   const pendingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  function writeEvent(var_id: string, intensidad: number, contexto: string, tipo = 'Variable', isImpulsivo = false): () => void {
+  function writeEvent(var_id: string | undefined, intensidad: number, contexto: string, tipo = 'Variable', isImpulsivo = false, habitoId?: string): () => void {
     if (!user) return () => {};
 
     // Cancel any previous pending write (edge case: rapid fire)
@@ -336,7 +336,8 @@ export function QuickLogFab() {
       addDocumentNonBlocking('events', {
         evento_id: `EVT_QUICK_${Date.now()}`,
         fecha:     new Date().toISOString(),
-        var_id,
+        ...(var_id ? { var_id } : {}),
+        ...(habitoId ? { habito_id: habitoId } : {}),
         intensidad,
         duracion_min: 0,
         contexto,
@@ -389,9 +390,9 @@ export function QuickLogFab() {
     closeDialog();
   }
 
-  function handleHabit(var_id: string, name: string) {
+  function handleHabit(habit: { id: string; var_id?: string }, name: string) {
     haptic('success');
-    const undo = writeEvent(var_id, 5, `Hábito completado: ${name}`, 'Habito');
+    const undo = writeEvent(habit.var_id, 5, `Hábito completado: ${name}`, 'Habito', false, habit.id);
     toast({
       title: '✓ Hábito completado',
       description: name,
@@ -658,11 +659,11 @@ export function QuickLogFab() {
             ) : (
               userData!.habits.map(habit => {
                 const variable = userData!.variables.find(v => v.var_id === habit.var_id);
-                const name = variable?.var_nombre ?? habit.description ?? habit.habito_id;
+                const name = habit.nombre || variable?.var_nombre || habit.description || 'Hábito';
                 return (
                   <button
                     key={habit.habito_id}
-                    onClick={() => handleHabit(habit.var_id, name)}
+                    onClick={() => handleHabit(habit, name)}
                     className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border hover:bg-green-500/5 hover:border-green-500/30 transition-colors text-left group"
                   >
                     <CheckCircle2 className="h-5 w-5 text-muted-foreground group-hover:text-green-600 transition-colors shrink-0" />
