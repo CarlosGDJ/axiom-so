@@ -9,9 +9,32 @@ import type { UserProfile } from '@/lib/types';
 import { Camera, Upload, User, Check, X, RefreshCcw } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useUser } from '@/hooks/use-session-user';
-import { setDocumentNonBlocking } from '@/lib/api-writes';
+import { revalidateCollection } from '@/hooks/use-mongo-collection';
 interface ProfilePhotoEditorProps {
   userProfile: UserProfile | null;
+}
+
+// Redimensiona y comprime a JPEG. Sin esto, una foto de móvil (5-12 MB) se
+// guardaba como base64 de ~16 MB y superaba el límite de documento de MongoDB →
+// la subida fallaba en silencio en el móvil. Queda en ~30-80 KB.
+function resizeDataUrl(dataUrl: string, max = 512, quality = 0.85): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new window.Image();
+    img.onload = () => {
+      const scale = Math.min(1, max / Math.max(img.width, img.height));
+      const w = Math.max(1, Math.round(img.width * scale));
+      const h = Math.max(1, Math.round(img.height * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return reject(new Error('No se pudo procesar la imagen.'));
+      ctx.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = () => reject(new Error('No se pudo cargar la imagen.'));
+    img.src = dataUrl;
+  });
 }
 
 export default function ProfilePhotoEditor({ userProfile }: ProfilePhotoEditorProps) {
@@ -71,7 +94,7 @@ export default function ProfilePhotoEditor({ userProfile }: ProfilePhotoEditorPr
         canvas.height = video.videoHeight;
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
         const dataUrl = canvas.toDataURL('image/jpeg');
-        setPrefPhoto(dataUrl);
+        resizeDataUrl(dataUrl).then(setPrefPhoto).catch(() => setPrefPhoto(dataUrl));
         stopCamera();
       }
     }
@@ -79,13 +102,26 @@ export default function ProfilePhotoEditor({ userProfile }: ProfilePhotoEditorPr
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPrefPhoto(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast({ variant: 'destructive', title: 'Archivo no válido', description: 'Selecciona una imagen.' });
+      return;
     }
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      try {
+        const resized = await resizeDataUrl(reader.result as string);
+        setPrefPhoto(resized);
+      } catch {
+        toast({ variant: 'destructive', title: 'Error', description: 'No se pudo procesar la imagen. Prueba con otra.' });
+      }
+    };
+    reader.onerror = () => {
+      toast({ variant: 'destructive', title: 'Error', description: 'No se pudo leer el archivo.' });
+    };
+    reader.readAsDataURL(file);
+    // Permite volver a elegir el mismo archivo si hace falta.
+    e.target.value = '';
   };
 
   const savePhoto = async () => {
@@ -93,18 +129,25 @@ export default function ProfilePhotoEditor({ userProfile }: ProfilePhotoEditorPr
 
     setIsSaving(true);
     try {
-      setDocumentNonBlocking('playerProfile', 'main-profile', { axiomAvatarDataUrl: tempPhoto }, { merge: true });
-
+      // Escritura AWAIT (no fire-and-forget) para mostrar un error real si falla,
+      // en vez de decir "guardado" cuando no lo está.
+      const res = await fetch('/api/data/playerProfile/main-profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ axiomAvatarDataUrl: tempPhoto, merge: true }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      revalidateCollection('playerProfile');
       toast({
-        title: 'Foto Actualizada',
-        description: 'Tu foto de perfil ha sido guardada correctamente.',
+        title: 'Foto actualizada',
+        description: 'Tu foto de perfil se ha guardado correctamente.',
       });
       setPrefPhoto(null);
     } catch (error) {
       toast({
         variant: 'destructive',
-        title: 'Error al Guardar',
-        description: 'No se pudo guardar la imagen.',
+        title: 'Error al guardar',
+        description: 'No se pudo guardar la imagen. Inténtalo de nuevo.',
       });
     } finally {
       setIsSaving(false);
@@ -154,12 +197,14 @@ export default function ProfilePhotoEditor({ userProfile }: ProfilePhotoEditorPr
         )}
 
         <canvas ref={canvasRef} className="hidden" />
-        <input 
-            type="file" 
-            ref={fileInputRef} 
-            className="hidden" 
-            accept="image/*" 
-            onChange={handleFileUpload} 
+        {/* sr-only en vez de hidden: algunos navegadores móviles ignoran .click()
+            sobre un input con display:none. */}
+        <input
+            type="file"
+            ref={fileInputRef}
+            className="sr-only"
+            accept="image/*"
+            onChange={handleFileUpload}
         />
 
         <div className="grid grid-cols-2 gap-2">
