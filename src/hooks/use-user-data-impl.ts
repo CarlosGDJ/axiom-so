@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef, useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import { useCollection, useDoc } from '@/hooks/use-mongo-collection';
 import { useUser } from '@/hooks/use-session-user';
 import type {
@@ -331,93 +331,6 @@ export function useUserDataImpl() {
     rawImpactMatrix, rawSkills, rawSystems, rawHabits, rawMilestones, rawProtocols, rawStates,
   ]);
 
-  // ── Offline localStorage cache ────────────────────────────────────────────
-  const [offlineData, setOfflineData] = useState<UserData | null>(null);
-  const offlineLoadedRef = useRef(false);
-
-  useEffect(() => {
-    if (!uid || offlineLoadedRef.current) return;
-    offlineLoadedRef.current = true;
-    try {
-      const raw = localStorage.getItem(`axiom_snap_${uid}`);
-      if (raw) setOfflineData(JSON.parse(raw) as UserData);
-    } catch {}
-  }, [uid]);
-
-  useEffect(() => {
-    if (!uid || !currentData) return;
-    const snap = {
-      userProfile: currentData.userProfile,
-      playerProfile: currentData.playerProfile,
-      rpg_stats: currentData.rpg_stats,
-      overallState: currentData.overallState,
-      kpis: { ...currentData.kpis, dailyScoreTrend: (currentData.kpis.dailyScoreTrend ?? []).slice(-30) },
-      areas: currentData.areas,
-      milestones: currentData.milestones,
-      events: (currentData.events ?? []).slice(-100),
-      variables: currentData.variables,
-      habits: currentData.habits,
-      skills: currentData.skills,
-      systems: currentData.systems,
-      protocols: currentData.protocols,
-      states: currentData.states,
-      transactions: (currentData.transactions ?? []).slice(-50),
-      allTransactions: (currentData.allTransactions ?? []).slice(-50),
-      debtTransactions: (currentData.debtTransactions ?? []).slice(-30),
-      accounts: currentData.accounts,
-      debts: currentData.debts,
-      interactions: (currentData.interactions ?? []).slice(-30),
-      relations: currentData.relations,
-      dominantVariables: currentData.dominantVariables,
-      explanation: currentData.explanation,
-      is_locked: currentData.is_locked,
-      lock_reason: currentData.lock_reason,
-      estimated_unlock_time: currentData.estimated_unlock_time,
-      clinical_v2: currentData.clinical_v2,
-      impactMatrix: currentData.impactMatrix,
-      hormones: currentData.hormones,
-    };
-    try {
-      localStorage.setItem(`axiom_snap_${uid}`, JSON.stringify(snap));
-    } catch {
-      try {
-        const minimal = {
-          userProfile: currentData.userProfile,
-          rpg_stats: currentData.rpg_stats,
-          overallState: currentData.overallState,
-          kpis: currentData.kpis,
-          areas: currentData.areas,
-          events: [],
-          variables: currentData.variables,
-          milestones: currentData.milestones,
-          habits: currentData.habits,
-          skills: currentData.skills,
-          systems: currentData.systems,
-          protocols: currentData.protocols,
-          states: currentData.states,
-          transactions: [],
-          allTransactions: [],
-          debtTransactions: [],
-          accounts: currentData.accounts,
-          debts: currentData.debts,
-          interactions: [],
-          relations: currentData.relations,
-          dominantVariables: currentData.dominantVariables,
-          explanation: currentData.explanation,
-          is_locked: currentData.is_locked,
-          lock_reason: currentData.lock_reason,
-          estimated_unlock_time: currentData.estimated_unlock_time,
-          clinical_v2: currentData.clinical_v2,
-          impactMatrix: currentData.impactMatrix,
-          hormones: currentData.hormones,
-        };
-        localStorage.setItem(`axiom_snap_${uid}`, JSON.stringify(minimal));
-      } catch {}
-    }
-  }, [currentData]);
-
-  const resolvedData = currentData ?? offlineData;
-  const resolvedLoading = isLoading && !currentData && !offlineData;
 
   // Raw collections for useComputedDataWriter
   const writerPrefetch = useMemo(() => {
@@ -441,5 +354,5 @@ export function useUserDataImpl() {
 
   const isValidating = isValidatingGlobalState || isValidatingComputedAreas || isValidatingComputedHormones;
 
-  return { data: resolvedData, isLoading: resolvedLoading, isValidating, writerPrefetch };
+  return { data: currentData, isLoading, isValidating, writerPrefetch };
 }
