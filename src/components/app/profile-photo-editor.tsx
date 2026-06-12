@@ -45,8 +45,7 @@ export default function ProfilePhotoEditor({ userProfile }: ProfilePhotoEditorPr
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   const { toast } = useToast();  const { user, uid } = useUser();
 
   const currentPhoto = userProfile?.axiomAvatarDataUrl || userProfile?.photoURL || '';
@@ -197,34 +196,36 @@ export default function ProfilePhotoEditor({ userProfile }: ProfilePhotoEditorPr
         )}
 
         <canvas ref={canvasRef} className="hidden" />
-        {/* sr-only en vez de hidden: algunos navegadores móviles ignoran .click()
-            sobre un input con display:none. */}
-        <input
-            type="file"
-            ref={fileInputRef}
-            className="sr-only"
-            accept="image/*"
-            onChange={handleFileUpload}
-        />
 
         <div className="grid grid-cols-2 gap-2">
           {!isCameraOpen && !tempPhoto && (
             <>
-              <Button variant="outline" size="sm" onClick={startCamera} className="gap-1.5">
+              <Button variant="outline" onClick={startCamera} className="gap-1.5 h-11">
                 <Camera className="h-4 w-4 shrink-0" /><span className="truncate">Cámara</span>
               </Button>
-              <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="gap-1.5">
-                <Upload className="h-4 w-4 shrink-0" /><span className="truncate">Subir foto</span>
+              {/* Label con el input dentro: tocar cualquier parte abre el selector
+                  de forma nativa (gesto directo), mucho más fiable en móvil que un
+                  .click() programático sobre un input oculto. */}
+              <Button asChild variant="outline" className="gap-1.5 h-11 cursor-pointer">
+                <label>
+                  <Upload className="h-4 w-4 shrink-0" /><span className="truncate">Subir foto</span>
+                  <input
+                    type="file"
+                    className="sr-only"
+                    accept="image/*"
+                    onChange={handleFileUpload}
+                  />
+                </label>
               </Button>
             </>
           )}
 
           {tempPhoto && (
             <>
-              <Button variant="default" onClick={savePhoto} disabled={isSaving}>
+              <Button variant="default" className="h-11" onClick={savePhoto} disabled={isSaving}>
                 <Check className="mr-2 h-4 w-4" /> {isSaving ? 'Guardando...' : 'Confirmar'}
               </Button>
-              <Button variant="ghost" onClick={() => setPrefPhoto(null)} disabled={isSaving}>
+              <Button variant="ghost" className="h-11" onClick={() => setPrefPhoto(null)} disabled={isSaving}>
                 <X className="mr-2 h-4 w-4" /> Descartar
               </Button>
             </>
