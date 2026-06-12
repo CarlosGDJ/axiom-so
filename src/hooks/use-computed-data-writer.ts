@@ -27,9 +27,15 @@ import { computeAreaScoreAtTime } from '@/lib/area-scoring';
 import { subDays, parseISO, differenceInHours, differenceInDays, format } from 'date-fns';
 import type { Milestone } from '@/lib/types';
 
+// Constantes de decaimiento k (por hora) usadas en exp(-k·t). Donde el stat mapea
+// a una sustancia real, k se deriva de su vida media clínica: k = ln(2)/t½.
+//   · cortisol  → vida media 1.2–2.0h (Hydrocortisone PK) ⇒ k≈0.46 (t½≈1.5h)
+//   · serotonina → neurotransmisor lento de ánimo ⇒ decaimiento lento
+// El resto son proxies conductuales (no sustancias medibles); k ajustado para que
+// el efecto de un evento dure un rango plausible sin acantilados.
 const DECAY_K: Record<string, number> = {
-  cortisol: 0.2,
-  dopamina: 0.5,
+  cortisol: 0.46,            // antes 0.2 (t½ 3.5h, irreal): el estrés se quedaba pegado
+  dopamina: 0.4,             // antes 0.5: suaviza el acantilado post-recompensa
   serotonina: 0.1,
   energia: 0.15,
   foco: 0.3,
@@ -897,28 +903,29 @@ export function useComputedDataWriter(ext?: WriterPrefetch) {
         .map(m => m.var_id),
     );
     const NIGHTLY_IDEAL = 75;
-    const NIGHTLY_BASELINE = 65; // sin datos = tracking pobre = probablemente regular
+    const NIGHTLY_BASELINE = 65; // punto de partida al estimar una noche CON datos
     let debtNumerator = 0;
     let debtDenominator = 0;
     for (let daysAgo = 1; daysAgo <= 7; daysAgo++) {
       const targetDate = format(subDays(now, daysAgo), 'yyyy-MM-dd');
       const dayEvents = safeEvents.filter(e => e.fecha.startsWith(targetDate));
       const nightEvents = dayEvents.filter(e => sleepVarIds.has(e.var_id));
-      let nightSueno = NIGHTLY_BASELINE;
-      if (nightEvents.length > 0) {
-        const sleepImpact = nightEvents.reduce((acc, e) => {
-          const matrix = effectiveImpactMatrix.find(
-            m => m.var_id === e.var_id && sleepHormoneIds.has(m.hormone_id),
-          );
-          if (!matrix) return acc;
-          const variable = variableById.get(e.var_id);
-          const polarity = variable?.polaridad ?? 1;
-          const x = Math.min(e.intensidad / 5, 1);
-          const curveFactor = variable?.curva === 'Exponencial' ? x * x : x;
-          return acc + (polarity * matrix.effect_size * curveFactor);
-        }, 0);
-        nightSueno = clamp(NIGHTLY_BASELINE + sleepImpact * 12);
-      }
+      // "Sin datos = desconocido", NO "déficit". Antes una noche sin registro
+      // contaba como deuda de 10 (75-65), penalizando a quien simplemente no
+      // trackea el sueño (Van Dongen mide deuda sobre sueño REAL, no ausencia).
+      if (nightEvents.length === 0) continue;
+      const sleepImpact = nightEvents.reduce((acc, e) => {
+        const matrix = effectiveImpactMatrix.find(
+          m => m.var_id === e.var_id && sleepHormoneIds.has(m.hormone_id),
+        );
+        if (!matrix) return acc;
+        const variable = variableById.get(e.var_id);
+        const polarity = variable?.polaridad ?? 1;
+        const x = Math.min(e.intensidad / 5, 1);
+        const curveFactor = variable?.curva === 'Exponencial' ? x * x : x;
+        return acc + (polarity * matrix.effect_size * curveFactor);
+      }, 0);
+      const nightSueno = clamp(NIGHTLY_BASELINE + sleepImpact * 12);
       const nightlyDeficit = Math.max(0, NIGHTLY_IDEAL - nightSueno);
       const ageWeight = Math.exp(-0.12 * (daysAgo - 1)); // noche-1=1.0, noche-7≈0.48
       debtNumerator += nightlyDeficit * ageWeight;
@@ -957,26 +964,30 @@ export function useComputedDataWriter(ext?: WriterPrefetch) {
     }).length;
     const isCurrentlyActive = recentlyActiveCount > 0;
 
+    // Amplitudes REDUCIDAS: la evidencia del BRAC en vigilia (vs sueño) es modesta
+    // y la auditoría mostró que ±15 pts de foco cada 90 min eran demasiado. Fase de
+    // pico extendida a 0.66 (~60 de 90 min) para casar con "primeros 60-70 min de
+    // mayor alerta" (Kleitman).
     let bracFocusEffect  = 0;
     let bracEnergyEffect = 0;
     let bracCortisolEffect = 0;
-    if (bracPhase <= 0.55) {
+    if (bracPhase <= 0.66) {
       // Ventana de pico: recursos cognitivos en ascenso/máximo
-      const peakStrength = Math.sin((bracPhase / 0.55) * Math.PI);
-      bracFocusEffect  = peakStrength * 7;
-      bracEnergyEffect = peakStrength * 4;
-    } else if (bracPhase >= 0.75) {
+      const peakStrength = Math.sin((bracPhase / 0.66) * Math.PI);
+      bracFocusEffect  = peakStrength * 4;
+      bracEnergyEffect = peakStrength * 2.5;
+    } else if (bracPhase >= 0.78) {
       // Valle de recuperación
-      const troughDepth = (bracPhase - 0.75) / 0.25;
+      const troughDepth = (bracPhase - 0.78) / 0.22;
       if (isCurrentlyActive) {
         // Trabajar contra el ritmo → cortisol de esfuerzo
-        bracFocusEffect    = -(troughDepth * 8);
-        bracEnergyEffect   = -(troughDepth * 5);
-        bracCortisolEffect =   troughDepth * 6;
+        bracFocusEffect    = -(troughDepth * 4);
+        bracEnergyEffect   = -(troughDepth * 3);
+        bracCortisolEffect =   troughDepth * 3;
       } else {
         // Respetando el valle → recarga pasiva
-        bracFocusEffect  = troughDepth * 3;
-        bracEnergyEffect = troughDepth * 4;
+        bracFocusEffect  = troughDepth * 2;
+        bracEnergyEffect = troughDepth * 2.5;
       }
     }
     if (bracFocusEffect   !== 0) s.foco    = clamp(s.foco    + bracFocusEffect);
@@ -985,25 +996,28 @@ export function useComputedDataWriter(ext?: WriterPrefetch) {
 
     // ── Jet Lag Social (SJL) ──────────────────────────────────────────────────
     // Cuando la hora actual está lejos del pico óptimo del cronotipo, el eje
-    // HPA activa cortisol de alarma. Un nocturno a las 7am funciona igual que
-    // alguien con un jet lag de 8 zonas horarias. Solo penaliza si el cronotipo
-    // es marcado (|chronotype| > 0.25) y hay desalineación real (> 6h del pico).
+    // HPA activa cortisol de alarma. Solo penaliza si el cronotipo es marcado
+    // (|chronotype| > 0.25). Onset SUAVE (rampa desde ~5h) en vez de un escalón
+    // en 6h que activaba la penalización de golpe.
+    // NOTA: el SJL clínico (Roenneberg) se mide como diferencia del punto medio
+    // del sueño entre días laborables/libres. Aquí lo aproximamos por hora-vs-pico
+    // del cronotipo — es un proxy; lo ideal sería derivarlo de horas de sueño reales.
     const chronoOptimalPeak = 12 - chronotype * 3; // matutino=9h · neutro=12h · nocturno=15h
     const hoursFromOptimal = Math.min(
       Math.abs(nowHour - chronoOptimalPeak),
       24 - Math.abs(nowHour - chronoOptimalPeak),
     ); // distancia circular
     const sjlMagnitude = Math.abs(chronotype);
-    const sjlActive = sjlMagnitude > 0.25 && hoursFromOptimal > 6;
-    let sjlIntensity = 0;
+    const sjlRamp = Math.max(0, Math.min(1, (hoursFromOptimal - 5) / 8)); // 5h→0 … 13h→1
+    const sjlIntensity = sjlMagnitude > 0.25 ? sjlRamp * sjlMagnitude : 0;
+    const sjlActive = sjlIntensity > 0;
     if (sjlActive) {
-      sjlIntensity = Math.min(1, (hoursFromOptimal - 6) / 8) * sjlMagnitude;
-      s.cortisol  = clamp(s.cortisol  + (sjlIntensity * 8));
-      s.foco      = clamp(s.foco      - (sjlIntensity * 10));
-      s.energia   = clamp(s.energia   - (sjlIntensity * 7));
+      s.cortisol  = clamp(s.cortisol  + (sjlIntensity * 6));
+      s.foco      = clamp(s.foco      - (sjlIntensity * 7));
+      s.energia   = clamp(s.energia   - (sjlIntensity * 5));
       variableContrib.set('SJL_DRAIN', {
         name: `Jet lag circadiano (${chronotype > 0 ? 'matutino forzado tarde' : 'nocturno forzado temprano'})`,
-        total: -(sjlIntensity * 10),
+        total: -(sjlIntensity * 7),
         hoursRemaining: 12,
       });
     }
@@ -1238,11 +1252,12 @@ export function useComputedDataWriter(ext?: WriterPrefetch) {
       });
     }
 
-    // ── Fatiga de decisiones ─────────────────────────────────────────────────
-    // El córtex prefrontal tiene capacidad ejecutiva limitada (glucosa cognitiva).
-    // Cada decisión significativa en las últimas 24h consume ese capital.
-    // A diferencia del estrés (cortisol), esto es depleción de foco y voluntad.
-    // La recuperación es primariamente nocturna (sueño restaura la glucosa prefrontal).
+    // ── Carga cognitiva acumulada ────────────────────────────────────────────
+    // NOTA: antes era "fatiga de decisiones" basada en ego depletion / "glucosa
+    // prefrontal". Ese modelo FALLÓ la replicación (RRR Hagger 2016, 23 labs,
+    // N=2141, d=0.04 IC[-0.07,0.15] — incluye el cero). Lo conservamos solo como
+    // proxy descriptivo de "has hecho muchas cosas exigentes hoy", con peso
+    // reducido, sin afirmar depleción de fuerza de voluntad.
     let totalDecisionLoad = 0;
     const eventsByHour = new Map<number, number>();
 
@@ -1280,12 +1295,13 @@ export function useComputedDataWriter(ext?: WriterPrefetch) {
     const decisionFatigueScore = Math.tanh(totalDecisionLoad / 15) * 100; // 0–100
     if (decisionFatigueScore > 10) {
       const fatigueIntensity = (decisionFatigueScore - 10) / 90;
-      s.foco                = clamp(s.foco                - fatigueIntensity * 14);
-      s.serotonina          = clamp(s.serotonina          - fatigueIntensity * 6);
-      s.carga_dopaminergica = clamp(s.carga_dopaminergica + fatigueIntensity * 8);
+      // Pesos muy reducidos (antes 14/6/8) por la débil evidencia del mecanismo.
+      s.foco                = clamp(s.foco                - fatigueIntensity * 5);
+      s.serotonina          = clamp(s.serotonina          - fatigueIntensity * 2);
+      s.carga_dopaminergica = clamp(s.carga_dopaminergica + fatigueIntensity * 3);
       variableContrib.set('DECISION_FATIGUE', {
-        name: 'Fatiga de decisiones acumulada',
-        total: -(fatigueIntensity * 14),
+        name: 'Carga cognitiva acumulada',
+        total: -(fatigueIntensity * 5),
         hoursRemaining: 12,
       });
     }
@@ -1663,10 +1679,12 @@ export function useComputedDataWriter(ext?: WriterPrefetch) {
     // Este bloque: (a) exime el CAR matutino del cascade de distress,
     //             (b) amplifica el exceso de cortisol nocturno.
     const hoursAwakeCAR = Math.max(0, nowHour - (7.5 - chronotype * 1.5));
-    // CAR: +30 unidades al despertar, τ ≈ 4h (k = 0.25/h), cero después de 14h despierto
-    const physioCortisolContrib = hoursAwakeCAR <= 14
-      ? Math.max(0, 30 * Math.exp(-0.25 * hoursAwakeCAR))
-      : 0;
+    // CAR clínico (Pruessner/Wüst): NO es una exención que decae toda la mañana,
+    // es un PICO que sube tras despertar, alcanza el máximo a los ~30-45 min y
+    // vuelve a baseline hacia las 2h. Modelado como gaussiana centrada en +0.5h
+    // (σ≈0.6h, amplitud ~28 ≈ aumento medio del 50% reportado). Esto elimina el
+    // "acantilado matutino" que la exención exponencial de 14h provocaba.
+    const physioCortisolContrib = 28 * Math.exp(-Math.pow(hoursAwakeCAR - 0.5, 2) / (2 * 0.6 * 0.6));
     // Amplificador nocturno: cortisol elevado de noche → desregulación HPA.
     // Ventana SUAVE (rampa 22→23.5 de entrada, 3.5→5 de salida) en vez de un
     // escalón duro a las 23:00 que movía el cortisol de golpe al cambiar la hora
