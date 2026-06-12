@@ -6,7 +6,7 @@ import { generateSystemPlan } from '@/ai/flows/generate-system-plan-flow';
 import { generateOnboardingSetup } from '@/ai/flows/generate-onboarding-setup-flow';
 import { generateMorningBriefing } from '@/ai/flows/generate-morning-briefing';
 import { generateAvatar } from '@/ai/flows/generate-avatar-flow';
-import { runAxiomChat, type ChatMessage } from '@/ai/flows/chat-with-axiom';
+import { runAxiomChat, type ChatMessage, type ChatActionHints, type ChatResult } from '@/ai/flows/chat-with-axiom';
 import { parseNaturalLog, type ParseNaturalLogOutput, type ParsedLogEvent } from '@/ai/flows/parse-natural-log';
 import type { OnboardingSetupInput, OnboardingSetupOutput } from '@/ai/flows/generate-onboarding-setup-flow';
 import type { GenerateSystemPlanOutput } from '@/ai/flows/generate-system-plan-flow';
@@ -160,9 +160,10 @@ export async function getAIAvatar(prompt: string): Promise<string> {
 
 export async function sendChatMessage(
   messages: ChatMessage[],
-  context: Parameters<typeof runAxiomChat>[1]
-): Promise<string> {
-  return runAxiomChat(messages, context);
+  context: Parameters<typeof runAxiomChat>[1],
+  hints?: ChatActionHints,
+): Promise<ChatResult> {
+  return runAxiomChat(messages, context, hints);
 }
 
 export async function parseNaturalLogAction(

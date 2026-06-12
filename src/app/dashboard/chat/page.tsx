@@ -1,17 +1,18 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Bot, User, Sparkles, RefreshCw, BrainCircuit, Copy, Check } from 'lucide-react';
+import { Send, Bot, User, Sparkles, RefreshCw, BrainCircuit, Copy, Check, CircleCheck, Plus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { useUserData } from '@/hooks/use-user-data';
 import { sendChatMessage } from '@/lib/actions';
-import type { ChatMessage, ChatContext } from '@/ai/flows/chat-with-axiom';
+import type { ChatMessage, ChatContext, ChatAction, ChatActionHints } from '@/ai/flows/chat-with-axiom';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useUser } from '@/hooks/use-session-user';
-import { setDocumentNonBlocking } from '@/lib/api-writes';
+import { setDocumentNonBlocking, addDocumentNonBlocking } from '@/lib/api-writes';
+import { useToast } from '@/hooks/use-toast';
 import NavigationReady from '@/components/app/navigation-ready';
 const SUGGESTED_PROMPTS = [
   '¿Cuál es mi mayor punto débil esta semana?',
@@ -26,6 +27,7 @@ interface DisplayMessage extends ChatMessage {
   id: string;
   timestamp: Date;
   isLoading?: boolean;
+  actions?: ChatAction[];
 }
 
 function buildContext(userData: ReturnType<typeof useUserData>['data']): ChatContext {
@@ -244,9 +246,45 @@ function inlineMarkdown(text: string): React.ReactNode {
 export default function ChatPage() {
   const { data: userData, isLoading: isUserDataLoading } = useUserData();
   const { user, uid } = useUser();
+  const { toast } = useToast();
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [input, setInput] = useState('');
   const [isSending, setIsSending] = useState(false);
+  // Estado de las acciones propuestas: 'done' = confirmada y ejecutada, 'dismissed' = descartada.
+  const [actionStatus, setActionStatus] = useState<Record<string, 'done' | 'dismissed'>>({});
+
+  const executeAction = useCallback((key: string, action: ChatAction) => {
+    if (action.type === 'logEvent') {
+      addDocumentNonBlocking('events', {
+        evento_id: `EVT_CHAT_${Date.now()}`,
+        fecha: new Date().toISOString(),
+        var_id: action.var_id,
+        intensidad: action.intensidad,
+        contexto: action.contexto || 'Registrado desde el chat',
+        tipo: 'Variable',
+        impulsivo: action.impulsivo,
+      });
+      toast({ title: 'Evento registrado', description: `${action.var_nombre} · ${action.intensidad}/10` });
+    } else if (action.type === 'completeHabit') {
+      const habit = userData?.habits?.find(h => h.id === action.habito_id);
+      addDocumentNonBlocking('events', {
+        evento_id: `EVT_HABIT_${Date.now()}`,
+        fecha: new Date().toISOString(),
+        habito_id: action.habito_id,
+        ...(habit?.var_id ? { var_id: habit.var_id } : {}),
+        intensidad: 5,
+        contexto: `Hábito: ${action.habitName}`,
+        tipo: 'Variable',
+        impulsivo: false,
+      });
+      toast({ title: 'Hábito completado', description: action.habitName });
+    }
+    setActionStatus(prev => ({ ...prev, [key]: 'done' }));
+  }, [userData, toast]);
+
+  const dismissAction = useCallback((key: string) => {
+    setActionStatus(prev => ({ ...prev, [key]: 'dismissed' }));
+  }, []);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -325,12 +363,16 @@ export default function ChatPage() {
         ...messages.map((m) => ({ role: m.role, content: m.content })),
         { role: 'user', content: text.trim() },
       ];
+      const hints: ChatActionHints = {
+        variables: (userData?.variables ?? []).map(v => ({ var_id: v.var_id, var_nombre: v.var_nombre, polaridad: v.polaridad ?? 1 })),
+        habits: (userData?.habits ?? []).map(h => ({ habito_id: h.id, nombre: h.nombre || h.description || h.var_id || 'Hábito' })),
+      };
 
       try {
-        const reply = await sendChatMessage(history, ctx);
+        const { reply, actions } = await sendChatMessage(history, ctx, hints);
         setMessages((prev) =>
           prev.map((m) =>
-            m.id === loadingMsg.id ? { ...m, content: reply, isLoading: false } : m
+            m.id === loadingMsg.id ? { ...m, content: reply, actions, isLoading: false } : m
           )
         );
       } catch {
@@ -462,7 +504,13 @@ export default function ChatPage() {
         ) : (
           <div className="p-4 space-y-4">
             {messages.map((msg) => (
-              <MessageBubble key={msg.id} message={msg} />
+              <MessageBubble
+                key={msg.id}
+                message={msg}
+                actionStatus={actionStatus}
+                onExecute={executeAction}
+                onDismiss={dismissAction}
+              />
             ))}
             <div ref={bottomRef} />
           </div>
@@ -505,7 +553,55 @@ export default function ChatPage() {
   );
 }
 
-function MessageBubble({ message }: { message: DisplayMessage }) {
+function ActionCard({ action, status, onExecute, onDismiss }: {
+  action: ChatAction;
+  status?: 'done' | 'dismissed';
+  onExecute: () => void;
+  onDismiss: () => void;
+}) {
+  const isEvent = action.type === 'logEvent';
+  const title = isEvent ? action.var_nombre : action.habitName;
+  const subtitle = isEvent
+    ? `${action.impulsivo ? 'Impulsivo · ' : ''}Intensidad ${action.intensidad}/10${action.contexto ? ` · ${action.contexto}` : ''}`
+    : 'Marcar como hecho hoy';
+
+  return (
+    <div className={cn(
+      'rounded-xl border px-3 py-2.5 flex items-center gap-3',
+      status === 'done' ? 'border-green-500/30 bg-green-500/5' :
+      status === 'dismissed' ? 'border-border bg-muted/20 opacity-60' :
+      'border-primary/30 bg-primary/5',
+    )}>
+      <div className={cn('h-7 w-7 rounded-lg shrink-0 flex items-center justify-center',
+        isEvent ? 'bg-primary/10 text-primary' : 'bg-green-500/10 text-green-600')}>
+        {isEvent ? <Plus className="h-4 w-4" /> : <CircleCheck className="h-4 w-4" />}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-bold truncate">{isEvent ? 'Registrar' : 'Completar hábito'}: {title}</p>
+        <p className="text-[10px] text-muted-foreground truncate">{subtitle}</p>
+      </div>
+      {status === 'done' ? (
+        <span className="text-[10px] font-bold text-green-600 flex items-center gap-1 shrink-0"><Check className="h-3 w-3" /> Hecho</span>
+      ) : status === 'dismissed' ? (
+        <span className="text-[10px] text-muted-foreground shrink-0">Descartado</span>
+      ) : (
+        <div className="flex items-center gap-1 shrink-0">
+          <Button size="sm" className="h-7 text-xs" onClick={onExecute}>Confirmar</Button>
+          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onDismiss} aria-label="Descartar">
+            <X className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MessageBubble({ message, actionStatus, onExecute, onDismiss }: {
+  message: DisplayMessage;
+  actionStatus: Record<string, 'done' | 'dismissed'>;
+  onExecute: (key: string, action: ChatAction) => void;
+  onDismiss: (key: string) => void;
+}) {
   const isUser = message.role === 'user';
   const [copied, setCopied] = useState(false);
 
@@ -551,6 +647,23 @@ function MessageBubble({ message }: { message: DisplayMessage }) {
             <div className="space-y-1">{renderMarkdown(message.content)}</div>
           )}
         </div>
+        {/* Acciones propuestas por la IA — requieren confirmación */}
+        {!isUser && !message.isLoading && message.actions && message.actions.length > 0 && (
+          <div className="w-full space-y-1.5 mt-1">
+            {message.actions.map((action, idx) => {
+              const key = `${message.id}-${idx}`;
+              return (
+                <ActionCard
+                  key={key}
+                  action={action}
+                  status={actionStatus[key]}
+                  onExecute={() => onExecute(key, action)}
+                  onDismiss={() => onDismiss(key)}
+                />
+              );
+            })}
+          </div>
+        )}
         <div className={cn('flex items-center gap-2', isUser && 'flex-row-reverse')}>
           <span className="text-[10px] text-muted-foreground px-1">
             {format(message.timestamp, 'HH:mm', { locale: es })}
