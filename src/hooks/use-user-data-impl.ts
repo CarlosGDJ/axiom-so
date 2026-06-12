@@ -100,12 +100,12 @@ export function useUserDataImpl() {
   );
 
   // --- COMPUTED DATA FETCHING ---
-  const { data: computedGlobalState, isLoading: isLoadingGlobalState } = useDoc<ComputedGlobalState>(
+  const { data: computedGlobalState, isLoading: isLoadingGlobalState, isValidating: isValidatingGlobalState } = useDoc<ComputedGlobalState>(
     active ? 'computed_global_state' : null,
     active ? 'latest' : null
   );
-  const { data: computedAreas,        isLoading: isLoadingComputedAreas        } = useCollection<ComputedArea>(active ? 'computed_areas' : null);
-  const { data: computedHormones,     isLoading: isLoadingComputedHormones     } = useCollection<ComputedHormone>(active ? 'computed_hormones' : null);
+  const { data: computedAreas,        isLoading: isLoadingComputedAreas,       isValidating: isValidatingComputedAreas       } = useCollection<ComputedArea>(active ? 'computed_areas' : null);
+  const { data: computedHormones,     isLoading: isLoadingComputedHormones,    isValidating: isValidatingComputedHormones    } = useCollection<ComputedHormone>(active ? 'computed_hormones' : null);
   const { data: computedDailyScores,  isLoading: isLoadingComputedDailyScores  } = useCollection<ComputedDailyScore>(
     active ? 'computed_daily_score' : null,
     { orderBy: 'fecha', direction: 'desc', limit: 90 }
@@ -439,5 +439,7 @@ export function useUserDataImpl() {
     };
   }, [uid, playerProfile, rawAreas, rawHormones, rawImpactMatrix, rawVariables, events, interactions, relations, rawTransactions, rawProtocols, rawMilestones, computedDailyScores, computedGlobalState]);
 
-  return { data: resolvedData, isLoading: resolvedLoading, writerPrefetch };
+  const isValidating = isValidatingGlobalState || isValidatingComputedAreas || isValidatingComputedHormones;
+
+  return { data: resolvedData, isLoading: resolvedLoading, isValidating, writerPrefetch };
 }

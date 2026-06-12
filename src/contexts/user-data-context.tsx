@@ -7,6 +7,7 @@ import type { UserData } from '@/lib/types';
 interface UserDataContextValue {
   data: UserData | null;
   isLoading: boolean;
+  isValidating: boolean;
   writerPrefetch: ReturnType<typeof useUserDataImpl>['writerPrefetch'];
 }
 

@@ -61,7 +61,7 @@ function TodayStrip({ userData }: { userData: UserData }) {
 }
 
 export default function DashboardPage() {
-  const { data: userData, isLoading } = useUserData();
+  const { data: userData, isLoading, isValidating } = useUserData();
   const [showAIProtocol, setShowAIProtocol] = useState(false);
 
   if (isLoading && !userData) return <DashboardSkeleton />;
@@ -70,7 +70,7 @@ export default function DashboardPage() {
   if (userData.overallState === 'CRITICO' && showAIProtocol) {
     return (
       <div className="container py-6">
-        <NavigationReady />
+        {!isValidating && <NavigationReady />}
         <CrisisProtocolDisplay
           userData={userData}
           onExit={() => setShowAIProtocol(false)}
@@ -81,7 +81,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-5 pb-10">
-      <NavigationReady />
+      {!isValidating && <NavigationReady />}
 
       {/* ── HUD biométrico ── */}
       <div data-tour="hud">

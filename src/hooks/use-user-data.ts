@@ -38,5 +38,5 @@ export function useUserData(dateRange?: DateRange) {
     };
   }, [ctx.data, dateRange]);
 
-  return { data: filtered, isLoading: ctx.isLoading, writerPrefetch: ctx.writerPrefetch };
+  return { data: filtered, isLoading: ctx.isLoading, isValidating: ctx.isValidating, writerPrefetch: ctx.writerPrefetch };
 }

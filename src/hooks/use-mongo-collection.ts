@@ -26,7 +26,7 @@ export function useCollection<T = Record<string, unknown>>(
   const qs = params.toString();
   const url = collection ? `/api/data/${collection}${qs ? `?${qs}` : ''}` : null;
 
-  const { data, isLoading, error, mutate } = useSWR<T[]>(url, fetcher, {
+  const { data, isLoading, isValidating, error, mutate } = useSWR<T[]>(url, fetcher, {
     refreshInterval: 30_000,
     revalidateOnFocus: true,
     dedupingInterval: 5_000,
@@ -35,6 +35,7 @@ export function useCollection<T = Record<string, unknown>>(
   return {
     data: data ?? null,
     isLoading,
+    isValidating,
     error: error ?? null,
     mutate,
   };
@@ -49,7 +50,7 @@ export function useDoc<T = Record<string, unknown>>(
       ? `/api/data/${collection}?docId=${encodeURIComponent(docId)}`
       : null;
 
-  const { data, isLoading, error, mutate } = useSWR<T>(url, fetcher, {
+  const { data, isLoading, isValidating, error, mutate } = useSWR<T>(url, fetcher, {
     refreshInterval: 30_000,
     revalidateOnFocus: true,
     dedupingInterval: 5_000,
@@ -58,6 +59,7 @@ export function useDoc<T = Record<string, unknown>>(
   return {
     data: data ?? null,
     isLoading,
+    isValidating,
     error: error ?? null,
     mutate,
   };
