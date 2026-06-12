@@ -337,7 +337,57 @@ function scenarioAnticipatory() {
   console.log(`  Filtro de fechas: ${dates.length} entradas → ${valid.length} válidas  ${valid.length === 2 ? '✅' : '❌'}`);
 }
 
+// ── Escenario K: velocity warning exige confirmación (2 recálculos) ─────────
+function scenarioVelocityConfirm() {
+  header('K · Velocity warning — un bajón puntual NO escala, uno sostenido SÍ');
+  // Simula la lógica: isVelocityWarning = raw_actual && raw_previo_persistido
+  const step = (rawNow, prevPersisted) => ({
+    escalates: rawNow && prevPersisted,
+    persist: rawNow,
+  });
+
+  // Caso 1: bajón de un solo tick (ruido) → no escala
+  let persisted = false;
+  const t1 = step(true, persisted); persisted = t1.persist;  // tick con bajón
+  const t2 = step(false, persisted); persisted = t2.persist; // se recupera
+  console.log(`  Bajón puntual: tick1 escala=${t1.escalates}  tick2 escala=${t2.escalates}`);
+  console.log(`  Resultado: ${!t1.escalates && !t2.escalates ? '✅ no escala por ruido' : '❌ escaló por un bajón'}`);
+
+  // Caso 2: caída sostenida 2 ticks → escala en el segundo
+  persisted = false;
+  const s1 = step(true, persisted); persisted = s1.persist;
+  const s2 = step(true, persisted); persisted = s2.persist;
+  console.log(`  Caída sostenida: tick1 escala=${s1.escalates}  tick2 escala=${s2.escalates}`);
+  console.log(`  Resultado: ${!s1.escalates && s2.escalates ? '✅ escala al confirmarse' : '❌ no confirmó'}`);
+}
+
+// ── Escenario L: soledad congelada cuando el usuario no usa la app ──────────
+function scenarioLonelinessFreeze() {
+  header('L · Soledad — "aislado" ≠ "no usa la app"');
+  // effectiveDays = daysSinceAnyActivity > 2 ? max(0, rawDaysSinceContact - daysSinceAnyActivity) : raw
+  const effective = (rawDaysSinceContact, daysSinceAnyActivity) =>
+    daysSinceAnyActivity > 2
+      ? Math.max(0, rawDaysSinceContact - daysSinceAnyActivity)
+      : rawDaysSinceContact;
+
+  // Usuario activo, 5 días sin contacto social positivo → soledad real = 5
+  const activo = effective(5, 0.5);
+  console.log(`  Activo, 5d sin contacto social → soledad ${activo}  (esperado 5)  ${activo === 5 ? '✅ acumula' : '❌'}`);
+
+  // Usuario ausente 10 días; su último contacto fue 3 días antes de desaparecer
+  // rawDaysSinceContact = 13, daysSinceAnyActivity = 10 → congelado en 3
+  const ausente = effective(13, 10);
+  console.log(`  Ausente 10d (aislamiento 3d en su última actividad) → soledad ${ausente}  (esperado 3)  ${ausente === 3 ? '✅ congelada' : '❌'}`);
+
+  // Usuario cuyo único registro fue la propia interacción positiva, luego ausente
+  // rawDaysSinceContact = 8, daysSinceAnyActivity = 8 → 0 (no inventamos aislamiento)
+  const sinSenal = effective(8, 8);
+  console.log(`  Ausente sin más señal → soledad ${sinSenal}  (esperado 0)  ${sinSenal === 0 ? '✅ no inventa aislamiento' : '❌'}`);
+}
+
 // ── Run ─────────────────────────────────────────────────────────────────────
+scenarioVelocityConfirm();
+scenarioLonelinessFreeze();
 scenarioAnticipatory();
 scenarioAllostatic();
 scenarioClinicalCalibration();

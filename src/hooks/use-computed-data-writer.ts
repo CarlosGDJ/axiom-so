@@ -1072,9 +1072,26 @@ export function useComputedDataWriter(ext?: WriterPrefetch) {
       .filter(i => i.energia_resultante > 0)
       .sort((a, b) => b.fecha.localeCompare(a.fecha))[0];
     const isColdStart = safeEvents.length < 15;
-    const daysSincePositiveContact = lastPositiveInteraction
+    const rawDaysSinceContact = lastPositiveInteraction
       ? Math.max(0, differenceInHours(now, parseISO(lastPositiveInteraction.fecha)) / 24)
       : isColdStart ? 0 : 7; // nuevos usuarios sin historial → no penalizar aislamiento
+
+    // "Aislado" ≠ "no usa la app". Si el usuario no registra NADA (eventos,
+    // interacciones, transacciones) desde hace >2 días, no inventamos aislamiento
+    // durante su ausencia: congelamos la soledad en el nivel que tenía en su última
+    // actividad. Solo acumula soledad nueva mientras está activo pero sin contacto
+    // social positivo.
+    const lastActivityMs = [
+      ...safeEvents.map(e => e.fecha),
+      ...safeInteractions.map(i => i.fecha),
+      ...safeTransactions.map(t => t.fecha),
+    ].reduce((max, d) => Math.max(max, parseISO(d).getTime()), 0);
+    const daysSinceAnyActivity = lastActivityMs > 0
+      ? Math.max(0, (now.getTime() - lastActivityMs) / (1000 * 60 * 60 * 24))
+      : Infinity;
+    const daysSincePositiveContact = daysSinceAnyActivity > 2
+      ? Math.max(0, rawDaysSinceContact - daysSinceAnyActivity) // congelado en la última actividad
+      : rawDaysSinceContact;                                     // activo → soledad en vivo
     if (daysSincePositiveContact > 2) {
       const lonelinessFactor = Math.min(1, (daysSincePositiveContact - 2) / 6); // 0 en día 2, 1 en día 8+
       const lonelinessDrain = tanhNorm(lonelinessFactor, 0.7) * lonelinessFactor;
@@ -1854,7 +1871,11 @@ export function useComputedDataWriter(ext?: WriterPrefetch) {
     const player_score = clamp(Math.round((previousScore * emaPrevWeight) + (adjustedRawScore * (1 - emaPrevWeight))));
     // Velocity proxy: single-step EMA delta as a rapid-fall signal
     const velocityProxy = player_score - previousScore;
-    const isVelocityWarning = !isLearningMode && velocityProxy <= -5 && player_score >= 40 && player_score < 57;
+    const velocityWarningRaw = !isLearningMode && velocityProxy <= -5 && player_score >= 40 && player_score < 57;
+    // Exige confirmación: solo escala a RIESGO si la señal de caída rápida persiste
+    // en DOS recálculos consecutivos. Un único bajón puntual (ruido del EMA / deriva)
+    // arma la señal pero no cambia el estado hasta confirmarse.
+    const isVelocityWarning = velocityWarningRaw && (lastGlobalState?.velocity_warning ?? false);
     // Clinical V2 state escalation
     const clinicalEscalation = !!(clinicalV2?.enabled &&
       (clinicalV2.confidence ?? 0) >= 0.5 &&
@@ -2055,6 +2076,7 @@ export function useComputedDataWriter(ext?: WriterPrefetch) {
       clinical_v2: clinicalV2,
       data_quality: clinicalV2?.data_quality ?? null,
       is_learning_mode: isLearningMode,
+      velocity_warning: velocityWarningRaw, // señal cruda; se confirma al siguiente recálculo
     };
 
     writes.push({ collection: 'computed_global_state', docId: 'latest', data: globalStateDoc as unknown as Record<string, unknown> });

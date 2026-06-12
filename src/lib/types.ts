@@ -343,6 +343,8 @@ export interface ComputedGlobalState {
     clinical_v2?: ClinicalV2ModelOutput | null;
     data_quality?: number | null;
     is_learning_mode?: boolean;
+    /** Señal de caída rápida del recálculo anterior; se confirma a los 2 recálculos. */
+    velocity_warning?: boolean;
 }
 
 export interface ComputedArea {
