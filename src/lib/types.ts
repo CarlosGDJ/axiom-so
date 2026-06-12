@@ -19,7 +19,12 @@ export interface PlayerProfile {
   age: number;
   weight_kg: number;
   height_cm: number;
-  
+
+  // Avatar/foto de perfil (fuente canónica — se guarda y se lee desde aquí).
+  axiomAvatarDataUrl?: string;
+  photoURL?: string | null;
+  displayName?: string;
+
   // Facet-Based Personality Model
   facet_mind_introverted: number;
   facet_mind_extraverted: number;

@@ -5,13 +5,13 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import type { UserProfile } from '@/lib/types';
+import type { PlayerProfile } from '@/lib/types';
 import { Camera, Upload, User, Check, X, RefreshCcw } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useUser } from '@/hooks/use-session-user';
 import { revalidateCollection } from '@/hooks/use-mongo-collection';
 interface ProfilePhotoEditorProps {
-  userProfile: UserProfile | null;
+  playerProfile: PlayerProfile | null;
 }
 
 // Redimensiona y comprime a JPEG. Sin esto, una foto de móvil (5-12 MB) se
@@ -37,7 +37,7 @@ function resizeDataUrl(dataUrl: string, max = 512, quality = 0.85): Promise<stri
   });
 }
 
-export default function ProfilePhotoEditor({ userProfile }: ProfilePhotoEditorProps) {
+export default function ProfilePhotoEditor({ playerProfile }: ProfilePhotoEditorProps) {
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const [tempPhoto, setPrefPhoto] = useState<string | null>(null);
@@ -48,7 +48,7 @@ export default function ProfilePhotoEditor({ userProfile }: ProfilePhotoEditorPr
 
   const { toast } = useToast();  const { user, uid } = useUser();
 
-  const currentPhoto = userProfile?.axiomAvatarDataUrl || userProfile?.photoURL || '';
+  const currentPhoto = playerProfile?.axiomAvatarDataUrl || playerProfile?.photoURL || '';
 
   const getCameraPermission = async () => {
     try {

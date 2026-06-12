@@ -96,7 +96,8 @@ export function AppHeader() {
     router.push('/login');
   };
 
-  const avatarSrc = userData?.userProfile?.axiomAvatarDataUrl || userData?.userProfile?.photoURL || user?.image;
+  // El avatar es canónico en playerProfile (donde lo guarda el editor de foto).
+  const avatarSrc = userData?.playerProfile?.axiomAvatarDataUrl || userData?.playerProfile?.photoURL || userData?.userProfile?.photoURL || user?.image;
 
   // Global Progression Logic
   const streak = useMemo(() => {

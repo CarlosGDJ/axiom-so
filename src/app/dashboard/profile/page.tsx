@@ -380,7 +380,7 @@ export default function ProfilePage() {
             </div>
             <div className="lg:col-span-1 space-y-6">
               <div data-tour="profile-photo">
-                <ProfilePhotoEditor userProfile={userProfile} />
+                <ProfilePhotoEditor playerProfile={playerProfile} />
               </div>
               {playerProfile && <PersonalityRadarCard playerProfile={playerProfile} />}
 
