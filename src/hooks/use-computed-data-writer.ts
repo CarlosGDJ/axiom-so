@@ -565,12 +565,17 @@ export function useComputedDataWriter(ext?: WriterPrefetch) {
       return;
     }
 
-    const safeEvents = events ?? [];
-    const safeInteractions = interactions ?? [];
+    // Validez de fecha en origen: un único filtro aquí evita que cualquier
+    // parseISO/differenceIn* aguas abajo produzca NaN (que se colaba por guards
+    // como `dt < 0` y contaminaba efectos, deltas y promedios). Lo dañino se
+    // descarta una sola vez en vez de defenderlo en ~15 sitios.
+    const hasValidDate = (d?: string) => !!d && !Number.isNaN(parseISO(d).getTime());
+    const safeEvents = (events ?? []).filter(e => hasValidDate(e.fecha));
+    const safeInteractions = (interactions ?? []).filter(i => hasValidDate(i.fecha));
     const safeRelations = relations ?? [];
-    const safeTransactions = transactions ?? [];
-    const safeHistoricalEvents = historicalEvents ?? [];
-    const safeCalibrationScores = calibrationScores ?? [];
+    const safeTransactions = (transactions ?? []).filter(t => hasValidDate(t.fecha));
+    const safeHistoricalEvents = (historicalEvents ?? []).filter(e => hasValidDate(e.fecha));
+    const safeCalibrationScores = (calibrationScores ?? []).filter(s => hasValidDate(s.fecha));
     const safeMilestones = milestones ?? [];
     const protocolById = new Map<string, { nombre?: string; pasos?: string }>();
     [...(protocols ?? []), ...(protocolPresets as any[])].forEach((p: any) => {
@@ -734,7 +739,9 @@ export function useComputedDataWriter(ext?: WriterPrefetch) {
         const variable = variableById.get(event.effective_var_id) || buildVirtualVariableFromEvent(event);
         const eventDate = parseISO(event.fecha);
         const dt = differenceInHours(now, eventDate);
-        if (dt < 0) return;
+        // `!(dt >= 0)` atrapa también NaN (fecha corrupta): `NaN < 0` es false y
+        // dejaba pasar un NaN que contaminaba totalEffect y delta_24h.
+        if (!(dt >= 0)) return;
 
         const delayHours = Math.max(0, (variable?.delay_dias || 0) * 24);
         if (dt < delayHours) return;
@@ -757,7 +764,10 @@ export function useComputedDataWriter(ext?: WriterPrefetch) {
           effectAtTime = sensitivePeak * Math.exp(-k * timeAfterPeak);
         }
 
-        effectAtTime *= circadianMultiplier(hId, circadianHour);
+        // Circadiano aplicado a MEDIA fuerza sobre el efecto del evento. Antes se
+        // aplicaba a tope aquí Y en el baseline (atenuado 0.35) → doble conteo que
+        // hinchaba el vaivén intradía. Ahora una sola filosofía coherente.
+        effectAtTime *= 1 + (circadianMultiplier(hId, circadianHour) - 1) * 0.5;
 
         // Tolerancia hedónica: los canales de recompensa se adaptan al estímulo repetido.
         // Dopamina: tasa alta (novedad efímera). Serotonina: tasa baja (contentamiento estable).
@@ -795,7 +805,7 @@ export function useComputedDataWriter(ext?: WriterPrefetch) {
       writes.push({ collection: 'computed_hormones', docId: hId, data: {
         hormone_id: hId,
         current_level: finalLevel,
-        delta_24h: totalEffect,
+        delta_24h: Math.round(Number.isFinite(totalEffect) ? totalEffect : 0),
       } });
     });
 
@@ -1155,16 +1165,16 @@ export function useComputedDataWriter(ext?: WriterPrefetch) {
     // Acoplamiento financiero (normalizado): usa ratios para mantener estabilidad entre perfiles.
     const income7d = safeTransactions
       .filter(t => t.tipo === 'Ingreso')
-      .reduce((acc, t) => acc + Math.abs(t.monto), 0);
+      .reduce((acc, t) => acc + Math.abs(Number(t.monto) || 0), 0);
     const expenses7d = safeTransactions
       .filter(t => t.tipo === 'Gasto')
-      .reduce((acc, t) => acc + Math.abs(t.monto), 0);
+      .reduce((acc, t) => acc + Math.abs(Number(t.monto) || 0), 0);
     const impulsiveSpend7d = safeTransactions
       .filter(t => t.tipo === 'Gasto' && t.impulsivo)
-      .reduce((acc, t) => acc + Math.abs(t.monto), 0);
+      .reduce((acc, t) => acc + Math.abs(Number(t.monto) || 0), 0);
     const debtPayments7d = safeTransactions
       .filter(t => t.tipo === 'Gasto' && t.categoria === 'Deudas')
-      .reduce((acc, t) => acc + Math.abs(t.monto), 0);
+      .reduce((acc, t) => acc + Math.abs(Number(t.monto) || 0), 0);
     const netCashflow7d = income7d - expenses7d;
 
     const expenseBase = Math.max(1, expenses7d);
@@ -1218,10 +1228,13 @@ export function useComputedDataWriter(ext?: WriterPrefetch) {
         if (daysUntil >= 0 && daysUntil <= 14) {
           // Próximo: cortisol crece con la proximidad (cuadrático para simular urgencia)
           const proximity = 1 - daysUntil / 14;
-          rawAnticipatoryLoad += proximity * proximity * 7;
-        } else if (daysUntil < 0 && daysUntil >= -5) {
-          // Vencido sin completar: culpa + fallo = mayor carga que el anticipatorio
-          rawAnticipatoryLoad += Math.min(1, -daysUntil / 5) * 10;
+          rawAnticipatoryLoad += proximity * proximity * 7;        // → 7 en el deadline
+        } else if (daysUntil < 0 && daysUntil >= -10) {
+          // Vencido sin completar: la culpa decae SUAVE hasta ~10 días. Antes había
+          // un escalón (7→2 al cruzar el deadline) y un acantilado (10→0 a los -5/-6
+          // días). Ahora es continuo con el pico anticipatorio y se desvanece gradual.
+          const overdueFade = Math.max(0, 1 + daysUntil / 10);     // 1 justo vencido → 0 a -10d
+          rawAnticipatoryLoad += overdueFade * 7.5;                // ligero exceso (culpa) sobre el pico
         }
       } else if (m.estado === 'Completado' && m.fecha_completado) {
         const daysSince = differenceInDays(now, parseISO(m.fecha_completado));
@@ -1429,7 +1442,7 @@ export function useComputedDataWriter(ext?: WriterPrefetch) {
     // de retroalimentación (el score que el motor escribe se releía y se penalizaba
     // a sí mismo, pudiendo re-bloquear CRITICO). Ahora lee el `allostatic_index`
     // (conteo objetivo de biomarcadores), que NO deriva del player_score.
-    const safeDailyScores = calibrationScores ?? [];
+    const safeDailyScores = safeCalibrationScores;
     const HIGH_LOAD_THRESHOLD = 4; // ≥4 de 8 ejes en riesgo = día de carga alta
     let chronicLoadDays = 0;
     const recentByDate = [...safeDailyScores]

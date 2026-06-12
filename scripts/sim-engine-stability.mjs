@@ -303,7 +303,42 @@ function scenarioAllostatic() {
   console.log(`  12 días sostenidos de índice 5 → acumulación ${accScore.toFixed(2)} (penaliza)  ${accScore > 0.5 ? '✅' : '❌'}`);
 }
 
+// ── Escenario J: continuidad del estrés anticipatorio + filtro de fechas ────
+function scenarioAnticipatory() {
+  header('J · Estrés anticipatorio de hitos — sin acantilados día a día');
+  const load = (daysUntil) => {
+    if (daysUntil >= 0 && daysUntil <= 14) {
+      const proximity = 1 - daysUntil / 14;
+      return proximity * proximity * 7;
+    } else if (daysUntil < 0 && daysUntil >= -10) {
+      return Math.max(0, 1 + daysUntil / 10) * 7.5;
+    }
+    return 0;
+  };
+  // Recorre de +3 a -8 días y mide el mayor salto día a día (en pts de cortisol)
+  let prev = load(3), maxStep = 0;
+  const row = [];
+  for (let d = 3; d >= -8; d--) {
+    const l = load(d);
+    const cort = Math.tanh(l / 12) * 14; // efecto cortisol
+    const prevCort = Math.tanh(prev / 12) * 14;
+    maxStep = Math.max(maxStep, Math.abs(cort - prevCort));
+    row.push(`${d}d:${cort.toFixed(1)}`);
+    prev = l;
+  }
+  console.log('  cortisol/día: ' + row.join('  '));
+  console.log(`  Mayor salto día a día: ${maxStep.toFixed(1)} pts cortisol`);
+  console.log(`  Resultado: ${maxStep < 3 ? '✅ transición gradual (sin acantilado)' : '❌ salto brusco'}`);
+
+  // Filtro de fechas: una fecha inválida no debe entrar al cálculo
+  const isValid = (d) => !!d && !Number.isNaN(new Date(d).getTime());
+  const dates = ['2026-06-10', 'no-es-fecha', '', '2026-06-12'];
+  const valid = dates.filter(isValid);
+  console.log(`  Filtro de fechas: ${dates.length} entradas → ${valid.length} válidas  ${valid.length === 2 ? '✅' : '❌'}`);
+}
+
 // ── Run ─────────────────────────────────────────────────────────────────────
+scenarioAnticipatory();
 scenarioAllostatic();
 scenarioClinicalCalibration();
 scenarioColdStart();
