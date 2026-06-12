@@ -234,8 +234,8 @@ export default function OverviewCard({ overallState, dominantVariables = [], onA
       </CardHeader>
 
       <CardContent className="flex-grow space-y-4">
-        {/* Drenajes activos */}
-        {dominantVariables.length > 0 && (
+        {/* Drenajes activos — ocultos en calibración (datos aún no fiables) */}
+        {!isLearningMode && dominantVariables.length > 0 && (
           <div className="space-y-2">
             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
               <Zap size={11} className="text-primary" /> Drenajes activos

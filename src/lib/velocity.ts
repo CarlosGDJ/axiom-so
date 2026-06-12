@@ -47,7 +47,9 @@ export function computeScoreVelocity(trend: DailyScore[]): ScoreVelocity | null 
   const momentum = clamp((weekly * 7) + (daily * 2) + (acceleration * 1.5), -100, 100);
 
   const currentScore = sorted[n - 1].score;
-  const earlyWarning = weekly <= -7 && currentScore < 58;
+  // Exige ≥4 días: con 2-3 puntos el "delta diario" es ruido, no una tendencia,
+  // y disparaba falsas alarmas de caída acelerada.
+  const earlyWarning = n >= 4 && weekly <= -7 && currentScore < 58;
 
   return { daily, weekly, acceleration, direction, momentum, earlyWarning };
 }

@@ -324,7 +324,9 @@ export function useUserDataImpl() {
         dailyScoreTrend,
         monthlyFinancials,
         relationshipEnergy,
-        scoreVelocity: computeScoreVelocity(dailyScoreTrend),
+        // En modo calibración no calculamos velocidad: con pocos días el delta es
+        // ruido y dispararía falsas "caídas aceleradas" mientras el motor aprende.
+        scoreVelocity: isLearningMode ? null : computeScoreVelocity(dailyScoreTrend),
       },
       impactMatrix: safeImpactMatrix,
       skills: safeSkills,

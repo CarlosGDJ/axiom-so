@@ -50,7 +50,7 @@ export default function HabitChecklist({ habits, events, variables, onCreate }: 
       habito_id: habit.id,
       ...(habit.var_id ? { var_id: habit.var_id } : {}),
       intensidad: 5,
-      contexto: 'Registrado desde el Habit Tracker',
+      contexto: `Hábito: ${habitDisplayName(habit)}`,
       tipo: 'Variable',
       impulsivo: isNegative,
     });
