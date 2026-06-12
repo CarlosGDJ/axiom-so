@@ -52,15 +52,15 @@ function deduplicate<T>(items: T[], key: keyof T): T[] {
 }
 
 const DEFAULT_STATS: RPGStats = {
-  dopamina: 50,
-  serotonina: 50,
+  dopamina: 75,
+  serotonina: 75,
   cortisol: 20,
-  foco: 50,
-  energia: 50,
-  sueno: 50,
-  conexion_social: 50,
+  foco: 75,
+  energia: 75,
+  sueno: 75,
+  conexion_social: 75,
   carga_dopaminergica: 20,
-  player_score: 50,
+  player_score: 75,
 };
 
 export function useUserDataImpl() {
@@ -283,9 +283,13 @@ export function useUserDataImpl() {
       player_score: resolvedPlayerScore,
     };
 
+    // When no computed data exists yet (new user), default to OK — avoid
+    // false RIESGO/CRITICO warnings before the engine has run even once.
     const resolvedOverallState =
       computedGlobalState?.estado_global ||
-      (resolvedPlayerScore < 40 ? 'CRITICO' : resolvedPlayerScore < 70 ? 'RIESGO' : 'OK');
+      (computedGlobalState === null
+        ? 'OK'
+        : resolvedPlayerScore < 40 ? 'CRITICO' : resolvedPlayerScore < 70 ? 'RIESGO' : 'OK');
 
     return {
       userProfile: safeUserProfile,
