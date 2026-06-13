@@ -73,6 +73,17 @@ export function useDoc<T = Record<string, unknown>>(
   };
 }
 
+// El documento del usuario (colección `users`) NO está en el allowlist de
+// /api/data por seguridad; se sirve por su ruta dedicada /api/user.
+export function useUserProfile<T = Record<string, unknown>>(active: boolean) {
+  const { data, isLoading, isValidating, error, mutate } = useSWR<T>(
+    active ? '/api/user' : null,
+    fetcher,
+    { refreshInterval: 90_000, revalidateOnFocus: false, dedupingInterval: 10_000 },
+  );
+  return { data: data ?? null, isLoading, isValidating, error: error ?? null, mutate };
+}
+
 export function revalidateCollection(collection: string) {
   globalMutate((key: unknown) =>
     typeof key === 'string' && key.includes(`/api/data/${collection}`)

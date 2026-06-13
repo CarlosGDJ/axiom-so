@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useCollection, useDoc } from '@/hooks/use-mongo-collection';
+import { useCollection, useDoc, useUserProfile } from '@/hooks/use-mongo-collection';
 import { useUser } from '@/hooks/use-session-user';
 import type {
   UserData,
@@ -73,7 +73,7 @@ export function useUserDataImpl() {
   const active = !!uid;
 
   // --- RAW DATA FETCHING (SWR) ---
-  const { data: userProfile, isLoading: isLoadingProfile } = useDoc<UserProfile>(active ? 'users' : null, uid);
+  const { data: userProfile, isLoading: isLoadingProfile } = useUserProfile<UserProfile>(active);
   const { data: playerProfile, isLoading: isLoadingPlayerProfile } = useDoc<PlayerProfile>(active ? 'playerProfile' : null, active ? 'main-profile' : null);
 
   const { data: rawAreas,        isLoading: isLoadingAreas        } = useCollection<Area>(active ? 'areas' : null);

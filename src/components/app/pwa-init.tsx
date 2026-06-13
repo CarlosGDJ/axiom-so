@@ -71,6 +71,41 @@ export function PwaInit() {
     });
   }, []);
 
+  // Tras un redeploy, el HTML cacheado puede referenciar chunks con hash antiguo
+  // que ya no existen → ChunkLoadError al navegar (p. ej. a /finances). Recargamos
+  // una sola vez para coger el HTML nuevo; el flag evita bucles si el fallo persiste.
+  useEffect(() => {
+    const RELOAD_KEY = 'axiom_chunk_reloaded';
+    const isChunkError = (msg: unknown) =>
+      typeof msg === 'string' &&
+      (msg.includes('ChunkLoadError') || msg.includes('Loading chunk') || msg.includes('Loading CSS chunk'));
+
+    const recover = (reason: unknown) => {
+      const msg = reason instanceof Error ? `${reason.name}: ${reason.message}` : String(reason);
+      if (!isChunkError(msg)) return;
+      if (sessionStorage.getItem(RELOAD_KEY)) return; // ya recargamos una vez
+      sessionStorage.setItem(RELOAD_KEY, '1');
+      window.location.reload();
+    };
+
+    const onError = (e: ErrorEvent) => recover(e.error ?? e.message);
+    const onRejection = (e: PromiseRejectionEvent) => recover(e.reason);
+
+    window.addEventListener('error', onError);
+    window.addEventListener('unhandledrejection', onRejection);
+
+    // Si la página vive ~8s sin volver a fallar, damos el deploy por bueno y
+    // limpiamos el flag para permitir recuperación en el PRÓXIMO deploy. No lo
+    // limpiamos al instante: así, si el HTML nuevo también falla, no entra en bucle.
+    const clearTimer = window.setTimeout(() => sessionStorage.removeItem(RELOAD_KEY), 8000);
+
+    return () => {
+      window.removeEventListener('error', onError);
+      window.removeEventListener('unhandledrejection', onRejection);
+      window.clearTimeout(clearTimer);
+    };
+  }, []);
+
   useEffect(() => {
     const dismissed = sessionStorage.getItem(INSTALL_DISMISSED_KEY);
     if (dismissed) return;
