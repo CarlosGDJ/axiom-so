@@ -94,6 +94,20 @@ export function detectSignals({ userData, pockets, now }: DetectInput): Signal[]
     return m;
   };
 
+  // Score por día (reutilizado por varias correlaciones).
+  const scoreByDay: Record<string, number> = {};
+  for (const p of trend) { const d = safeParse(p.date); if (d) scoreByDay[dayKey(d)] = p.score; }
+
+  // Detecta var_ids por palabras clave en el nombre (para correlaciones de sueño, etc.).
+  const varIdsByKeyword = (keywords: string[]): Set<string> => {
+    const set = new Set<string>();
+    for (const v of userData.variables || []) {
+      const name = (v.var_nombre || '').toLowerCase();
+      if (keywords.some(k => name.includes(k))) set.add(v.var_id);
+    }
+    return set;
+  };
+
   // ── FINANZAS: mes actual ──
   const month = now.getMonth(), year = now.getFullYear();
   const monthTx = transactions.filter(t => {
@@ -155,8 +169,6 @@ export function detectSignals({ userData, pockets, now }: DetectInput): Signal[]
 
   // 3) CORRELACIÓN: gasto impulsivo en días de bajo estado
   if (trend.length >= 6 && expenses > 0) {
-    const scoreByDay: Record<string, number> = {};
-    for (const p of trend) { const d = safeParse(p.date); if (d) scoreByDay[dayKey(d)] = p.score; }
     const impulsiveByDay: Record<string, number> = {};
     const totalByDay: Record<string, number> = {};
     for (const t of transactions) {
@@ -198,6 +210,68 @@ export function detectSignals({ userData, pockets, now }: DetectInput): Signal[]
       link: '/dashboard/finances', actionLabel: 'Estrategia de deuda',
       cooldownHours: 48, timing: 'any', severity: clamp(debtServiceRatio / 100, 0.4, 0.9), aiEligible: true,
     });
+  }
+
+  // 4b) CORRELACIÓN: dormir bien sube el score del día siguiente
+  if (trend.length >= 8) {
+    const sleepVars = varIdsByKeyword(['sueño', 'sueno', 'dormir', 'sleep', 'descanso']);
+    if (sleepVars.size > 0) {
+      // Calidad de sueño por día = media de intensidad de eventos de sueño.
+      const sleepByDay: Record<string, number[]> = {};
+      for (const e of events) {
+        if (!sleepVars.has(e.var_id)) continue;
+        const d = safeParse(e.fecha); if (!d) continue;
+        (sleepByDay[dayKey(d)] ||= []).push((e as any).intensidad ?? 3);
+      }
+      const xs: number[] = []; const ys: number[] = [];
+      for (const [k, vals] of Object.entries(sleepByDay)) {
+        const [y, m, dd] = k.split('-').map(Number);
+        const next = new Date(y, m, dd + 1);
+        const ns = scoreByDay[dayKey(next)];
+        if (typeof ns === 'number') { xs.push(mean(vals)); ys.push(ns); }
+      }
+      const r = pearson(xs, ys); // positivo: mejor sueño → mejor score al día siguiente
+      if (r >= 0.45 && xs.length >= 6) {
+        const goodNights = xs.map((x, i) => ({ x, y: ys[i] })).filter(p => p.x >= 4);
+        const badNights = xs.map((x, i) => ({ x, y: ys[i] })).filter(p => p.x < 3);
+        const diff = goodNights.length && badNights.length ? mean(goodNights.map(p => p.y)) - mean(badNights.map(p => p.y)) : 0;
+        out.push({
+          key: 'insight_sleep_next_day', category: 'state', type: 'info',
+          title: 'Tu sueño marca el día siguiente',
+          message: diff > 3
+            ? `Cuando duermes bien, tu score al día siguiente sube ~${Math.round(diff)} pts. Protege el sueño esta noche.`
+            : 'Hay una relación clara entre tu sueño y tu rendimiento al día siguiente. Protege el sueño esta noche.',
+          evidence: { correlacion: Number(r.toFixed(2)), dif_pts: Math.round(diff), noches_analizadas: xs.length },
+          link: '/dashboard/analytics', actionLabel: 'Ver patrón',
+          cooldownHours: 96, timing: 'evening', severity: 0.5, aiEligible: true,
+        });
+      }
+    }
+  }
+
+  // 4c) CORRELACIÓN: las interacciones que te drenan bajan tu score
+  if (trend.length >= 6 && interactions.length >= 6) {
+    const energyByDay: Record<string, number> = {};
+    for (const it of interactions) {
+      const d = safeParse(it.fecha); if (!d) continue;
+      energyByDay[dayKey(d)] = (energyByDay[dayKey(d)] || 0) + ((it as any).energia_resultante ?? 0);
+    }
+    const drainDays = Object.keys(energyByDay).filter(k => energyByDay[k] < 0 && typeof scoreByDay[k] === 'number');
+    const goodDays = Object.keys(energyByDay).filter(k => energyByDay[k] > 0 && typeof scoreByDay[k] === 'number');
+    if (drainDays.length >= 3 && goodDays.length >= 3) {
+      const drainScore = mean(drainDays.map(k => scoreByDay[k]));
+      const goodScore = mean(goodDays.map(k => scoreByDay[k]));
+      if (goodScore - drainScore >= 8) {
+        out.push({
+          key: 'insight_social_drain', category: 'state', type: 'info',
+          title: 'Las relaciones que te drenan te pasan factura',
+          message: `Tus días con interacciones que te drenan tienen un score ~${Math.round(goodScore - drainScore)} pts más bajo.`,
+          evidence: { score_dias_drenantes: Math.round(drainScore), score_dias_buenos: Math.round(goodScore), dias_drenantes: drainDays.length },
+          link: '/dashboard/relations', actionLabel: 'Ver relaciones',
+          cooldownHours: 96, timing: 'any', severity: 0.5, aiEligible: true,
+        });
+      }
+    }
   }
 
   // ── HÁBITOS: racha global ──

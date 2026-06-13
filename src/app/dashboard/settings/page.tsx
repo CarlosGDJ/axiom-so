@@ -27,12 +27,17 @@ import { ShieldCheck, ShieldAlert } from 'lucide-react';
 import { useUser } from '@/hooks/use-session-user';
 import { addDocumentNonBlocking, setDocumentNonBlocking } from '@/lib/api-writes';
 import { signOut } from 'next-auth/react';
+type Sensitivity = 'low' | 'normal' | 'high';
+type BooleanPrefKey = 'finance' | 'habits' | 'milestones' | 'system' | 'morning_briefing' | 'digest';
+
 interface NotificationPrefs {
   finance: boolean;
   habits: boolean;
   milestones: boolean;
   system: boolean;
   morning_briefing: boolean;
+  digest: boolean;
+  sensitivity: Sensitivity;
 }
 
 interface EngineSettings {
@@ -45,17 +50,28 @@ const DEFAULT_PREFS: NotificationPrefs = {
   milestones: true,
   system: true,
   morning_briefing: true,
+  digest: true,
+  sensitivity: 'normal',
 };
+
+const BOOLEAN_PREF_KEYS: BooleanPrefKey[] = ['finance', 'habits', 'milestones', 'system', 'morning_briefing', 'digest'];
 
 const DEFAULT_ENGINE: EngineSettings = { lookback_days: 90 };
 
-const NOTIFICATION_LABELS: Record<keyof NotificationPrefs, { label: string; description: string }> = {
+const NOTIFICATION_LABELS: Record<BooleanPrefKey, { label: string; description: string }> = {
   finance: { label: 'Finanzas', description: 'Alertas de flujo negativo, gasto impulsivo y deuda elevada.' },
   habits: { label: 'Hábitos', description: 'Recordatorios de hábitos vencidos y rachas por romper.' },
   milestones: { label: 'Hitos', description: 'Aviso cuando un objetivo está retrasado o próximo a cumplirse.' },
   system: { label: 'Sistema', description: 'Cambios de estado global (RIESGO/CRÍTICO) y recalibraciones.' },
   morning_briefing: { label: 'Misión diaria', description: 'Notificación matutina con el objetivo del día.' },
+  digest: { label: 'Resumen diario IA', description: 'Una sola directiva matinal que junta tus 2-3 señales más importantes.' },
 };
+
+const SENSITIVITY_OPTIONS: { value: Sensitivity; label: string; description: string }[] = [
+  { value: 'low', label: 'Baja', description: 'Solo lo importante. Menos avisos, más espaciados.' },
+  { value: 'normal', label: 'Normal', description: 'Equilibrio entre cobertura y silencio.' },
+  { value: 'high', label: 'Alta', description: 'Quiero verlo todo, incluso señales sutiles.' },
+];
 
 const LOOKBACK_OPTIONS = [
   { value: 30,  label: '30 días',  description: 'Corto plazo — foco en la semana reciente.' },
@@ -145,8 +161,13 @@ export default function SettingsPage() {
       .catch(() => {});
   }, [user, uid]);
 
-  function togglePref(key: keyof NotificationPrefs) {
+  function togglePref(key: BooleanPrefKey) {
     setPrefs((prev) => ({ ...prev, [key]: !prev[key] }));
+    setPrefsSaved(false);
+  }
+
+  function setSensitivity(value: Sensitivity) {
+    setPrefs((prev) => ({ ...prev, sensitivity: value }));
     setPrefsSaved(false);
   }
 
@@ -164,10 +185,13 @@ export default function SettingsPage() {
     toast({ title: 'Motor actualizado', description: `Horizonte de análisis: ${engine.lookback_days} días.` });
   }
 
-  const allEnabled = Object.values(prefs).every(Boolean);
+  const allEnabled = BOOLEAN_PREF_KEYS.every((k) => prefs[k]);
   function toggleAll() {
     const next = !allEnabled;
-    setPrefs(Object.fromEntries(Object.keys(DEFAULT_PREFS).map((k) => [k, next])) as unknown as NotificationPrefs);
+    setPrefs((prev) => ({
+      ...prev,
+      ...Object.fromEntries(BOOLEAN_PREF_KEYS.map((k) => [k, next])),
+    }));
     setPrefsSaved(false);
   }
 
@@ -292,7 +316,31 @@ export default function SettingsPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-1">
-          {(Object.keys(DEFAULT_PREFS) as (keyof NotificationPrefs)[]).map((key, i, arr) => (
+          {/* Sensibilidad: calibra cuántos avisos y cada cuánto. */}
+          <div className="py-3 space-y-2">
+            <div className="space-y-0.5">
+              <Label className="text-sm font-medium">Sensibilidad</Label>
+              <p className="text-xs text-muted-foreground">Cuántas alertas genera Axiom y con qué frecuencia.</p>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {SENSITIVITY_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setSensitivity(opt.value)}
+                  className={cn(
+                    'rounded-lg border p-2.5 text-left transition-colors',
+                    prefs.sensitivity === opt.value ? 'border-primary bg-primary/5 ring-1 ring-primary/30' : 'border-border hover:bg-muted/40',
+                  )}
+                >
+                  <span className="text-sm font-semibold block">{opt.label}</span>
+                  <span className="text-[10px] text-muted-foreground leading-tight block">{opt.description}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <Separator />
+          {BOOLEAN_PREF_KEYS.map((key, i, arr) => (
             <div key={key}>
               <div className="flex items-start justify-between gap-4 py-3">
                 <div className="space-y-0.5">
