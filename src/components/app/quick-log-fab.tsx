@@ -214,6 +214,19 @@ export function QuickLogFab() {
     [userData?.variables],
   );
 
+  // Orden del selector de variables: primero las más usadas (frecuencia desc),
+  // el resto alfabético. Mismo criterio que el formulario de evento completo.
+  const sortedActiveVars = useMemo(() => {
+    const freq: Record<string, number> = {};
+    (userData?.events ?? []).forEach(e => { if (e.var_id) freq[e.var_id] = (freq[e.var_id] || 0) + 1; });
+    return [...allActiveVars].sort((a, b) => {
+      const fa = freq[a.var_id] || 0;
+      const fb = freq[b.var_id] || 0;
+      if (fb !== fa) return fb - fa;
+      return a.var_nombre.localeCompare(b.var_nombre);
+    });
+  }, [allActiveVars, userData?.events]);
+
   // Contextual suggestion chips
   const contextualChips = useMemo(() => {
     if (!userData?.variables) return [];
@@ -556,7 +569,7 @@ export function QuickLogFab() {
 
             {/* ── Variable picker / Selected variable ── */}
             {!selectedVar ? (
-              <VarPicker variables={allActiveVars} isLoading={isUserDataLoading} onSelect={setSelectedVar} />
+              <VarPicker variables={sortedActiveVars} isLoading={isUserDataLoading} onSelect={setSelectedVar} />
             ) : (
               <div className="space-y-4">
                 {/* Selected variable header */}
