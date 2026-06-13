@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DateRange } from 'react-day-picker';
 import {
     startOfMonth,
@@ -55,6 +56,7 @@ import {
     Snowflake,
     Flame,
     BarChart2,
+    ChevronDown,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { 
@@ -123,6 +125,15 @@ const CATEGORY_ICONS: Record<string, any> = {
     'Otros Gastos': Info
 };
 
+// Navegación de finanzas — 5 secciones (antes 6; Ingresos se fusionó en Análisis).
+const FINANCE_TABS = [
+    { value: 'summary',   label: 'Resumen',     icon: Activity },
+    { value: 'movements', label: 'Movimientos', icon: ArrowRightLeft },
+    { value: 'pockets',   label: 'Pockets',     icon: Target },
+    { value: 'evolution', label: 'Análisis',    icon: BarChart2 },
+    { value: 'debt',      label: 'Deuda',       icon: CreditCard },
+];
+
 export default function FinancesPage() {
     const { user, uid } = useUser();    const [dateRange, setDateRange] = useState<DateRange | undefined>({
         from: startOfMonth(new Date()),
@@ -143,6 +154,7 @@ export default function FinancesPage() {
     const [movementImpulsiveFilter, setMovementImpulsiveFilter] = useState<'all' | 'yes' | 'no'>('all');
     const [movementSearch, setMovementSearch] = useState('');
     const [forecastHorizonDays, setForecastHorizonDays] = useState<30 | 90>(30);
+    const [showMoreMetrics, setShowMoreMetrics] = useState(false);
 
     const { data: dashboardConfig, isLoading: isConfigLoading } = useCollection<DashboardConfig>(uid ? 'dashboardConfig' : null, { orderBy: 'key', direction: 'asc' });
 
@@ -748,13 +760,23 @@ export default function FinancesPage() {
             )}
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-                <TabsList data-tour="finances-tabs" className="bg-muted/50 p-1 flex w-full overflow-x-auto sm:w-auto sm:inline-flex">
-                    <TabsTrigger value="summary" className="gap-1.5 shrink-0"><Activity size={14}/><span>Resumen</span></TabsTrigger>
-                    <TabsTrigger value="pockets" className="gap-1.5 shrink-0"><Target size={14}/><span>Pockets</span></TabsTrigger>
-                    <TabsTrigger value="income" className="gap-1.5 shrink-0"><TrendingUp size={14}/><span>Ingresos</span></TabsTrigger>
-                    <TabsTrigger value="evolution" className="gap-1.5 shrink-0"><Zap size={14}/><span>Evolución</span></TabsTrigger>
-                    <TabsTrigger value="movements" className="gap-1.5 shrink-0"><ArrowRightLeft size={14}/><span>Movimientos</span></TabsTrigger>
-                    <TabsTrigger value="debt" className="gap-1.5 shrink-0"><CreditCard size={14}/><span>Deuda</span></TabsTrigger>
+                {/* Móvil: selector compacto. Escritorio: pestañas. */}
+                <div className="sm:hidden">
+                    <Select value={activeTab} onValueChange={setActiveTab}>
+                        <SelectTrigger data-tour="finances-tabs" className="h-11"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                            {FINANCE_TABS.map(({ value, label, icon: Icon }) => (
+                                <SelectItem key={value} value={value}>
+                                    <div className="flex items-center gap-2"><Icon className="h-4 w-4" />{label}</div>
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+                <TabsList className="hidden sm:inline-flex bg-muted/50 p-1">
+                    {FINANCE_TABS.map(({ value, label, icon: Icon }) => (
+                        <TabsTrigger key={value} value={value} className="gap-1.5"><Icon size={14} /><span>{label}</span></TabsTrigger>
+                    ))}
                 </TabsList>
 
                 {!stats ? (
@@ -797,14 +819,22 @@ export default function FinancesPage() {
                                 </Card>
                             )}
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                                 <StatCard title="Balance Periodo" value={formatCurrency(stats.savings)} subtext="Ahorro Neto" trend={stats.savings >= 0 ? 'up' : 'down'} icon={Wallet} />
                                 <StatCard title="Tasa de Ahorro" value={`${stats.savingsRate.toFixed(1)}%`} subtext="Capacidad de Retención" trend={stats.savingsRate >= 20 ? 'up' : 'down'} icon={PiggyBank} />
                                 <StatCard title="Patrimonio Neto" value={formatCurrency(stats.netWorth)} subtext="Activos - Deudas" trend="up" icon={Landmark} />
                                 <StatCard title="Gasto en Periodo" value={formatCurrency(stats.expenses)} subtext="Salidas Totales" trend="down" icon={Zap} />
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <Collapsible open={showMoreMetrics} onOpenChange={setShowMoreMetrics} className="space-y-4">
+                              <CollapsibleTrigger asChild>
+                                <button type="button" className="flex w-full items-center justify-between rounded-lg border bg-muted/30 px-4 py-2.5 text-sm text-muted-foreground hover:bg-muted/50 transition-colors">
+                                  <span className="font-medium">Más métricas</span>
+                                  <ChevronDown className={cn('h-4 w-4 transition-transform', showMoreMetrics && 'rotate-180')} />
+                                </button>
+                              </CollapsibleTrigger>
+                              <CollapsibleContent className="space-y-4">
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                                 <StatCard
                                     title="Gasto Impulsivo"
                                     value={formatCurrency(stats.impulsiveExpenses)}
@@ -866,6 +896,8 @@ export default function FinancesPage() {
                                     </CardContent>
                                 </Card>
                             </div>
+                              </CollapsibleContent>
+                            </Collapsible>
 
                             <Card>
                                 <CardHeader>
@@ -1164,50 +1196,8 @@ export default function FinancesPage() {
                             </div>
                         </TabsContent>
 
-                        <TabsContent value="income" className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <Card>
-                                    <CardContent className="p-4">
-                                        <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Ingresos periodo</p>
-                                        <p className="text-2xl font-semibold mt-2">{formatCurrency(stats.income)}</p>
-                                    </CardContent>
-                                </Card>
-                                <Card>
-                                    <CardContent className="p-4">
-                                        <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Ahorro neto</p>
-                                        <p className="text-2xl font-semibold mt-2">{formatCurrency(stats.savings)}</p>
-                                    </CardContent>
-                                </Card>
-                                <Card>
-                                    <CardContent className="p-4">
-                                        <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Tasa ahorro</p>
-                                        <p className="text-2xl font-semibold mt-2">{stats.savingsRate.toFixed(1)}%</p>
-                                    </CardContent>
-                                </Card>
-                            </div>
-
-                            <Card className="max-w-5xl">
-                                <CardHeader>
-                                    <CardTitle className="text-lg">Análisis de Ingresos</CardTitle>
-                                    <CardDescription>Vista compacta de ingresos mensuales acumulados del año.</CardDescription>
-                                </CardHeader>
-                                <CardContent className="h-[240px]">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <BarChart data={stats.chartData}>
-                                            <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.2} />
-                                            <XAxis dataKey="month" axisLine={false} tickLine={false} />
-                                            <YAxis axisLine={false} tickLine={false} tickFormatter={(v) => formatCurrency(Number(v || 0))} />
-                                            <Tooltip cursor={{fill: 'rgba(0,0,0,0.05)'}} />
-                                            <Legend />
-                                            <Bar dataKey="income" name="Ingresos Totales" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} />
-                                        </BarChart>
-                                    </ResponsiveContainer>
-                                </CardContent>
-                            </Card>
-                        </TabsContent>
-
                         <TabsContent value="evolution" className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                                 <Card>
                                     <CardContent className="p-4">
                                         <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Patrimonio neto</p>
@@ -1226,7 +1216,32 @@ export default function FinancesPage() {
                                         <p className="text-2xl font-semibold mt-2">{formatCurrency(stats.totalDebts)}</p>
                                     </CardContent>
                                 </Card>
+                                <Card>
+                                    <CardContent className="p-4">
+                                        <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Ingresos periodo</p>
+                                        <p className="text-2xl font-semibold mt-2">{formatCurrency(stats.income)}</p>
+                                    </CardContent>
+                                </Card>
                             </div>
+
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="text-lg">Ingresos mensuales</CardTitle>
+                                    <CardDescription>Ingresos acumulados por mes este año.</CardDescription>
+                                </CardHeader>
+                                <CardContent className="h-[240px]">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={stats.chartData}>
+                                            <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.2} />
+                                            <XAxis dataKey="month" axisLine={false} tickLine={false} />
+                                            <YAxis axisLine={false} tickLine={false} tickFormatter={(v) => formatCurrency(Number(v || 0))} />
+                                            <Tooltip cursor={{fill: 'rgba(0,0,0,0.05)'}} />
+                                            <Legend />
+                                            <Bar dataKey="income" name="Ingresos" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </CardContent>
+                            </Card>
 
                             <Card className="max-w-5xl">
                                 <CardHeader>
@@ -1457,7 +1472,7 @@ export default function FinancesPage() {
                                     </div>
                                 </CardHeader>
                                 <CardContent className="space-y-3">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-2">
+                                    <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">
                                         <div className="space-y-1">
                                             <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Tipo</p>
                                             <Select value={movementTypeFilter} onValueChange={(v) => setMovementTypeFilter(v as 'all' | 'Ingreso' | 'Gasto')}>
@@ -1659,21 +1674,21 @@ export default function FinancesPage() {
 function StatCard({ title, value, subtext, trend, icon: Icon }: any) {
     return (
         <Card className="shadow-sm border-primary/10">
-            <CardContent className="p-6">
-                <div className="flex items-start justify-between">
-                    <div className="space-y-1">
-                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">{title}</p>
-                        <h3 className="text-2xl font-semibold">{value}</h3>
+            <CardContent className="p-4 sm:p-5">
+                <div className="flex items-start justify-between gap-2">
+                    <div className="space-y-1 min-w-0">
+                        <p className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase tracking-wider truncate">{title}</p>
+                        <h3 className="text-xl sm:text-2xl font-semibold tabular-nums">{value}</h3>
                         <div className={cn(
-                            "flex items-center gap-1 text-[10px] font-bold uppercase",
+                            "flex items-center gap-1 text-[10px] font-bold uppercase min-w-0",
                             trend === 'up' ? 'text-primary' : 'text-destructive'
                         )}>
-                            {trend === 'up' ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
-                            {subtext}
+                            {trend === 'up' ? <ArrowUpRight size={12} className="shrink-0" /> : <ArrowDownRight size={12} className="shrink-0" />}
+                            <span className="truncate">{subtext}</span>
                         </div>
                     </div>
-                    <div className="p-2 rounded-lg bg-muted text-primary">
-                        <Icon size={20} />
+                    <div className="p-2 rounded-lg bg-muted text-primary shrink-0">
+                        <Icon size={18} />
                     </div>
                 </div>
             </CardContent>
