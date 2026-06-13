@@ -9,6 +9,7 @@ interface BiostatsHudStripProps {
   rpgStats: RPGStats;
   overallState: OverallState;
   scoreVelocity?: ScoreVelocity | null;
+  hideScore?: boolean; // el héroe del dashboard ya muestra el score global
 }
 
 const STATS = [
@@ -54,7 +55,7 @@ const VELOCITY_CONFIG: Record<string, { label: string; icon: typeof TrendingUp; 
   plunging: { label: 'Desplome',   icon: AlertCircle,  cls: 'text-red-500 dark:text-red-400 animate-pulse' },
 };
 
-export default function BiostatsHudStrip({ rpgStats, scoreVelocity }: BiostatsHudStripProps) {
+export default function BiostatsHudStrip({ rpgStats, scoreVelocity, hideScore }: BiostatsHudStripProps) {
   const score = Math.round(rpgStats.player_score ?? 0);
   const scoreLevel = getScoreLevel(score);
   const velCfg = scoreVelocity ? VELOCITY_CONFIG[scoreVelocity.direction] : null;
@@ -133,7 +134,8 @@ export default function BiostatsHudStrip({ rpgStats, scoreVelocity }: BiostatsHu
         );
       })()}
 
-      {/* Score global */}
+      {/* Score global (se oculta cuando el dashboard ya lo muestra como héroe) */}
+      {!hideScore && (
       <div className="pt-3 border-t border-border/50 flex items-center gap-3">
         <Trophy className={cn('h-4 w-4 shrink-0', LEVEL_STYLES[scoreLevel].text)} />
         <div className="flex-1 space-y-1 min-w-0">
@@ -167,6 +169,7 @@ export default function BiostatsHudStrip({ rpgStats, scoreVelocity }: BiostatsHu
           )}
         </div>
       </div>
+      )}
     </div>
   );
 }

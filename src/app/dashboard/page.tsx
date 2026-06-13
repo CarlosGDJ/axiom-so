@@ -10,6 +10,7 @@ import CrisisProtocolDisplay from '@/components/app/crisis-protocol-display';
 import { Button } from '@/components/ui/button';
 
 import BiostatsHudStrip from '@/components/app/biostats-hud-strip';
+import ScoreHero from '@/components/app/score-hero';
 import OverviewCard from '@/components/app/overview-card';
 import KairosLivePanel from '@/components/app/kairos-live-panel';
 import HabitMomentumCard from '@/components/app/habit-momentum-card';
@@ -83,17 +84,23 @@ export default function DashboardPage() {
     <div className="space-y-5 pb-10">
       {!isValidating && <NavigationReady />}
 
-      {/* ── HUD biométrico ── */}
+      {/* ── Héroe: Score Global protagonista ("una cosa grande") ── */}
+      <div data-tour="hero">
+        <ScoreHero userData={userData} />
+      </div>
+
+      {/* ── Fecha + acceso rápido ── */}
+      <TodayStrip userData={userData} />
+
+      {/* ── HUD biométrico (detalle secundario, sin score) ── */}
       <div data-tour="hud">
         <BiostatsHudStrip
           rpgStats={userData.rpg_stats}
           overallState={userData.overallState}
           scoreVelocity={userData.kpis.scoreVelocity}
+          hideScore
         />
       </div>
-
-      {/* ── Fecha + acceso rápido ── */}
-      <TodayStrip userData={userData} />
 
       {/* ── Estado del sistema + Motor KAIROS ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5" data-tour="overview">
