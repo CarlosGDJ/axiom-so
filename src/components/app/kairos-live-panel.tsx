@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import {
   Brain, Moon, AlertTriangle, Clock, Activity, Sunrise, Shield,
@@ -82,15 +82,17 @@ function MetricRow({ icon: Icon, label, value, subtext, level, barPct, tooltip }
   );
 
   if (!tooltip) return inner;
+  // Popover (tap), no Tooltip (hover): en móvil no hay hover, así que tocar la
+  // fila abre la explicación. La fila entera es el área táctil.
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <div>{inner}</div>
-      </TooltipTrigger>
-      <TooltipContent side="left" className="max-w-[220px] text-[11px] leading-snug">
+    <Popover>
+      <PopoverTrigger asChild>
+        <button type="button" className="w-full text-left">{inner}</button>
+      </PopoverTrigger>
+      <PopoverContent side="top" align="start" sideOffset={4} className="max-w-[240px] text-[11px] leading-snug">
         {tooltip}
-      </TooltipContent>
-    </Tooltip>
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -160,7 +162,6 @@ export default function KairosLivePanel({ userData }: KairosLivePanelProps) {
         </CardTitle>
       </CardHeader>
       <CardContent className="flex-grow space-y-3.5">
-        <TooltipProvider>
 
         {/* BRAC */}
         {brac && (
@@ -286,46 +287,46 @@ export default function KairosLivePanel({ userData }: KairosLivePanelProps) {
 
         {/* Amplificador nocturno */}
         {nightAmp && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className="rounded-lg px-3 py-2 bg-red-500/10 border border-red-500/30 text-[9px] font-bold text-red-500 uppercase tracking-widest flex items-center gap-2 cursor-help">
+          <Popover>
+            <PopoverTrigger asChild>
+              <button type="button" className="w-full rounded-lg px-3 py-2 bg-red-500/10 border border-red-500/30 text-[9px] font-bold text-red-500 uppercase tracking-widest flex items-center gap-2">
                 <Moon className="h-3 w-3" /> Cortisol nocturno amplificado
-              </div>
-            </TooltipTrigger>
-            <TooltipContent side="left" className="max-w-[220px] text-[11px] leading-snug">
+              </button>
+            </PopoverTrigger>
+            <PopoverContent side="top" align="start" sideOffset={4} className="max-w-[240px] text-[11px] leading-snug">
               Tus niveles de cortisol están elevados en horario nocturno. Esto interfiere con la secreción de melatonina y reduce la calidad del sueño profundo. Considera respiración 4-7-8 o meditación antes de dormir.
-            </TooltipContent>
-          </Tooltip>
+            </PopoverContent>
+          </Popover>
         )}
 
         {/* Habituación / Novedad */}
         {(habituation !== null || novelty !== null) && (
           <div className="grid grid-cols-2 gap-2 pt-1 border-t border-border/40">
             {habituation !== null && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="space-y-0.5 cursor-help">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button type="button" className="space-y-0.5 text-left">
                     <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground underline decoration-dotted underline-offset-2">Habituación</p>
                     <p className="text-xs font-black text-green-500">−{habituation.toFixed(1)} cort.</p>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="left" className="max-w-[220px] text-[11px] leading-snug">
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent side="top" align="start" sideOffset={4} className="max-w-[240px] text-[11px] leading-snug">
                   Reducción del impacto del cortisol por exposición repetida a los mismos estresores. El sistema nervioso aprende a desensibilizarse. Indica adaptación saludable al estrés habitual.
-                </TooltipContent>
-              </Tooltip>
+                </PopoverContent>
+              </Popover>
             )}
             {novelty !== null && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="space-y-0.5 cursor-help">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button type="button" className="space-y-0.5 text-left">
                     <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground underline decoration-dotted underline-offset-2">Novedad</p>
                     <p className="text-xs font-black text-orange-500">+{novelty.toFixed(1)} cort.</p>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="left" className="max-w-[220px] text-[11px] leading-snug">
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent side="top" align="start" sideOffset={4} className="max-w-[240px] text-[11px] leading-snug">
                   Estrés adicional de cortisol por exposición a situaciones nuevas o inesperadas. Es temporal: se normaliza con familiarización. No requiere intervención si no hay otras señales de alerta.
-                </TooltipContent>
-              </Tooltip>
+                </PopoverContent>
+              </Popover>
             )}
           </div>
         )}
@@ -338,40 +339,40 @@ export default function KairosLivePanel({ userData }: KairosLivePanelProps) {
             </p>
             <div className="flex flex-wrap gap-1.5">
               {(pkFocus ?? 0) > 0 && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 cursor-help">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button type="button" className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
                       NE foco +{pkFocus!.toFixed(1)}
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent side="left" className="max-w-[200px] text-[11px] leading-snug">
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent side="top" align="start" sideOffset={4} className="max-w-[220px] text-[11px] leading-snug">
                     Norepinefrina activa por trabajo de enfoque profundo. Aumenta la atención sostenida y la motivación de ejecución.
-                  </TooltipContent>
-                </Tooltip>
+                  </PopoverContent>
+                </Popover>
               )}
               {(pkSerotoninDrain ?? 0) > 0 && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/20 cursor-help">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button type="button" className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/20">
                       5-HT −{pkSerotoninDrain!.toFixed(1)}
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent side="left" className="max-w-[200px] text-[11px] leading-snug">
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent side="top" align="start" sideOffset={4} className="max-w-[220px] text-[11px] leading-snug">
                     Drenaje de serotonina activo detectado. Un evento negativo reciente está reduciendo tu nivel de bienestar basal. El efecto decae en las próximas horas.
-                  </TooltipContent>
-                </Tooltip>
+                  </PopoverContent>
+                </Popover>
               )}
               {(pkExercise ?? 0) > 0 && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-green-500/10 text-green-400 border border-green-500/20 cursor-help">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button type="button" className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-green-500/10 text-green-400 border border-green-500/20">
                       BDNF +{pkExercise!.toFixed(1)}
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent side="left" className="max-w-[200px] text-[11px] leading-snug">
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent side="top" align="start" sideOffset={4} className="max-w-[220px] text-[11px] leading-snug">
                     Factor neurotrófico derivado del ejercicio activo. El BDNF promueve la neuroplasticidad, mejora el estado de ánimo y protege contra el estrés crónico.
-                  </TooltipContent>
-                </Tooltip>
+                  </PopoverContent>
+                </Popover>
               )}
             </div>
           </div>
@@ -382,7 +383,6 @@ export default function KairosLivePanel({ userData }: KairosLivePanelProps) {
             Esperando primera ejecución del motor…
           </p>
         )}
-        </TooltipProvider>
       </CardContent>
     </Card>
   );
