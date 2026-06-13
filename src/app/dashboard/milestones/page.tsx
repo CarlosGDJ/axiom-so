@@ -5,6 +5,7 @@ import { DataTable } from '@/components/app/data-table/data-table';
 import { useMemo, useState } from 'react';
 import AreaPageSkeleton from '@/components/app/area-page-skeleton';
 import HabitChecklist from '@/components/app/habit-checklist';
+import HabitStreakHero from '@/components/app/habit-streak-hero';
 import MilestoneTracker from '@/components/app/milestone-tracker';
 import ScoreCalendarHeatmap from '@/components/app/score-calendar-heatmap';
 import { Separator } from '@/components/ui/separator';
@@ -60,6 +61,9 @@ export default function HabitTrackerPage() {
           </Button>
         </div>
         <p className="text-muted-foreground text-sm mb-5">Marca tus hábitos cada día y construye rachas. Crear uno es tan simple como ponerle nombre.</p>
+        <div className="mb-6">
+          <HabitStreakHero habits={habits || []} events={events || []} />
+        </div>
         <HabitChecklist
             habits={habits || []}
             events={events || []}

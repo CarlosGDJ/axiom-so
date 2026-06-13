@@ -135,7 +135,7 @@ export default function HabitChecklist({ habits, events, variables, onCreate }: 
               <div className="flex gap-2">
                 <Badge variant="outline" className="text-[10px] h-5">{habit.frecuencia}</Badge>
                 {isNegative && <Badge variant="destructive" className="text-[10px] h-5">Evitación</Badge>}
-                {habit.minimo_viable && <Badge variant="secondary" className="text-[10px] h-5 bg-yellow-500/10 text-yellow-600 border-yellow-500/30">HMV</Badge>}
+                {habit.minimo_viable && <Badge variant="secondary" className="text-[10px] h-5">HMV</Badge>}
               </div>
             </div>
 
