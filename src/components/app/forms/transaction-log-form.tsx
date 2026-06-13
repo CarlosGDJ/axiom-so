@@ -30,26 +30,15 @@ import { useUser } from '@/hooks/use-session-user';
 import { addDocumentNonBlocking, setDocumentNonBlocking } from '@/lib/api-writes';
 import { Plus, X } from 'lucide-react';
 import { revalidateCollection } from '@/hooks/use-mongo-collection';
-
-const expenseCategories = [
-  'Vivienda', 'Alimentación', 'Transporte', 'Salud y Bienestar',
-  'Ocio y Suscripciones', 'Desarrollo Personal', 'Compras', 'Deudas',
-  'Regalos y Donaciones', 'Otros Gastos'
-];
-
-const incomeCategories = [
-  'Nómina', 'Freelance/Negocio', 'Ingresos Pasivos', 'Regalos', 'Otros Ingresos'
-];
-
-const allCategories = [...expenseCategories, ...incomeCategories] as [string, ...string[]];
+import { useFinanceCategories } from '@/hooks/use-finance-categories';
 
 const formSchema = z.object({
   tipo: z.enum(['Gasto', 'Ingreso'], {
     required_error: 'Por favor, selecciona si es un gasto o un ingreso.',
   }),
-  categoria: z.enum(allCategories, {
-    required_error: 'Por favor, selecciona una categoría.',
-  }),
+  // Categoría dinámica (catálogo editable por el usuario), ya no enum estático.
+  categoria: z.string({ required_error: 'Por favor, selecciona una categoría.' })
+    .min(1, 'Por favor, selecciona una categoría.'),
   monto: z.coerce.number().positive('El importe debe ser un número positivo.'),
   impulsivo: z.boolean().default(false),
   notas: z.string().optional(),
@@ -74,6 +63,7 @@ type AccountTipo = typeof ACCOUNT_TIPOS[number];
 export default function TransactionLogForm({ entity: transaction, accounts, debts, closeDialog, prefill }: TransactionLogFormProps) {
   const { toast } = useToast();
   const { user, uid } = useUser();
+  const { expenseCategories, incomeCategories } = useFinanceCategories();
   const isEditMode = !!transaction;
 
   // Local accounts list so a newly created account is immediately selectable
@@ -286,7 +276,7 @@ export default function TransactionLogForm({ entity: transaction, accounts, debt
                   </FormControl>
                   <SelectContent>
                     {(transactionType === 'Gasto' ? expenseCategories : incomeCategories).map((cat) => (
-                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                      <SelectItem key={cat.name} value={cat.name}>{cat.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

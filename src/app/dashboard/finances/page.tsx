@@ -93,6 +93,9 @@ import EditDebtForm from '@/components/app/data-table/forms/edit-debt-form';
 import { useUser } from '@/hooks/use-session-user';
 import { setDocumentNonBlocking } from '@/lib/api-writes';
 import { useCollection } from '@/hooks/use-mongo-collection';
+import { useFinanceCategories } from '@/hooks/use-finance-categories';
+import { categoryColor, getIcon } from '@/lib/finance-categories';
+import FinanceCategoryManager from '@/components/app/finance-category-manager';
 const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('es-ES', {
         style: 'currency',
@@ -101,29 +104,8 @@ const formatCurrency = (value: number) => {
     }).format(value);
 };
 
-const CATEGORY_COLORS: Record<string, string> = {
-    Vivienda: 'hsl(var(--chart-1))',
-    'Alimentación': 'hsl(var(--chart-2))',
-    Transporte: 'hsl(var(--chart-3))',
-    'Salud y Bienestar': 'hsl(var(--chart-4))',
-    'Ocio y Suscripciones': 'hsl(var(--chart-5))',
-    'Desarrollo Personal': 'hsl(var(--primary))',
-    Compras: 'hsl(var(--accent-foreground))',
-    Deudas: 'hsl(var(--destructive))',
-    'Otros Gastos': 'hsl(var(--muted-foreground))'
-};
-
-const CATEGORY_ICONS: Record<string, any> = {
-    Vivienda: Home,
-    'Alimentación': Utensils,
-    Transporte: Car,
-    'Salud y Bienestar': Activity,
-    'Ocio y Suscripciones': Zap,
-    'Desarrollo Personal': GraduationCap,
-    Compras: ShoppingBag,
-    Deudas: AlertCircle,
-    'Otros Gastos': Info
-};
+// Las categorías (colores, iconos, nombres) viven ahora en el catálogo editable
+// del usuario: ver src/lib/finance-categories.ts y useFinanceCategories().
 
 // Navegación de finanzas — 5 secciones (antes 6; Ingresos se fusionó en Análisis).
 const FINANCE_TABS = [
@@ -157,6 +139,9 @@ export default function FinancesPage() {
     const [showMoreMetrics, setShowMoreMetrics] = useState(false);
 
     const { data: dashboardConfig, isLoading: isConfigLoading } = useCollection<DashboardConfig>(uid ? 'dashboardConfig' : null, { orderBy: 'key', direction: 'asc' });
+
+    // Catálogo de categorías editable por el usuario (fuente única).
+    const { categories: catalogCategories, expenseCategories } = useFinanceCategories();
 
     const savedPockets = useMemo(() => {
         const config = dashboardConfig?.find(c => c.key === 'financial_pockets')?.value;
@@ -463,7 +448,7 @@ export default function FinancesPage() {
         const categoryChartData = Object.entries(periodExpenses).map(([name, value]) => ({
             name,
             value,
-            color: CATEGORY_COLORS[name] || CATEGORY_COLORS['Otros Gastos']
+            color: categoryColor(catalogCategories, name)
         })).sort((a, b) => b.value - a.value);
 
         const topCategory = categoryChartData[0] || null;
@@ -529,7 +514,7 @@ export default function FinancesPage() {
             savingsCohortData,
             moneyFlowSankey
         };
-    }, [userData, dateRange]);
+    }, [userData, dateRange, catalogCategories]);
 
     const handlePocketChange = (name: string, value: string) => {
         const num = parseFloat(value) || 0;
@@ -1053,6 +1038,9 @@ export default function FinancesPage() {
                         </TabsContent>
 
                         <TabsContent value="pockets" className="space-y-6">
+                            <div className="flex justify-end">
+                                <FinanceCategoryManager />
+                            </div>
                             <Card className="shadow-sm border-primary/10">
                                 <CardContent className="p-6 flex flex-col md:flex-row justify-between items-center gap-6">
                                     <div>
@@ -1104,12 +1092,14 @@ export default function FinancesPage() {
                             </Card>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {Object.entries(CATEGORY_COLORS).map(([name, color]) => {
+                                {expenseCategories.map((cat) => {
+                                    const name = cat.name;
+                                    const color = cat.color;
                                     const pocketBudget = pocketsState[name] || 0;
                                     const realSpend = stats.periodExpenses[name] || 0;
                                     const historicalAvg = stats.historicalAverages[name] || 0;
                                     const progress = pocketBudget > 0 ? (realSpend / pocketBudget) * 100 : 0;
-                                    const Icon = CATEGORY_ICONS[name] || Info;
+                                    const Icon = getIcon(cat.icon);
 
                                     // Recomendaciones dinámicas
                                     let recommendation = null;
@@ -1490,8 +1480,8 @@ export default function FinancesPage() {
                                                 <SelectTrigger><SelectValue placeholder="Categoría" /></SelectTrigger>
                                                 <SelectContent>
                                                     <SelectItem value="all">Todas</SelectItem>
-                                                    {Object.keys(CATEGORY_COLORS).map((cat) => (
-                                                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                                                    {catalogCategories.map((cat) => (
+                                                        <SelectItem key={cat.name} value={cat.name}>{cat.name}</SelectItem>
                                                     ))}
                                                 </SelectContent>
                                             </Select>
