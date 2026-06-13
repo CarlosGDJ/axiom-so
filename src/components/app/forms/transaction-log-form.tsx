@@ -24,13 +24,14 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Account, Transaction, Debt } from '@/lib/types';
 import { useUser } from '@/hooks/use-session-user';
 import { addDocumentNonBlocking, setDocumentNonBlocking } from '@/lib/api-writes';
 import { Plus, X } from 'lucide-react';
 import { revalidateCollection } from '@/hooks/use-mongo-collection';
 import { useFinanceCategories } from '@/hooks/use-finance-categories';
+import { buildFreq, sortByUsage } from '@/lib/sort-by-usage';
 
 const formSchema = z.object({
   tipo: z.enum(['Gasto', 'Ingreso'], {
@@ -53,6 +54,7 @@ interface TransactionLogFormProps {
     entity?: Transaction;
     accounts?: Account[];
     debts?: Debt[];
+    transactions?: Transaction[]; // historial para ordenar categorías por uso
     closeDialog: () => void;
     prefill?: PrefillValues;
 }
@@ -60,11 +62,22 @@ interface TransactionLogFormProps {
 const ACCOUNT_TIPOS = ['Banco', 'Efectivo', 'Inversion', 'Otro'] as const;
 type AccountTipo = typeof ACCOUNT_TIPOS[number];
 
-export default function TransactionLogForm({ entity: transaction, accounts, debts, closeDialog, prefill }: TransactionLogFormProps) {
+export default function TransactionLogForm({ entity: transaction, accounts, debts, transactions, closeDialog, prefill }: TransactionLogFormProps) {
   const { toast } = useToast();
   const { user, uid } = useUser();
-  const { expenseCategories, incomeCategories } = useFinanceCategories();
+  const { expenseCategories: rawExpenseCats, incomeCategories: rawIncomeCats } = useFinanceCategories();
   const isEditMode = !!transaction;
+
+  // Categorías ordenadas por uso: más usadas primero, resto alfabético.
+  const catFreq = useMemo(() => buildFreq(transactions, t => t.categoria), [transactions]);
+  const expenseCategories = useMemo(
+    () => sortByUsage(rawExpenseCats, catFreq, c => c.name, c => c.name),
+    [rawExpenseCats, catFreq],
+  );
+  const incomeCategories = useMemo(
+    () => sortByUsage(rawIncomeCats, catFreq, c => c.name, c => c.name),
+    [rawIncomeCats, catFreq],
+  );
 
   // Local accounts list so a newly created account is immediately selectable
   const [localAccounts, setLocalAccounts] = useState<Account[]>(accounts ?? []);

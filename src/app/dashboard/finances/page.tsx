@@ -1632,6 +1632,7 @@ export default function FinancesPage() {
                         prefill={transactionPrefill}
                         accounts={userData?.accounts || []}
                         debts={userData?.debts || []}
+                        transactions={userData?.transactions || []}
                     />
                 </DialogContent>
             </Dialog>

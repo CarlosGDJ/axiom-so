@@ -27,6 +27,7 @@ import { parseNaturalLogAction } from '@/lib/actions';
 import type { ParseNaturalLogOutput, ParsedLogEvent } from '@/lib/actions';
 import { useUser } from '@/hooks/use-session-user';
 import { addDocumentNonBlocking } from '@/lib/api-writes';
+import { buildFreq, sortByUsage } from '@/lib/sort-by-usage';
 import { useTour } from '@/components/app/tour/tour-context';
 type ActiveDialog = 'evento' | 'habito' | 'estado' | 'transaccion' | 'social' | 'nlp' | null;
 
@@ -214,18 +215,27 @@ export function QuickLogFab() {
     [userData?.variables],
   );
 
-  // Orden del selector de variables: primero las más usadas (frecuencia desc),
-  // el resto alfabético. Mismo criterio que el formulario de evento completo.
+  // Orden de los selectores de registro: más usados primero, resto alfabético.
   const sortedActiveVars = useMemo(() => {
-    const freq: Record<string, number> = {};
-    (userData?.events ?? []).forEach(e => { if (e.var_id) freq[e.var_id] = (freq[e.var_id] || 0) + 1; });
-    return [...allActiveVars].sort((a, b) => {
-      const fa = freq[a.var_id] || 0;
-      const fb = freq[b.var_id] || 0;
-      if (fb !== fa) return fb - fa;
-      return a.var_nombre.localeCompare(b.var_nombre);
-    });
+    const freq = buildFreq(userData?.events, e => e.var_id);
+    return sortByUsage(allActiveVars, freq, v => v.var_id, v => v.var_nombre);
   }, [allActiveVars, userData?.events]);
+
+  // Hábitos ordenados por frecuencia de registro (eventos con habito_id).
+  const habitName = useCallback((h: { nombre?: string; var_id?: string; description?: string }) =>
+    h.nombre || (userData?.variables ?? []).find(v => v.var_id === h.var_id)?.var_nombre || h.description || 'Hábito',
+    [userData?.variables]);
+
+  const sortedHabits = useMemo(() => {
+    const freq = buildFreq(userData?.events, e => e.habito_id);
+    return sortByUsage(userData?.habits ?? [], freq, h => h.id, h => habitName(h));
+  }, [userData?.habits, userData?.events, habitName]);
+
+  // Relaciones ordenadas por frecuencia de interacción.
+  const sortedRelations = useMemo(() => {
+    const freq = buildFreq(userData?.interactions, i => i.persona_id);
+    return sortByUsage(userData?.relations ?? [], freq, r => r.persona_id, r => r.nombre);
+  }, [userData?.relations, userData?.interactions]);
 
   // Contextual suggestion chips
   const contextualChips = useMemo(() => {
@@ -671,12 +681,11 @@ export function QuickLogFab() {
             <DialogDescription>Toca el hábito que has completado hoy.</DialogDescription>
           </DialogHeader>
           <div className="space-y-2 max-h-80 overflow-y-auto -mx-1 px-1">
-            {(userData?.habits ?? []).length === 0 ? (
+            {sortedHabits.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">No hay hábitos configurados.</p>
             ) : (
-              userData!.habits.map(habit => {
-                const variable = userData!.variables.find(v => v.var_id === habit.var_id);
-                const name = habit.nombre || variable?.var_nombre || habit.description || 'Hábito';
+              sortedHabits.map(habit => {
+                const name = habitName(habit);
                 return (
                   <button
                     key={habit.habito_id}
@@ -731,7 +740,7 @@ export function QuickLogFab() {
             </DialogTitle>
             <DialogDescription>Añade un ingreso o un gasto.</DialogDescription>
           </DialogHeader>
-          <TransactionLogForm closeDialog={closeDialog} accounts={userData?.accounts ?? []} debts={userData?.debts ?? []} />
+          <TransactionLogForm closeDialog={closeDialog} accounts={userData?.accounts ?? []} debts={userData?.debts ?? []} transactions={userData?.transactions ?? []} />
         </DialogContent>
       </Dialog>
 
@@ -745,7 +754,7 @@ export function QuickLogFab() {
             </DialogTitle>
             <DialogDescription>Evalúa el impacto energético de una interacción reciente.</DialogDescription>
           </DialogHeader>
-          <InteractionLogForm closeDialog={closeDialog} relations={userData?.relations ?? []} />
+          <InteractionLogForm closeDialog={closeDialog} relations={sortedRelations} />
         </DialogContent>
       </Dialog>
 

@@ -12,6 +12,7 @@ import { CalendarDays, DollarSign, Users, Bot, Zap } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Skeleton } from '../ui/skeleton';
 import { useUserData } from '@/hooks/use-user-data';
+import { buildFreq, sortByUsage } from '@/lib/sort-by-usage';
 
 
 type DialogType = 'event' | 'transaction' | 'interaction' | 'habit' | null;
@@ -72,6 +73,12 @@ export default function LoggingSection({ isLoading, isPremium }: LoggingSectionP
         return freqB - freqA;
     }).slice(0, 3); // Always show top 3 relevant suggestions
   }, [userData?.events]);
+
+  // Relaciones ordenadas por frecuencia de interacción (más usadas primero).
+  const sortedRelations = useMemo(() => {
+    const freq = buildFreq(userData?.interactions, i => i.persona_id);
+    return sortByUsage(userData?.relations ?? [], freq, r => r.persona_id, r => r.nombre);
+  }, [userData?.relations, userData?.interactions]);
 
   return (
     <Card className="flex-grow flex flex-col">
@@ -153,7 +160,7 @@ export default function LoggingSection({ isLoading, isPremium }: LoggingSectionP
                     <DialogTitle>Registrar Transacción</DialogTitle>
                     <DialogDescription>Añade un ingreso o un gasto para mantener tus finanzas al día.</DialogDescription>
                 </DialogHeader>
-                <TransactionLogForm closeDialog={() => setOpenDialog(null)} prefill={prefillData} accounts={userData?.accounts || []} debts={userData?.debts || []} />
+                <TransactionLogForm closeDialog={() => setOpenDialog(null)} prefill={prefillData} accounts={userData?.accounts || []} debts={userData?.debts || []} transactions={userData?.transactions || []} />
             </DialogContent>
         </Dialog>
 
@@ -163,7 +170,7 @@ export default function LoggingSection({ isLoading, isPremium }: LoggingSectionP
                     <DialogTitle>Registrar Interacción Social</DialogTitle>
                     <DialogDescription>Evalúa el impacto energético de tus relaciones recientes.</DialogDescription>
                 </DialogHeader>
-                <InteractionLogForm closeDialog={() => setOpenDialog(null)} relations={userData?.relations || []}/>
+                <InteractionLogForm closeDialog={() => setOpenDialog(null)} relations={sortedRelations}/>
             </DialogContent>
         </Dialog>
 
