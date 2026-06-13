@@ -6,12 +6,13 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Check, Plus, Calendar, Clock, SkipForward, Target, Star, Milestone as MilestoneIcon, Zap } from 'lucide-react';
-import { format, differenceInDays, parseISO, isAfter, startOfToday } from 'date-fns';
-import { es } from 'date-fns/locale';
+import { Check, Plus, Clock, SkipForward, Target, Star, Milestone as MilestoneIcon, Zap, Pencil } from 'lucide-react';
+import { differenceInDays, parseISO, startOfToday } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useState } from 'react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import EditMilestoneForm from '@/components/app/data-table/forms/edit-milestone-form';
 import { useUser } from '@/hooks/use-session-user';
 import { updateDocumentNonBlocking } from '@/lib/api-writes';
 interface MilestoneTrackerProps {
@@ -27,6 +28,8 @@ export default function MilestoneTracker({ milestones, skills, systems, streakMu
       ? `+${Math.round(base * streakMultiplier)} XP ×${streakMultiplier}`
       : `+${base} XP`;
   const { user, uid } = useUser();  const { toast } = useToast();
+
+  const [editing, setEditing] = useState<Milestone | null>(null);
 
   const handleUpdateProgress = (milestone: Milestone) => {
     if (!uid) return;
@@ -185,9 +188,9 @@ export default function MilestoneTracker({ milestones, skills, systems, streakMu
               )}
             </CardContent>
 
-            <CardFooter className="p-5 pt-0 flex gap-2">
-              <Button 
-                className="flex-1" 
+            <CardFooter className="p-5 pt-0 flex items-center gap-2">
+              <Button
+                className="flex-1"
                 variant={isRecurring ? "default" : "outline"}
                 size="sm"
                 onClick={() => handleUpdateProgress(milestone)}
@@ -198,21 +201,49 @@ export default function MilestoneTracker({ milestones, skills, systems, streakMu
                     <><Check className="h-4 w-4 mr-2" /> Completar ({baseXpLabel(50)})</>
                 )}
               </Button>
-              
-              <TooltipProvider>
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                        <Button variant="ghost" size="sm" onClick={() => handleOmit(milestone)}>
-                            <SkipForward className="h-4 w-4 text-muted-foreground" />
-                        </Button>
-                    </TooltipTrigger>
-                    <TooltipContent><p>Omitir hito</p></TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-9 w-9 shrink-0"
+                onClick={() => setEditing(milestone)}
+                title="Editar hito"
+                aria-label="Editar hito"
+              >
+                <Pencil className="h-4 w-4 text-muted-foreground" />
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 shrink-0"
+                onClick={() => handleOmit(milestone)}
+                title="Omitir hito"
+                aria-label="Omitir hito"
+              >
+                <SkipForward className="h-4 w-4 text-muted-foreground" />
+              </Button>
             </CardFooter>
           </Card>
         );
       })}
+
+      <Dialog open={!!editing} onOpenChange={(o) => { if (!o) setEditing(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar hito</DialogTitle>
+            <DialogDescription>Actualiza el nombre, la fecha objetivo, el estado o la vinculación.</DialogDescription>
+          </DialogHeader>
+          {editing && (
+            <EditMilestoneForm
+              entity={editing}
+              skills={skills}
+              systems={systems}
+              closeDialog={() => setEditing(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
