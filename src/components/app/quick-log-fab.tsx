@@ -419,8 +419,8 @@ export function QuickLogFab() {
         <div className="fixed inset-0 z-40" onClick={() => setDialOpen(false)} />
       )}
 
-      {/* Speed dial */}
-      <div data-tour="quick-log" className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2.5">
+      {/* Speed dial — elevado en móvil para no chocar con la barra inferior */}
+      <div data-tour="quick-log" className="fixed bottom-20 right-4 lg:bottom-6 lg:right-6 z-50 flex flex-col items-end gap-2.5">
 
         {/* Standard actions */}
         {SPEED_DIAL_ACTIONS.map((action, i) => {
