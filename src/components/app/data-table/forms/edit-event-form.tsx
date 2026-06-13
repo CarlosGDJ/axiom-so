@@ -228,7 +228,7 @@ export default function EventLogForm({ entity: event, variables = variablePreset
               <FormItem>
                 <FormLabel>Duración (minutos)</FormLabel>
                 <FormControl>
-                  <Input type="number" placeholder="ej. 60" {...field} value={field.value ?? ''} />
+                  <Input type="number" inputMode="decimal" placeholder="ej. 60" {...field} value={field.value ?? ''} />
                 </FormControl>
                 <FormMessage />
               </FormItem>

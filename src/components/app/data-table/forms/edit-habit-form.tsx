@@ -178,7 +178,7 @@ export default function EditHabitForm({ entity: habit, closeDialog, systems, var
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Duración (minutos)</FormLabel>
-                    <FormControl><Input type="number" {...field} /></FormControl>
+                    <FormControl><Input type="number" inputMode="decimal" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}

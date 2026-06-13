@@ -316,9 +316,9 @@ export default function OnboardingPage() {
                     <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
                         <div className="flex items-center gap-3 mb-2"><HeartPulse className="text-primary" /><h2 className="text-xl font-bold">Datos Fisiológicos</h2></div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <div className="space-y-2"><Label>Edad</Label><Input type="number" min={1} placeholder="30" value={formData.age} onChange={e => setFormData({...formData, age: e.target.value})} /></div>
-                            <div className="space-y-2"><Label>Peso (kg)</Label><Input type="number" min={1} placeholder="75" value={formData.weight} onChange={e => setFormData({...formData, weight: e.target.value})} /></div>
-                            <div className="space-y-2"><Label>Altura (cm)</Label><Input type="number" min={1} placeholder="180" value={formData.height} onChange={e => setFormData({...formData, height: e.target.value})} /></div>
+                            <div className="space-y-2"><Label>Edad</Label><Input type="number" inputMode="decimal" min={1} placeholder="30" value={formData.age} onChange={e => setFormData({...formData, age: e.target.value})} /></div>
+                            <div className="space-y-2"><Label>Peso (kg)</Label><Input type="number" inputMode="decimal" min={1} placeholder="75" value={formData.weight} onChange={e => setFormData({...formData, weight: e.target.value})} /></div>
+                            <div className="space-y-2"><Label>Altura (cm)</Label><Input type="number" inputMode="decimal" min={1} placeholder="180" value={formData.height} onChange={e => setFormData({...formData, height: e.target.value})} /></div>
                         </div>
                     </div>
                 )}

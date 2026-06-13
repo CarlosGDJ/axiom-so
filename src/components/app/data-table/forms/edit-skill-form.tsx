@@ -123,7 +123,7 @@ export default function EditSkillForm({ entity: skill, closeDialog, areas }: Edi
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Nivel Actual (1-10)</FormLabel>
-                <FormControl><Input type="number" {...field} /></FormControl>
+                <FormControl><Input type="number" inputMode="decimal" {...field} /></FormControl>
                 <FormDescription>Tu nivel de competencia actual en esta habilidad.</FormDescription>
                 <FormMessage />
               </FormItem>
@@ -135,7 +135,7 @@ export default function EditSkillForm({ entity: skill, closeDialog, areas }: Edi
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Nivel Objetivo (1-10)</FormLabel>
-                <FormControl><Input type="number" {...field} /></FormControl>
+                <FormControl><Input type="number" inputMode="decimal" {...field} /></FormControl>
                 <FormDescription>El nivel de competencia que quieres alcanzar.</FormDescription>
                 <FormMessage />
               </FormItem>

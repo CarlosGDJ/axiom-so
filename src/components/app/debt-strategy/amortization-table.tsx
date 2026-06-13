@@ -174,10 +174,11 @@ export default function AmortizationTable({ debt, transactions }: { debt: Debt, 
                     Simulador Amortización Extra Mensual
                   </Label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-muted-foreground">€</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-muted-foreground pointer-events-none">€</span>
                     <Input
                         id="simulation-extra"
                         type="number"
+                        inputMode="decimal"
                         value={simulationExtra || ''}
                         onChange={(e) => setSimulationExtra(Number(e.target.value))}
                         placeholder="0"
@@ -287,10 +288,11 @@ export default function AmortizationTable({ debt, transactions }: { debt: Debt, 
                             <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">REDUCE INTERESES</span>
                           </div>
                           <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-muted-foreground">€</span>
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-muted-foreground pointer-events-none">€</span>
                             <Input
                                 id="extra-amortization"
                                 type="number"
+                                inputMode="decimal"
                                 value={extraAmortizationInput || ''}
                                 onChange={(e) => setExtraAmortizationInput(Number(e.target.value))}
                                 placeholder="Ej: 50"

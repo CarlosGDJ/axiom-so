@@ -251,7 +251,7 @@ export default function TransactionLogForm({ entity: transaction, accounts, debt
               <FormItem>
                 <FormLabel>Importe (€)</FormLabel>
                 <FormControl>
-                  <Input type="number" placeholder="ej. 25.50" {...field} value={field.value ?? ''} />
+                  <Input type="number" inputMode="decimal" placeholder="ej. 25.50" {...field} value={field.value ?? ''} />
                 </FormControl>
                 <FormMessage />
               </FormItem>

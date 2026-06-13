@@ -170,7 +170,7 @@ export default function EditVariableForm({ entity: variable, closeDialog, areas 
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Impacto Base (1-10)</FormLabel>
-                  <FormControl><Input type="number" {...field} /></FormControl>
+                  <FormControl><Input type="number" inputMode="decimal" {...field} /></FormControl>
                   <FormDescription>En una escala de 1 a 10, ¿cuánto impacto tiene esta variable en tu estado general?</FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -199,7 +199,7 @@ export default function EditVariableForm({ entity: variable, closeDialog, areas 
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Retraso del Impacto (días)</FormLabel>
-                  <FormControl><Input type="number" {...field} /></FormControl>
+                  <FormControl><Input type="number" inputMode="decimal" {...field} /></FormControl>
                   <FormDescription>¿Cuántos días tardas en sentir el impacto de esta variable después de que ocurra?</FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -211,7 +211,7 @@ export default function EditVariableForm({ entity: variable, closeDialog, areas 
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Duración del Impacto (días)</FormLabel>
-                  <FormControl><Input type="number" {...field} /></FormControl>
+                  <FormControl><Input type="number" inputMode="decimal" {...field} /></FormControl>
                   <FormDescription>¿Durante cuántos días se mantiene el efecto de esta variable?</FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -223,7 +223,7 @@ export default function EditVariableForm({ entity: variable, closeDialog, areas 
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Umbral de Riesgo</FormLabel>
-                  <FormControl><Input type="number" {...field} /></FormControl>
+                  <FormControl><Input type="number" inputMode="decimal" {...field} /></FormControl>
                   <FormDescription>Número de veces que esta variable puede ocurrir en una semana antes de que el área entre en 'Riesgo'.</FormDescription>
                   <FormMessage />
                 </FormItem>

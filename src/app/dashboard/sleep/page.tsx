@@ -265,17 +265,17 @@ export default function SleepPage() {
               <button
                 aria-label="Restar media hora de sueño"
                 onClick={() => setSleepHours(h => Math.max(3, parseFloat((h - 0.5).toFixed(1))))}
-                className="h-7 w-7 rounded-full border flex items-center justify-center hover:bg-muted transition-colors"
+                className="h-10 w-10 rounded-full border flex items-center justify-center hover:bg-muted active:bg-muted transition-colors"
               >
-                <Minus className="h-3 w-3" />
+                <Minus className="h-4 w-4" />
               </button>
               <span className="text-xl font-black tabular-nums w-12 text-center">{sleepHours}h</span>
               <button
                 aria-label="Sumar media hora de sueño"
                 onClick={() => setSleepHours(h => Math.min(12, parseFloat((h + 0.5).toFixed(1))))}
-                className="h-7 w-7 rounded-full border flex items-center justify-center hover:bg-muted transition-colors"
+                className="h-10 w-10 rounded-full border flex items-center justify-center hover:bg-muted active:bg-muted transition-colors"
               >
-                <Plus className="h-3 w-3" />
+                <Plus className="h-4 w-4" />
               </button>
             </div>
           </div>

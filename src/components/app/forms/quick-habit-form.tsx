@@ -145,7 +145,7 @@ export default function QuickHabitForm({ closeDialog }: QuickHabitFormProps) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Duración (minutos)</FormLabel>
-                <FormControl><Input type="number" {...field} /></FormControl>
+                <FormControl><Input type="number" inputMode="decimal" {...field} /></FormControl>
                 <FormMessage />
               </FormItem>
             )}

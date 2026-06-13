@@ -1104,11 +1104,12 @@ export default function FinancesPage() {
                                                     </div>
                                                     <div className="w-32">
                                                         <div className="relative">
-                                                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">€</span>
-                                                            <Input 
-                                                                type="number" 
-                                                                className="pl-6 h-10 font-medium text-right" 
-                                                                value={pocketBudget} 
+                                                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground pointer-events-none">€</span>
+                                                            <Input
+                                                                type="number"
+                                                                inputMode="decimal"
+                                                                className="pl-6 h-10 font-medium text-right"
+                                                                value={pocketBudget}
                                                                 onChange={(e) => handlePocketChange(name, e.target.value)}
                                                             />
                                                         </div>

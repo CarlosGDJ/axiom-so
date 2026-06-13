@@ -25,12 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
-import { cn } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useState } from 'react';
@@ -148,10 +143,10 @@ export default function EditDebtForm({ entity: debt, closeDialog }: EditDebtForm
                 )}
             />
             <div className="grid grid-cols-2 gap-4">
-                <FormField control={form.control} name="principal_inicial" render={({ field }) => ( <FormItem> <FormLabel>Principal Inicial (€)</FormLabel> <FormControl><Input type="number" step="0.01" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                <FormField control={form.control} name="interes_tae" render={({ field }) => ( <FormItem> <FormLabel>Interés (TAE %)</FormLabel> <FormControl><Input type="number" step="0.01" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                <FormField control={form.control} name="plazo_total_meses" render={({ field }) => ( <FormItem> <FormLabel>Plazo Total (meses)</FormLabel> <FormControl><Input type="number" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                <FormField control={form.control} name="cuota_mensual" render={({ field }) => ( <FormItem> <FormLabel>Cuota Mensual (€)</FormLabel> <FormControl><Input type="number" step="0.01" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+                <FormField control={form.control} name="principal_inicial" render={({ field }) => ( <FormItem> <FormLabel>Principal Inicial (€)</FormLabel> <FormControl><Input type="number" inputMode="decimal" step="0.01" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+                <FormField control={form.control} name="interes_tae" render={({ field }) => ( <FormItem> <FormLabel>Interés (TAE %)</FormLabel> <FormControl><Input type="number" inputMode="decimal" step="0.01" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+                <FormField control={form.control} name="plazo_total_meses" render={({ field }) => ( <FormItem> <FormLabel>Plazo Total (meses)</FormLabel> <FormControl><Input type="number" inputMode="decimal" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+                <FormField control={form.control} name="cuota_mensual" render={({ field }) => ( <FormItem> <FormLabel>Cuota Mensual (€)</FormLabel> <FormControl><Input type="number" inputMode="decimal" step="0.01" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
             </div>
             
             <h4 className="text-sm font-medium text-muted-foreground pt-4">Estado Actual</h4>
@@ -163,7 +158,7 @@ export default function EditDebtForm({ entity: debt, closeDialog }: EditDebtForm
                         <FormItem>
                             <FormLabel>Saldo Actual (€)</FormLabel>
                             <FormControl>
-                                <Input type="number" step="0.01" {...field} />
+                                <Input type="number" inputMode="decimal" step="0.01" {...field} />
                             </FormControl>
                             <FormDescription className="pt-2">El saldo pendiente al momento de registrar.</FormDescription>
                             <FormMessage />
@@ -176,30 +171,16 @@ export default function EditDebtForm({ entity: debt, closeDialog }: EditDebtForm
                     render={({ field }) => (
                         <FormItem className="flex flex-col">
                             <FormLabel>Fecha de Inicio</FormLabel>
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <FormControl>
-                                        <Button
-                                            variant={"outline"}
-                                            className={cn(
-                                                "w-full justify-start text-left font-normal",
-                                                !field.value && "text-muted-foreground"
-                                            )}
-                                        >
-                                            <CalendarIcon className="mr-2 h-4 w-4" />
-                                            {field.value ? format(field.value, "PPP", { locale: es }) : <span>Elige una fecha</span>}
-                                        </Button>
-                                    </FormControl>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0" align="start">
-                                    <Calendar
-                                        mode="single"
-                                        selected={field.value}
-                                        onSelect={field.onChange}
-                                        initialFocus
-                                    />
-                                </PopoverContent>
-                            </Popover>
+                            {/* Input de fecha NATIVO: abre el selector del sistema en móvil y
+                                es fiable al toque. El Popover+Calendar se portalea fuera del
+                                Dialog y queda con pointer-events:none → no funcionaba en móvil. */}
+                            <FormControl>
+                                <Input
+                                    type="date"
+                                    value={field.value ? format(field.value, 'yyyy-MM-dd') : ''}
+                                    onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value + 'T00:00:00') : undefined)}
+                                />
+                            </FormControl>
                             <FormMessage />
                         </FormItem>
                     )}
@@ -223,7 +204,7 @@ export default function EditDebtForm({ entity: debt, closeDialog }: EditDebtForm
                     </FormItem>
                 )}
             />
-            <FormField control={form.control} name="comision_amortizacion" render={({ field }) => ( <FormItem> <FormLabel>Comisión Amortización Anticipada (%)</FormLabel> <FormControl><Input type="number" step="0.01" {...field} value={field.value ?? ''}/></FormControl> <FormMessage /> </FormItem> )}/>
+            <FormField control={form.control} name="comision_amortizacion" render={({ field }) => ( <FormItem> <FormLabel>Comisión Amortización Anticipada (%)</FormLabel> <FormControl><Input type="number" inputMode="decimal" step="0.01" {...field} value={field.value ?? ''}/></FormControl> <FormMessage /> </FormItem> )}/>
              <div className="grid grid-cols-2 gap-4 items-center">
                 <FormField
                     control={form.control}

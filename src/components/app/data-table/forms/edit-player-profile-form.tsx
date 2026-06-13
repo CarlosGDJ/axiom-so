@@ -491,7 +491,7 @@ export default function EditPlayerProfileForm({
                     <FormItem>
                       <FormLabel>Edad</FormLabel>
                       <FormControl>
-                        <Input type="number" {...field} />
+                        <Input type="number" inputMode="decimal" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -504,7 +504,7 @@ export default function EditPlayerProfileForm({
                     <FormItem>
                       <FormLabel>Peso (kg)</FormLabel>
                       <FormControl>
-                        <Input type="number" step="0.1" {...field} />
+                        <Input type="number" inputMode="decimal" step="0.1" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -517,7 +517,7 @@ export default function EditPlayerProfileForm({
                     <FormItem>
                       <FormLabel>Altura (cm)</FormLabel>
                       <FormControl>
-                        <Input type="number" {...field} />
+                        <Input type="number" inputMode="decimal" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

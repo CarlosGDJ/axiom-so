@@ -118,7 +118,7 @@ export default function EditAccountForm({ entity: account, closeDialog }: EditAc
             <FormItem>
               <FormLabel>Saldo inicial (€)</FormLabel>
               <FormControl>
-                <Input type="number" step="0.01" {...field} />
+                <Input type="number" inputMode="decimal" step="0.01" {...field} />
               </FormControl>
               <FormDescription>
                 El saldo de partida. Las transacciones actualizarán el saldo real automáticamente.

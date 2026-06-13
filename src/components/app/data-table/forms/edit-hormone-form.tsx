@@ -100,7 +100,7 @@ export default function EditHormoneForm({ entity, closeDialog }: EditHormoneForm
               <FormItem>
                 <FormLabel>Línea Base</FormLabel>
                 <FormControl>
-                  <Input type="number" {...field} />
+                  <Input type="number" inputMode="decimal" {...field} />
                 </FormControl>
                 <FormDescription>Tu nivel normal y estable para esta hormona.</FormDescription>
                 <FormMessage />
@@ -128,7 +128,7 @@ export default function EditHormoneForm({ entity, closeDialog }: EditHormoneForm
               <FormItem>
                 <FormLabel>Vida Media (horas)</FormLabel>
                 <FormControl>
-                  <Input type="number" step="0.1" {...field} />
+                  <Input type="number" inputMode="decimal" step="0.1" {...field} />
                 </FormControl>
                 <FormDescription>Tiempo estimado para que el nivel de la hormona se reduzca a la mitad.</FormDescription>
                 <FormMessage />

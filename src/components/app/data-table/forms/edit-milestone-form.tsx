@@ -25,12 +25,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
-import { cn } from '@/lib/utils';
 import { useUser } from '@/hooks/use-session-user';
 import { addDocumentNonBlocking, setDocumentNonBlocking } from '@/lib/api-writes';
 import React, { useMemo, useEffect } from 'react';
@@ -177,7 +172,7 @@ export default function EditMilestoneForm({ entity, closeDialog, skills, systems
                   render={({ field }) => (
                       <FormItem>
                       <FormLabel>Objetivo de Repeticiones (Opcional)</FormLabel>
-                      <FormControl><Input type="number" {...field} placeholder="Ej: 7" value={field.value || ''} /></FormControl>
+                      <FormControl><Input type="number" inputMode="decimal" {...field} placeholder="Ej: 7" value={field.value || ''} /></FormControl>
                       <FormDescription>¿Cuántas veces se debe completar la tarea para alcanzar el hito? Déjalo en blanco para un hábito sin fin.</FormDescription>
                       <FormMessage />
                       </FormItem>
@@ -230,24 +225,15 @@ export default function EditMilestoneForm({ entity, closeDialog, skills, systems
                   render={({ field }) => (
                       <FormItem className="flex flex-col">
                           <FormLabel>Fecha Objetivo (Opcional)</FormLabel>
-                          <Popover>
-                              <PopoverTrigger asChild>
-                                  <FormControl>
-                                      <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>
-                                          <CalendarIcon className="mr-2 h-4 w-4" />
-                                          {field.value ? format(field.value, "PPP", { locale: es }) : <span>Elige una fecha</span>}
-                                      </Button>
-                                  </FormControl>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0" align="start">
-                                  <Calendar
-                                      mode="single"
-                                      selected={field.value}
-                                      onSelect={field.onChange}
-                                      initialFocus
-                                  />
-                              </PopoverContent>
-                          </Popover>
+                          {/* Input de fecha nativo (fiable en móvil; el Popover+Calendar
+                              se portalea fuera del Dialog y no recibía toques). */}
+                          <FormControl>
+                              <Input
+                                  type="date"
+                                  value={field.value ? format(field.value, 'yyyy-MM-dd') : ''}
+                                  onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value + 'T00:00:00') : undefined)}
+                              />
+                          </FormControl>
                           <FormMessage />
                       </FormItem>
                   )}

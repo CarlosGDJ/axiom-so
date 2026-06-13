@@ -126,7 +126,7 @@ export default function EditImpactMatrixForm({ entity, closeDialog, variables, h
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Tamaño del Efecto</FormLabel>
-                  <FormControl><Input type="number" step="1" {...field} /></FormControl>
+                  <FormControl><Input type="number" inputMode="decimal" step="1" {...field} /></FormControl>
                   <FormDescription>La magnitud del impacto. Negativo para un debuff, positivo para un buff. (ej: -10 o 25).</FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -138,7 +138,7 @@ export default function EditImpactMatrixForm({ entity, closeDialog, variables, h
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Duración del Pico (horas)</FormLabel>
-                  <FormControl><Input type="number" step="0.5" {...field} /></FormControl>
+                  <FormControl><Input type="number" inputMode="decimal" step="0.5" {...field} /></FormControl>
                   <FormDescription>¿Cuántas horas dura el pico del efecto de esta variable sobre la hormona?</FormDescription>
                   <FormMessage />
                 </FormItem>

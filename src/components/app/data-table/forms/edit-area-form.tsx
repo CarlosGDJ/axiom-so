@@ -167,7 +167,7 @@ export default function EditAreaForm({ entity: area, closeDialog }: EditAreaForm
               <FormItem>
                 <FormLabel>Peso Estratégico</FormLabel>
                 <FormControl>
-                  <Input type="number" {...field} />
+                  <Input type="number" inputMode="decimal" {...field} />
                 </FormControl>
                 <FormDescription>En una escala del 1 al 10, ¿cuánto impacta esta área en tu bienestar general?</FormDescription>
                 <FormMessage />
@@ -208,7 +208,7 @@ export default function EditAreaForm({ entity: area, closeDialog }: EditAreaForm
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Umbral de Riesgo</FormLabel>
-                <FormControl><Input type="number" {...field} /></FormControl>
+                <FormControl><Input type="number" inputMode="decimal" {...field} /></FormControl>
                 <FormDescription>Valor para el umbral de riesgo.</FormDescription>
                 <FormMessage />
               </FormItem>
@@ -220,7 +220,7 @@ export default function EditAreaForm({ entity: area, closeDialog }: EditAreaForm
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Umbral Crítico</FormLabel>
-                <FormControl><Input type="number" {...field} /></FormControl>
+                <FormControl><Input type="number" inputMode="decimal" {...field} /></FormControl>
                 <FormDescription>Valor para el umbral crítico.</FormDescription>
                 <FormMessage />
               </FormItem>

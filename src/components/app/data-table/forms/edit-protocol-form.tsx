@@ -143,7 +143,7 @@ export default function EditProtocolForm({ entity: protocol, closeDialog }: Edit
               <FormItem>
                 <FormLabel>Duración (minutos)</FormLabel>
                 <FormControl>
-                  <Input type="number" {...field} />
+                  <Input type="number" inputMode="decimal" {...field} />
                 </FormControl>
                 <FormDescription>Tiempo estimado para completar el protocolo.</FormDescription>
                 <FormMessage />

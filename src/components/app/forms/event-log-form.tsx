@@ -254,7 +254,7 @@ export default function EventLogForm({
                     <FormItem>
                         <FormLabel>Duración (minutos)</FormLabel>
                         <FormControl>
-                        <Input type="number" placeholder="ej. 30" {...field} value={field.value ?? ''} />
+                        <Input type="number" inputMode="decimal" placeholder="ej. 30" {...field} value={field.value ?? ''} />
                         </FormControl>
                         <FormMessage />
                     </FormItem>
