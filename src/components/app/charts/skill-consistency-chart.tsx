@@ -3,7 +3,7 @@
 import { addDays, format, isSameDay, startOfMonth, endOfMonth, startOfWeek, getDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import type { DateRange } from 'react-day-picker';
 
 interface SkillConsistencyChartProps {
@@ -30,7 +30,6 @@ export default function SkillConsistencyChart({ activeDays, dateRange }: SkillCo
     }
     
     return (
-        <TooltipProvider>
             <div className="flex flex-wrap gap-x-8 gap-y-4">
                 {months.map(monthStart => {
                     const monthDays = [];
@@ -61,17 +60,17 @@ export default function SkillConsistencyChart({ activeDays, dateRange }: SkillCo
                                     const isActive = activeDaysSet.has(dayStr);
                                     
                                     return (
-                                        <Tooltip key={dayStr} delayDuration={0}>
-                                            <TooltipTrigger asChild>
+                                        <Popover key={dayStr}>
+                                            <PopoverTrigger asChild>
                                                 <div className={cn(
-                                                    "h-4 w-4 rounded-sm",
+                                                    "h-4 w-4 rounded-sm cursor-pointer",
                                                     isActive ? 'bg-green-500' : 'bg-muted/50'
                                                 )} />
-                                            </TooltipTrigger>
-                                            <TooltipContent>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-auto max-w-[260px] p-2.5 text-xs">
                                                 <p>{format(d, 'PPP', { locale: es })} - {isActive ? 'Activo' : 'Inactivo'}</p>
-                                            </TooltipContent>
-                                        </Tooltip>
+                                            </PopoverContent>
+                                        </Popover>
                                     );
                                 })}
                             </div>
@@ -79,6 +78,5 @@ export default function SkillConsistencyChart({ activeDays, dateRange }: SkillCo
                     );
                 })}
             </div>
-        </TooltipProvider>
     );
 }

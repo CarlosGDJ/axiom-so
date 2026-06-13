@@ -1,7 +1,7 @@
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../ui/card';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 
 interface HeatmapData {
@@ -52,7 +52,6 @@ export default function WeeklyHeatmapChart({ data }: WeeklyHeatmapChartProps) {
                 </CardDescription>
             </CardHeader>
             <CardContent>
-                <TooltipProvider>
                     <div className="flex gap-2">
                         {/* Day Labels */}
                         <div className="flex flex-col gap-1 pt-6 text-xs text-muted-foreground">
@@ -75,14 +74,14 @@ export default function WeeklyHeatmapChart({ data }: WeeklyHeatmapChartProps) {
                                     const events = eventDetails[`${dayIndex}-${hourIndex}`] || [];
 
                                     return (
-                                        <Tooltip key={`cell-${dayIndex}-${hourIndex}`}>
-                                            <TooltipTrigger asChild>
+                                        <Popover key={`cell-${dayIndex}-${hourIndex}`}>
+                                            <PopoverTrigger asChild>
                                                 <div
-                                                    className="h-6 w-full rounded-sm"
+                                                    className="h-6 w-full rounded-sm cursor-pointer"
                                                     style={{ backgroundColor: getCellColor(count) }}
                                                 />
-                                            </TooltipTrigger>
-                                            <TooltipContent>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-auto max-w-[260px] p-2.5 text-xs">
                                                 {count > 0 ? (
                                                     <div>
                                                         <p className="font-bold">{count} evento{count > 1 ? 's' : ''} negativo{count > 1 ? 's' : ''}</p>
@@ -95,14 +94,13 @@ export default function WeeklyHeatmapChart({ data }: WeeklyHeatmapChartProps) {
                                                 ) : (
                                                     <p>Sin eventos negativos</p>
                                                 )}
-                                            </TooltipContent>
-                                        </Tooltip>
+                                            </PopoverContent>
+                                        </Popover>
                                     );
                                 })}
                             </div>
                         </div>
                     </div>
-                </TooltipProvider>
             </CardContent>
         </Card>
     );

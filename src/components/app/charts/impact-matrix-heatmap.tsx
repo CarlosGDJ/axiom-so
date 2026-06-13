@@ -1,7 +1,7 @@
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../ui/card';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { ImpactMatrix, Variable, Hormone } from '@/lib/types';
 
@@ -54,7 +54,6 @@ export default function ImpactMatrixHeatmap({ impactMatrix, variables, hormones 
                 </CardDescription>
             </CardHeader>
             <CardContent>
-                <TooltipProvider>
                     <ScrollArea className="w-full max-h-[520px] rounded-md border">
                         <div className="relative inline-block min-w-full">
                             <table className="border-separate border-spacing-1 table-fixed w-max text-xs">
@@ -87,18 +86,18 @@ export default function ImpactMatrixHeatmap({ impactMatrix, variables, hormones 
                                                 const effectSize = matrixData[variable.var_id]?.[hormone.hormone_id] || 0;
                                                 return (
                                                     <td key={`cell-${variable.var_id}-${hormone.hormone_id}`} className="w-28 h-9 p-0.5">
-                                                        <Tooltip delayDuration={0}>
-                                                            <TooltipTrigger asChild>
+                                                        <Popover>
+                                                            <PopoverTrigger asChild>
                                                                 <div
-                                                                    className="h-8 w-full rounded-sm border border-border/20"
+                                                                    className="h-8 w-full rounded-sm border border-border/20 cursor-pointer"
                                                                     style={{ backgroundColor: getCellColor(effectSize) }}
                                                                 />
-                                                            </TooltipTrigger>
-                                                            <TooltipContent>
+                                                            </PopoverTrigger>
+                                                            <PopoverContent className="w-auto max-w-[260px] p-2.5 text-xs">
                                                                 <p className="font-bold">{variable.var_nombre} -&gt; {hormone.name}</p>
                                                                 <p>Tamaño del efecto: {effectSize.toFixed(2)}</p>
-                                                            </TooltipContent>
-                                                        </Tooltip>
+                                                            </PopoverContent>
+                                                        </Popover>
                                                     </td>
                                                 );
                                             })}
@@ -108,7 +107,6 @@ export default function ImpactMatrixHeatmap({ impactMatrix, variables, hormones 
                             </table>
                         </div>
                     </ScrollArea>
-                </TooltipProvider>
             </CardContent>
         </Card>
     );

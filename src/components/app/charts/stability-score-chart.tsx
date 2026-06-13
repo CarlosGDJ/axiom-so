@@ -3,7 +3,7 @@
 import { RadialBarChart, RadialBar, PolarAngleAxis, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../ui/card';
 import { Info } from 'lucide-react';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 interface StabilityScoreChartProps {
     index: number; // A score from 0 (very unstable) to 100 (very stable)
@@ -25,16 +25,14 @@ export default function StabilityScoreChart({ index }: StabilityScoreChartProps)
             <CardHeader>
                 <div className="flex items-center justify-between">
                     <CardTitle>Índice de Estabilidad</CardTitle>
-                    <TooltipProvider>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                            </TooltipTrigger>
-                            <TooltipContent className="max-w-[250px]">
-                                <p className="text-xs">Calculado mediante la Desviación Estándar de tu bienestar diario. Mide la volatilidad frente a la consistencia.</p>
-                            </TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <Info className="h-4 w-4 text-muted-foreground cursor-pointer" />
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto max-w-[240px] p-2.5 text-xs">
+                            <p className="text-xs">Calculado mediante la Desviación Estándar de tu bienestar diario. Mide la volatilidad frente a la consistencia.</p>
+                        </PopoverContent>
+                    </Popover>
                 </div>
                 <CardDescription>Mide la volatilidad de tu bienestar basándose en la varianza diaria.</CardDescription>
             </CardHeader>

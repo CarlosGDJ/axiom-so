@@ -20,7 +20,7 @@ import NotificationCenter from './notification-center';
 import { Flame, Zap } from 'lucide-react';
 import { computeProgression } from '@/lib/progression';
 import { cn } from '@/lib/utils';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useUser } from '@/hooks/use-session-user';
 import { signOut } from 'next-auth/react';
 export function AppHeader() {
@@ -145,43 +145,41 @@ export function AppHeader() {
       <div className="ml-auto flex items-center gap-3 md:gap-4">
         {/* Rank Badge */}
         {progressionData && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className={cn(
-                  'hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full border cursor-default select-none',
-                  progressionData.rank.bgClass,
-                  progressionData.rank.borderClass,
-                )}>
-                  <Zap size={11} className={cn(progressionData.rank.colorClass, 'shrink-0')} />
-                  <span className={cn('text-[10px] font-black uppercase tracking-tighter', progressionData.rank.colorClass)}>
-                    {progressionData.rank.name}
-                  </span>
-                  {progressionData.streakMultiplier > 1 && (
-                    <span className="text-[9px] font-bold text-amber-500">×{progressionData.streakMultiplier}</span>
-                  )}
-                </div>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="space-y-1.5 p-3 min-w-[160px]">
-                <p className="font-bold text-xs">{progressionData.totalXP.toLocaleString()} XP total</p>
-                <div className="text-[11px] text-muted-foreground space-y-0.5">
-                  <p>Habilidades: {progressionData.xpBreakdown.skills} XP</p>
-                  <p>Hábitos: {progressionData.xpBreakdown.habits} XP</p>
-                  <p>Rendimiento: {progressionData.xpBreakdown.score} XP</p>
-                </div>
-                {progressionData.nextRank && (
-                  <p className="text-[10px] text-muted-foreground pt-1 border-t">
-                    {progressionData.xpToNext.toLocaleString()} XP → {progressionData.nextRank.name}
-                  </p>
-                )}
+          <Popover>
+            <PopoverTrigger asChild>
+              <div className={cn(
+                'hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full border cursor-default select-none',
+                progressionData.rank.bgClass,
+                progressionData.rank.borderClass,
+              )}>
+                <Zap size={11} className={cn(progressionData.rank.colorClass, 'shrink-0')} />
+                <span className={cn('text-[10px] font-black uppercase tracking-tighter', progressionData.rank.colorClass)}>
+                  {progressionData.rank.name}
+                </span>
                 {progressionData.streakMultiplier > 1 && (
-                  <p className="text-[10px] font-bold text-amber-500">
-                    Racha activa ×{progressionData.streakMultiplier} ({progressionData.activeStreakDays}d)
-                  </p>
+                  <span className="text-[9px] font-bold text-amber-500">×{progressionData.streakMultiplier}</span>
                 )}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+              </div>
+            </PopoverTrigger>
+            <PopoverContent side="bottom" className="max-w-[280px] space-y-1.5 p-3 text-xs">
+              <p className="font-bold text-xs">{progressionData.totalXP.toLocaleString()} XP total</p>
+              <div className="text-[11px] text-muted-foreground space-y-0.5">
+                <p>Habilidades: {progressionData.xpBreakdown.skills} XP</p>
+                <p>Hábitos: {progressionData.xpBreakdown.habits} XP</p>
+                <p>Rendimiento: {progressionData.xpBreakdown.score} XP</p>
+              </div>
+              {progressionData.nextRank && (
+                <p className="text-[10px] text-muted-foreground pt-1 border-t">
+                  {progressionData.xpToNext.toLocaleString()} XP → {progressionData.nextRank.name}
+                </p>
+              )}
+              {progressionData.streakMultiplier > 1 && (
+                <p className="text-[10px] font-bold text-amber-500">
+                  Racha activa ×{progressionData.streakMultiplier} ({progressionData.activeStreakDays}d)
+                </p>
+              )}
+            </PopoverContent>
+          </Popover>
         )}
 
         {/* Streak counter */}

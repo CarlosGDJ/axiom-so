@@ -13,7 +13,7 @@ import { useMemo, useState } from 'react';
 import type { OverallState, UserData } from '@/lib/types';
 import { Button } from '../ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import DiagnosticDialog from '@/components/app/diagnostic-dialog';
 import { clinicalMarkerLabel } from '@/lib/clinical-labels';
 import Link from 'next/link';
@@ -241,21 +241,19 @@ export default function OverviewCard({ overallState, dominantVariables = [], onA
               <Zap size={11} className="text-primary" /> Drenajes activos
             </p>
             <div className="flex flex-wrap gap-1.5">
-              <TooltipProvider>
-                {dominantVariables.map((v, idx) => (
-                  <Tooltip key={`${v.var_id}-${idx}`}>
-                    <TooltipTrigger asChild>
-                      <Badge variant="secondary" className="px-2 py-0.5 text-[10px] cursor-help bg-muted/50 hover:bg-muted">
-                        {v.nombre || v.var_id}
-                      </Badge>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p className="font-bold">Impacto: {v.total_impact.toFixed(1)}</p>
-                      <p className="text-[10px]">~{v.hours_remaining}h de efecto restante</p>
-                    </TooltipContent>
-                  </Tooltip>
-                ))}
-              </TooltipProvider>
+              {dominantVariables.map((v, idx) => (
+                <Popover key={`${v.var_id}-${idx}`}>
+                  <PopoverTrigger asChild>
+                    <Badge variant="secondary" className="px-2 py-0.5 text-[10px] cursor-help bg-muted/50 hover:bg-muted">
+                      {v.nombre || v.var_id}
+                    </Badge>
+                  </PopoverTrigger>
+                  <PopoverContent className="max-w-[280px] p-3 text-xs space-y-1">
+                    <p className="font-bold">Impacto: {v.total_impact.toFixed(1)}</p>
+                    <p className="text-[10px]">~{v.hours_remaining}h de efecto restante</p>
+                  </PopoverContent>
+                </Popover>
+              ))}
             </div>
           </div>
         )}

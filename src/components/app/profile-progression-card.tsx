@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { Zap, Flame, Star, Trophy } from 'lucide-react';
 import type { ProgressionData } from '@/lib/progression';
@@ -59,21 +59,19 @@ export default function ProfileProgressionCard({ data }: ProfileProgressionCardP
         {/* XP Breakdown */}
         <div className="grid grid-cols-3 gap-2">
           {XP_SOURCE_ICONS.map(src => (
-            <TooltipProvider key={src.key}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className={cn('rounded-lg p-2.5 text-center space-y-0.5 cursor-default', src.bg)}>
-                    <p className={cn('text-sm font-black tabular-nums', src.color)}>
-                      {xpBreakdown[src.key].toLocaleString()}
-                    </p>
-                    <p className="text-[9px] text-muted-foreground uppercase tracking-wider">{src.label}</p>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p className="text-xs">{xpBreakdown[src.key].toLocaleString()} XP de {src.label.toLowerCase()}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <Popover key={src.key}>
+              <PopoverTrigger asChild>
+                <div className={cn('rounded-lg p-2.5 text-center space-y-0.5 cursor-default', src.bg)}>
+                  <p className={cn('text-sm font-black tabular-nums', src.color)}>
+                    {xpBreakdown[src.key].toLocaleString()}
+                  </p>
+                  <p className="text-[9px] text-muted-foreground uppercase tracking-wider">{src.label}</p>
+                </div>
+              </PopoverTrigger>
+              <PopoverContent className="max-w-[280px] p-3 text-xs">
+                <p>{xpBreakdown[src.key].toLocaleString()} XP de {src.label.toLowerCase()}</p>
+              </PopoverContent>
+            </Popover>
           ))}
         </div>
 

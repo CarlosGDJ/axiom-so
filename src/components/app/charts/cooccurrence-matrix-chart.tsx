@@ -1,7 +1,7 @@
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../ui/card';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -52,7 +52,6 @@ export default function CooccurrenceMatrixChart({ data }: CooccurrenceMatrixChar
                 </CardDescription>
             </CardHeader>
             <CardContent>
-                <TooltipProvider>
                     <ScrollArea className="w-full max-h-[420px] rounded-md border">
                         <div className="relative inline-block min-w-full">
                             <table className="border-collapse table-fixed w-max text-xs">
@@ -84,20 +83,20 @@ export default function CooccurrenceMatrixChart({ data }: CooccurrenceMatrixChar
                                                 const isDiagonal = rowLabel === colLabel;
                                                 return (
                                                     <td key={`cell-${rowLabel}-${colLabel}`} className="p-1 w-24 h-12">
-                                                        <Tooltip delayDuration={0}>
-                                                            <TooltipTrigger asChild>
+                                                        <Popover>
+                                                            <PopoverTrigger asChild>
                                                                 <div
-                                                                    className={cn("h-10 w-full rounded-sm transition-all", isDiagonal ? "bg-muted/30" : "hover:scale-[1.02]")}
+                                                                    className={cn("h-10 w-full rounded-sm transition-all", isDiagonal ? "bg-muted/30" : "hover:scale-[1.02] cursor-pointer")}
                                                                     style={{ backgroundColor: isDiagonal ? undefined : getCellColor(count) }}
                                                                 />
-                                                            </TooltipTrigger>
+                                                            </PopoverTrigger>
                                                             {!isDiagonal && (
-                                                                <TooltipContent className="bg-destructive text-destructive-foreground">
+                                                                <PopoverContent className="w-auto max-w-[260px] p-2.5 text-xs bg-destructive text-destructive-foreground">
                                                                     <p className="font-black text-xs uppercase">{varNames[rowLabel]} + {varNames[colLabel]}</p>
                                                                     <p className="text-[10px]">{count} patrones detectados</p>
-                                                                </TooltipContent>
+                                                                </PopoverContent>
                                                             )}
-                                                        </Tooltip>
+                                                        </Popover>
                                                     </td>
                                                 )
                                             })}
@@ -107,7 +106,6 @@ export default function CooccurrenceMatrixChart({ data }: CooccurrenceMatrixChar
                             </table>
                         </div>
                     </ScrollArea>
-                </TooltipProvider>
             </CardContent>
         </Card>
     );

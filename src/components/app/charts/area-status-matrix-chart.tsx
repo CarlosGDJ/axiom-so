@@ -1,7 +1,7 @@
 
 'use client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../ui/card';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -50,7 +50,6 @@ export default function AreaStatusMatrixChart({ data }: AreaStatusMatrixChartPro
                 <CardDescription>El estado (OK/RIESGO/CRÍTICO) de cada área por día.</CardDescription>
             </CardHeader>
             <CardContent>
-                <TooltipProvider>
                     <div className="flex gap-2">
                         <div className="flex flex-col gap-1 pt-6 text-xs text-muted-foreground">
                             {data.map((row, idx) => (
@@ -69,22 +68,21 @@ export default function AreaStatusMatrixChart({ data }: AreaStatusMatrixChartPro
 
                                     {data.flatMap(({ id, area, dailyStates }, areaIdx) =>
                                         dailyStates.map(({ date, state }, dateIdx) => (
-                                            <Tooltip key={`cell-${id || area}-${areaIdx}-${date}-${dateIdx}`} delayDuration={0}>
-                                                <TooltipTrigger asChild>
-                                                    <div className={cn("h-6 w-full rounded-sm transition-colors hover:ring-1 hover:ring-foreground", stateColors[state])} />
-                                                </TooltipTrigger>
-                                                <TooltipContent>
+                                            <Popover key={`cell-${id || area}-${areaIdx}-${date}-${dateIdx}`}>
+                                                <PopoverTrigger asChild>
+                                                    <div className={cn("h-6 w-full rounded-sm transition-colors hover:ring-1 hover:ring-foreground cursor-pointer", stateColors[state])} />
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-auto max-w-[260px] p-2.5 text-xs">
                                                     <p className="font-bold">{area} - {date}</p>
                                                     <p>Estado: {state}</p>
-                                                </TooltipContent>
-                                            </Tooltip>
+                                                </PopoverContent>
+                                            </Popover>
                                         ))
                                     )}
                                 </div>
                             </div>
                         </ScrollArea>
                     </div>
-                </TooltipProvider>
             </CardContent>
         </Card>
     );

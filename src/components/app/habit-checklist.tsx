@@ -9,7 +9,7 @@ import { isSameDay, subDays, format, parseISO, startOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useUser } from '@/hooks/use-session-user';
 import { addDocumentNonBlocking } from '@/lib/api-writes';
 
@@ -120,16 +120,14 @@ export default function HabitChecklist({ habits, events, variables, onCreate }: 
                     {isNegative ? `Evitar: ` : ""}{habitDisplayName(habit)}
                 </CardTitle>
                 {habit.description && (
-                  <TooltipProvider>
-                      <Tooltip>
-                          <TooltipTrigger asChild>
-                              <Info className="h-4 w-4 text-muted-foreground cursor-help hover:text-primary transition-colors" />
-                          </TooltipTrigger>
-                          <TooltipContent className="max-w-[200px]">
-                              <p className="text-xs">{habit.description}</p>
-                          </TooltipContent>
-                      </Tooltip>
-                  </TooltipProvider>
+                  <Popover>
+                      <PopoverTrigger asChild>
+                          <Info className="h-4 w-4 text-muted-foreground cursor-pointer hover:text-primary transition-colors" />
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto max-w-[240px] p-2.5 text-xs">
+                          <p className="text-xs">{habit.description}</p>
+                      </PopoverContent>
+                  </Popover>
                 )}
               </div>
               <div className="flex gap-2">
@@ -174,8 +172,7 @@ export default function HabitChecklist({ habits, events, variables, onCreate }: 
                 </span>
             </div>
             <div className="flex gap-1.5 justify-between">
-              <TooltipProvider>
-                {last7Days.map((date, idx) => {
+              {last7Days.map((date, idx) => {
                   const count = habitEvents.filter(e => isSameDay(parseISO(e.fecha), date)).length;
                   const hasEvent = count > 0;
 
@@ -187,24 +184,23 @@ export default function HabitChecklist({ habits, events, variables, onCreate }: 
                   }
 
                   return (
-                    <Tooltip key={idx}>
-                      <TooltipTrigger asChild>
+                    <Popover key={idx}>
+                      <PopoverTrigger asChild>
                         <div
                           className={cn(
                             "h-2 flex-1 rounded-full transition-colors",
                             colorClass
                           )}
                         />
-                      </TooltipTrigger>
-                      <TooltipContent>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto max-w-[240px] p-2.5 text-xs">
                         <p className="text-xs">
                             {format(date, 'EEEE d', { locale: es })}: {hasEvent ? (isNegative ? `${count} caídas` : 'Completado') : (isNegative ? 'Limpio' : 'Pendiente')}
                         </p>
-                      </TooltipContent>
-                    </Tooltip>
+                      </PopoverContent>
+                    </Popover>
                   );
                 })}
-              </TooltipProvider>
             </div>
             {!isDoneToday && (
                 <div className="pt-2">
