@@ -117,7 +117,7 @@ export function DateRangePicker({
                 <ChevronDown className={cn("h-4 w-4 opacity-50 transition-transform", isOpen && "rotate-180")} />
             </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[480px] p-0 shadow-2xl border-primary/10 overflow-hidden" align="end">
+            <PopoverContent className="w-[min(480px,calc(100vw-1.5rem))] p-0 shadow-2xl border-primary/10 overflow-hidden" align="end">
                 <div className="grid grid-cols-12 h-[340px]">
                     {/* Presets Sidebar */}
                     <div className="col-span-4 flex flex-col p-2 bg-muted/30 border-r">

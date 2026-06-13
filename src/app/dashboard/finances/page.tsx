@@ -702,31 +702,33 @@ export default function FinancesPage() {
     return (
         <div className="space-y-8 pb-20">
             <NavigationReady />
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div className="flex flex-col gap-1">
-                    <p className="text-muted-foreground text-sm">
-                        Inteligencia financiera operativa: flujo de caja, control de gasto, deuda y patrimonio neto en tiempo real.
-                    </p>
+            <p className="text-muted-foreground text-sm">
+                Inteligencia financiera operativa: flujo de caja, control de gasto, deuda y patrimonio neto en tiempo real.
+            </p>
+
+            {/* Hub de acciones — filtro de periodo + acciones, agrupado y responsive */}
+            <div className="rounded-xl border bg-card/60 p-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                    <DateRangePicker date={dateRange} setDate={setDateRange} />
                 </div>
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:gap-2">
                     <Button
                         variant="outline"
                         onClick={() => setIsAccountDialogOpen(true)}
-                        className="gap-2"
+                        className="gap-2 h-10 w-full sm:w-auto"
                     >
                         <Wallet size={16} />
-                        Nueva cuenta
+                        <span className="truncate">Nueva cuenta</span>
                     </Button>
                     <Button
                         data-tour="finances-add"
                         onClick={() => openTransactionDialog()}
                         disabled={!hasAccounts}
-                        className="gap-2"
+                        className="gap-2 h-10 w-full sm:w-auto"
                     >
                         <PlusCircle size={16} />
-                        Nuevo movimiento
+                        <span className="truncate">Nuevo movimiento</span>
                     </Button>
-                    <DateRangePicker date={dateRange} setDate={setDateRange} />
                 </div>
             </div>
 
