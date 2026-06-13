@@ -9,11 +9,11 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { Plus, Trash2, Settings2, Check } from 'lucide-react';
+import { Plus, Trash2, Settings2, Check, Lock } from 'lucide-react';
 import { useFinanceCategories } from '@/hooks/use-finance-categories';
 import {
   type FinanceCategory, type CategoryType,
-  ICON_OPTIONS, COLOR_PALETTE, getIcon,
+  ICON_OPTIONS, COLOR_PALETTE, getIcon, isProtectedCategory, PROTECTED_CATEGORIES,
 } from '@/lib/finance-categories';
 
 // Gestión del catálogo de categorías: añadir, renombrar, color, icono, borrar.
@@ -95,9 +95,14 @@ export default function FinanceCategoryManager() {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<FinanceCategory[]>(categories);
 
-  // Al abrir, sincroniza el borrador con el catálogo actual.
+  // Al abrir, sincroniza el borrador con el catálogo actual y garantiza que las
+  // categorías protegidas existan (por si vienen datos antiguos sin ellas).
   useEffect(() => {
-    if (open) setDraft(categories);
+    if (!open) return;
+    const missing = PROTECTED_CATEGORIES
+      .filter(name => !categories.some(c => c.name === name))
+      .map((name): FinanceCategory => ({ name, type: 'expense', color: COLOR_PALETTE[3], icon: 'CreditCard' }));
+    setDraft([...categories, ...missing]);
   }, [open, categories]);
 
   const update = (index: number, patch: Partial<FinanceCategory>) =>
@@ -123,28 +128,43 @@ export default function FinanceCategoryManager() {
     setOpen(false);
   };
 
-  const renderRow = (cat: FinanceCategory, index: number) => (
-    <div key={index} className="flex items-center gap-2">
-      <IconPicker value={cat.icon} color={cat.color} onChange={(icon) => update(index, { icon })} />
-      <ColorPicker value={cat.color} onChange={(color) => update(index, { color })} />
-      <Input
-        value={cat.name}
-        onChange={(e) => update(index, { name: e.target.value })}
-        placeholder="Nombre de la categoría"
-        className="h-10 flex-1 min-w-0"
-      />
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        className="h-10 w-10 shrink-0 text-muted-foreground hover:text-destructive"
-        onClick={() => remove(index)}
-        aria-label={`Borrar ${cat.name || 'categoría'}`}
-      >
-        <Trash2 size={16} />
-      </Button>
-    </div>
-  );
+  const renderRow = (cat: FinanceCategory, index: number) => {
+    const protectedCat = isProtectedCategory(cat.name);
+    return (
+      <div key={index} className="flex items-center gap-2">
+        <IconPicker value={cat.icon} color={cat.color} onChange={(icon) => update(index, { icon })} />
+        <ColorPicker value={cat.color} onChange={(color) => update(index, { color })} />
+        <Input
+          value={cat.name}
+          onChange={(e) => update(index, { name: e.target.value })}
+          placeholder="Nombre de la categoría"
+          className="h-10 flex-1 min-w-0"
+          disabled={protectedCat}
+          title={protectedCat ? 'Categoría estructural: el motor la usa para el seguimiento de deuda y no puede renombrarse.' : undefined}
+        />
+        {protectedCat ? (
+          <div
+            className="h-10 w-10 shrink-0 flex items-center justify-center text-muted-foreground/60"
+            title="Categoría protegida: no se puede borrar."
+            aria-label="Categoría protegida"
+          >
+            <Lock size={15} />
+          </div>
+        ) : (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-10 w-10 shrink-0 text-muted-foreground hover:text-destructive"
+            onClick={() => remove(index)}
+            aria-label={`Borrar ${cat.name || 'categoría'}`}
+          >
+            <Trash2 size={16} />
+          </Button>
+        )}
+      </div>
+    );
+  };
 
   const expense = draft.map((c, i) => ({ c, i })).filter(x => x.c.type === 'expense');
   const income = draft.map((c, i) => ({ c, i })).filter(x => x.c.type === 'income');

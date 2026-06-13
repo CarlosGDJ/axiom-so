@@ -28,6 +28,13 @@ export interface FinanceCategory {
 
 export const DASHBOARD_CONFIG_KEY = 'finance_categories';
 
+// Categorías estructurales: el motor las usa por nombre exacto (p. ej. el
+// seguimiento de deuda filtra transacciones con categoria === 'Deudas' y vincula
+// la deuda asociada). No se pueden renombrar ni borrar desde el gestor.
+export const PROTECTED_CATEGORIES = ['Deudas'];
+
+export const isProtectedCategory = (name: string) => PROTECTED_CATEGORIES.includes(name);
+
 // Iconos disponibles para elegir. La clave se guarda en BD; el componente se
 // resuelve en cliente. Si una clave no existe (icono retirado), cae a Info.
 export const ICON_MAP: Record<string, LucideIcon> = {
