@@ -6,10 +6,9 @@ import { Input } from '@/components/ui/input';
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogTrigger,
 } from '@/components/ui/dialog';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { Plus, Trash2, Settings2, Check, Lock } from 'lucide-react';
+import { Plus, Trash2, Settings2, Check, Lock, ChevronDown } from 'lucide-react';
 import { useFinanceCategories } from '@/hooks/use-finance-categories';
 import {
   type FinanceCategory, type CategoryType,
@@ -18,82 +17,18 @@ import {
 
 // Gestión del catálogo de categorías: añadir, renombrar, color, icono, borrar.
 // Edita sobre un borrador local y solo persiste al pulsar "Guardar".
-
-function IconPicker({ value, color, onChange }: { value: string; color: string; onChange: (icon: string) => void }) {
-  const Current = getIcon(value);
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          className="h-10 w-10 shrink-0 rounded-lg border flex items-center justify-center hover:bg-muted/50"
-          style={{ backgroundColor: `${color}15`, color }}
-          aria-label="Elegir icono"
-        >
-          <Current size={18} />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent className="w-56 p-2" align="start">
-        <div className="grid grid-cols-6 gap-1">
-          {ICON_OPTIONS.map((key) => {
-            const Ico = getIcon(key);
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => onChange(key)}
-                className={cn(
-                  'h-8 w-8 rounded-md flex items-center justify-center hover:bg-muted',
-                  value === key && 'bg-primary/15 text-primary ring-1 ring-primary/40',
-                )}
-                aria-label={key}
-              >
-                <Ico size={16} />
-              </button>
-            );
-          })}
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
-}
-
-function ColorPicker({ value, onChange }: { value: string; onChange: (color: string) => void }) {
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          className="h-10 w-8 shrink-0 rounded-lg border"
-          style={{ backgroundColor: value }}
-          aria-label="Elegir color"
-        />
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-2" align="start">
-        <div className="grid grid-cols-6 gap-1.5">
-          {COLOR_PALETTE.map((c) => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => onChange(c)}
-              className="h-7 w-7 rounded-md flex items-center justify-center"
-              style={{ backgroundColor: c }}
-              aria-label={c}
-            >
-              {value === c && <Check size={14} className="text-white drop-shadow" />}
-            </button>
-          ))}
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
-}
+//
+// Los selectores de icono/color son INLINE (no Popover): un Popover se portala
+// fuera del Dialog y Radix le aplica pointer-events:none, así que los clics no
+// llegaban. Inline = dentro del diálogo = funciona también en móvil.
 
 export default function FinanceCategoryManager() {
   const { categories, saveCategories } = useFinanceCategories();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<FinanceCategory[]>(categories);
+  // Picker inline abierto: índice de fila + tipo (icono/color).
+  const [picker, setPicker] = useState<{ index: number; kind: 'icon' | 'color' } | null>(null);
 
   // Al abrir, sincroniza el borrador con el catálogo actual y garantiza que las
   // categorías protegidas existan (por si vienen datos antiguos sin ellas).
@@ -108,7 +43,9 @@ export default function FinanceCategoryManager() {
   const update = (index: number, patch: Partial<FinanceCategory>) =>
     setDraft(d => d.map((c, i) => (i === index ? { ...c, ...patch } : c)));
 
-  const remove = (index: number) => setDraft(d => d.filter((_, i) => i !== index));
+  const remove = (index: number) => { setPicker(null); setDraft(d => d.filter((_, i) => i !== index)); };
+  const togglePicker = (index: number, kind: 'icon' | 'color') =>
+    setPicker(p => (p && p.index === index && p.kind === kind ? null : { index, kind }));
 
   const add = (type: CategoryType) =>
     setDraft(d => [...d, { name: '', type, color: COLOR_PALETTE[d.length % COLOR_PALETTE.length], icon: 'Info' }]);
@@ -130,37 +67,81 @@ export default function FinanceCategoryManager() {
 
   const renderRow = (cat: FinanceCategory, index: number) => {
     const protectedCat = isProtectedCategory(cat.name);
+    const Icon = getIcon(cat.icon);
+    const iconOpen = picker?.index === index && picker.kind === 'icon';
+    const colorOpen = picker?.index === index && picker.kind === 'color';
     return (
-      <div key={index} className="flex items-center gap-2">
-        <IconPicker value={cat.icon} color={cat.color} onChange={(icon) => update(index, { icon })} />
-        <ColorPicker value={cat.color} onChange={(color) => update(index, { color })} />
-        <Input
-          value={cat.name}
-          onChange={(e) => update(index, { name: e.target.value })}
-          placeholder="Nombre de la categoría"
-          className="h-10 flex-1 min-w-0"
-          disabled={protectedCat}
-          title={protectedCat ? 'Categoría estructural: el motor la usa para el seguimiento de deuda y no puede renombrarse.' : undefined}
-        />
-        {protectedCat ? (
-          <div
-            className="h-10 w-10 shrink-0 flex items-center justify-center text-muted-foreground/60"
-            title="Categoría protegida: no se puede borrar."
-            aria-label="Categoría protegida"
-          >
-            <Lock size={15} />
-          </div>
-        ) : (
-          <Button
+      <div key={index} className="space-y-1.5">
+        <div className="flex items-center gap-2">
+          <button
             type="button"
-            variant="ghost"
-            size="icon"
-            className="h-10 w-10 shrink-0 text-muted-foreground hover:text-destructive"
-            onClick={() => remove(index)}
-            aria-label={`Borrar ${cat.name || 'categoría'}`}
+            onClick={() => togglePicker(index, 'icon')}
+            className={cn('h-10 w-10 shrink-0 rounded-lg border flex items-center justify-center hover:bg-muted/50', iconOpen && 'ring-2 ring-primary')}
+            style={{ backgroundColor: `${cat.color}22`, color: cat.color }}
+            aria-label="Elegir icono"
           >
-            <Trash2 size={16} />
-          </Button>
+            <Icon size={18} />
+          </button>
+          <button
+            type="button"
+            onClick={() => togglePicker(index, 'color')}
+            className={cn('h-10 w-8 shrink-0 rounded-lg border', colorOpen && 'ring-2 ring-primary')}
+            style={{ backgroundColor: cat.color }}
+            aria-label="Elegir color"
+          />
+          <Input
+            value={cat.name}
+            onChange={(e) => update(index, { name: e.target.value })}
+            placeholder="Nombre de la categoría"
+            className="h-10 flex-1 min-w-0"
+            disabled={protectedCat}
+            title={protectedCat ? 'Categoría estructural: el motor la usa para el seguimiento de deuda y no puede renombrarse.' : undefined}
+          />
+          {protectedCat ? (
+            <div className="h-10 w-10 shrink-0 flex items-center justify-center text-muted-foreground/60" title="Categoría protegida: no se puede borrar." aria-label="Categoría protegida">
+              <Lock size={15} />
+            </div>
+          ) : (
+            <Button type="button" variant="ghost" size="icon" className="h-10 w-10 shrink-0 text-muted-foreground hover:text-destructive" onClick={() => remove(index)} aria-label={`Borrar ${cat.name || 'categoría'}`}>
+              <Trash2 size={16} />
+            </Button>
+          )}
+        </div>
+
+        {iconOpen && (
+          <div className="rounded-lg border bg-muted/30 p-2 grid grid-cols-7 sm:grid-cols-8 gap-1">
+            {ICON_OPTIONS.map((key) => {
+              const Ico = getIcon(key);
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => { update(index, { icon: key }); setPicker(null); }}
+                  className={cn('h-9 w-full rounded-md flex items-center justify-center hover:bg-background', cat.icon === key && 'bg-primary/15 text-primary ring-1 ring-primary/40')}
+                  aria-label={key}
+                >
+                  <Ico size={17} />
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {colorOpen && (
+          <div className="rounded-lg border bg-muted/30 p-2 grid grid-cols-6 sm:grid-cols-8 gap-1.5">
+            {COLOR_PALETTE.map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => { update(index, { color: c }); setPicker(null); }}
+                className="h-8 w-full rounded-md flex items-center justify-center"
+                style={{ backgroundColor: c }}
+                aria-label={c}
+              >
+                {cat.color === c && <Check size={15} className="text-white drop-shadow" />}
+              </button>
+            ))}
+          </div>
         )}
       </div>
     );
@@ -170,7 +151,7 @@ export default function FinanceCategoryManager() {
   const income = draft.map((c, i) => ({ c, i })).filter(x => x.c.type === 'income');
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setPicker(null); }}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" className="gap-1.5">
           <Settings2 size={14} />
