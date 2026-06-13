@@ -5,7 +5,7 @@ import { useState, useMemo } from 'react';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Bell, BellRing, Check, CheckCheck, Info, AlertTriangle, CheckCircle2, XCircle, Trash2, ExternalLink, Clock } from 'lucide-react';
+import { Bell, BellRing, Check, CheckCheck, Info, AlertTriangle, CheckCircle2, XCircle, Trash2, ExternalLink, Clock, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import type { Notification } from '@/lib/types';
@@ -40,6 +40,7 @@ export default function NotificationCenter() {
   const { user, uid } = useUser();
   const [isOpen, setIsOpen] = useState(false);
   const [isDiagOpen, setIsDiagOpen] = useState(false);
+  const [expandedKey, setExpandedKey] = useState<string | null>(null);
   const { data: userData } = useUserData();
 
   const { data: notifications, isLoading } = useCollection<Notification>(uid ? 'notifications' : null, { orderBy: 'createdAt', direction: 'desc', limit: 50 });
@@ -98,6 +99,16 @@ export default function NotificationCenter() {
       return;
     }
     updateDocumentNonBlocking('notifications', notif.id, { read: true, readAt: nowIso, updatedAt: nowIso });
+  };
+
+  // Seguir el enlace = interés real → marca clicked (alimenta el backoff adaptativo:
+  // las alertas que sí pulsas se siguen mostrando; las que ignoras se espacian).
+  const handleFollowLink = (notif: Notification) => {
+    if (!user) return;
+    const nowIso = new Date().toISOString();
+    const id = notif.dedupe_key ? `smart__${notif.dedupe_key}` : notif.id;
+    updateDocumentNonBlocking('notifications', id, { read: true, readAt: nowIso, clicked: true, clickedAt: nowIso, updatedAt: nowIso });
+    setIsOpen(false);
   };
 
   const handleMarkAllAsRead = () => {
@@ -224,16 +235,49 @@ export default function NotificationCenter() {
                                 {notif.message}
                             </p>
 
+                            {(() => {
+                                const evKey = notif.dedupe_key || notif.id;
+                                const hasEvidence = notif.evidence && Object.keys(notif.evidence).length > 0;
+                                const isExpanded = expandedKey === evKey;
+                                return hasEvidence && isExpanded ? (
+                                    <div className="rounded-lg bg-background/60 border border-border/60 p-2 space-y-1">
+                                        {Object.entries(notif.evidence!).map(([k, v]) => (
+                                            <div key={k} className="flex items-center justify-between gap-2 text-[10px]">
+                                                <span className="text-muted-foreground capitalize">{k.replace(/_/g, ' ')}</span>
+                                                <span className="font-mono font-semibold">{String(v)}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : null;
+                            })()}
+
                             <div className="flex items-center justify-between mt-1">
-                                <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                                    <Clock className="h-3 w-3" />
-                                    {formatTime(notif.createdAt)}
+                                <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                                    <span className="flex items-center gap-1">
+                                        <Clock className="h-3 w-3" />
+                                        {formatTime(notif.createdAt)}
+                                    </span>
+                                    {notif.aiGenerated && (
+                                        <span className="flex items-center gap-0.5 font-bold uppercase tracking-wider text-violet-500">
+                                            <Sparkles className="h-2.5 w-2.5" /> IA
+                                        </span>
+                                    )}
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    {userData && isSystemStateNotif(notif) && (
+                                    {userData && isSystemStateNotif(notif) ? (
                                         <button
                                             onClick={() => setIsDiagOpen(true)}
                                             className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300 hover:underline"
+                                        >
+                                            ¿Por qué?
+                                        </button>
+                                    ) : (notif.evidence && Object.keys(notif.evidence).length > 0) && (
+                                        <button
+                                            onClick={() => {
+                                                const evKey = notif.dedupe_key || notif.id;
+                                                setExpandedKey(prev => prev === evKey ? null : evKey);
+                                            }}
+                                            className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground hover:underline"
                                         >
                                             ¿Por qué?
                                         </button>
@@ -241,13 +285,10 @@ export default function NotificationCenter() {
                                     {notif.link && (
                                         <Link
                                             href={notif.link}
-                                            onClick={() => {
-                                                handleMarkAsRead(notif);
-                                                setIsOpen(false);
-                                            }}
+                                            onClick={() => handleFollowLink(notif)}
                                             className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-primary hover:underline"
                                         >
-                                            Ver <ExternalLink className="h-2.5 w-2.5" />
+                                            {notif.actionLabel || 'Ver'} <ExternalLink className="h-2.5 w-2.5" />
                                         </Link>
                                     )}
                                 </div>

@@ -8,6 +8,7 @@ import { generateMorningBriefing } from '@/ai/flows/generate-morning-briefing';
 import { generateAvatar } from '@/ai/flows/generate-avatar-flow';
 import { runAxiomChat, type ChatMessage, type ChatActionHints, type ChatResult } from '@/ai/flows/chat-with-axiom';
 import { parseNaturalLog, type ParseNaturalLogOutput, type ParsedLogEvent } from '@/ai/flows/parse-natural-log';
+import { generateNotificationInsight, type NotificationInsightInput, type NotificationInsightOutput } from '@/ai/flows/generate-notification-insight';
 import type { OnboardingSetupInput, OnboardingSetupOutput } from '@/ai/flows/generate-onboarding-setup-flow';
 import type { GenerateSystemPlanOutput } from '@/ai/flows/generate-system-plan-flow';
 import type { GenerateProtocolRecommendationsOutput } from '@/ai/flows/generate-protocol-recommendations';
@@ -171,5 +172,17 @@ export async function parseNaturalLogAction(
   variables: { var_id: string; var_nombre: string; polaridad: number }[],
 ): Promise<ParseNaturalLogOutput> {
   return parseNaturalLog(text, variables);
+}
+
+export async function generateNotificationInsightAction(
+  input: NotificationInsightInput,
+): Promise<NotificationInsightOutput> {
+  try {
+    return await generateNotificationInsight(input);
+  } catch (error) {
+    console.error('Error generando insight de notificación:', error);
+    // Fallback: usa el texto plantilla del motor de señales.
+    return { title: input.fallbackTitle, message: input.fallbackMessage };
+  }
 }
 

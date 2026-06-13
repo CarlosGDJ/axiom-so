@@ -281,6 +281,14 @@ export interface Notification {
     dedupe_key?: string;
     category?: 'finance' | 'habit' | 'milestone' | 'system' | 'state' | 'general';
     smart?: boolean;
+    // Sistema inteligente híbrido:
+    priority?: number;                       // 0..1 prioridad calculada por el motor
+    evidence?: Record<string, string | number>; // cifras/hechos detrás de la alerta ("¿por qué?")
+    actionLabel?: string;                    // etiqueta del CTA
+    aiGenerated?: boolean;                   // mensaje redactado por IA
+    clicked?: boolean;                       // el usuario siguió el enlace (para backoff adaptativo)
+    clickedAt?: any;
+    shows?: number;                          // veces (re)emitida — backoff si se ignora
 }
 
 // --- COMPUTED DATA TYPES ---
