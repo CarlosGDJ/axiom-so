@@ -4,12 +4,13 @@ import { Habit, Event, Variable } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle2, Plus, Zap, AlertCircle, TrendingDown, TrendingUp, XCircle, Info, CheckCircle } from 'lucide-react';
+import { CheckCircle2, Plus, Zap, AlertCircle, TrendingDown, TrendingUp, XCircle, Info, CheckCircle, Flame } from 'lucide-react';
 import { isSameDay, subDays, format, parseISO, startOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { habitCompletion, habitStreak } from '@/lib/habit-cadence';
 import { useUser } from '@/hooks/use-session-user';
 import { addDocumentNonBlocking } from '@/lib/api-writes';
 
@@ -64,15 +65,19 @@ export default function HabitChecklist({ habits, events, variables, onCreate }: 
     });
   };
 
-  // Agrupa los hábitos por estado del día.
+  // Agrupa según la cadencia: los positivos por su periodo (día/semana/mes), los
+  // de evitación por el día (una caída hoy).
   const { pendingPositive, avoidance, completed } = (() => {
     const groups = { pendingPositive: [] as Habit[], avoidance: [] as Habit[], completed: [] as Habit[] };
     habits.forEach(habit => {
       const isNegative = habitIsNegative(habit);
-      const isDoneToday = eventsForHabit(habit).some(e => isSameDay(parseISO(e.fecha), today));
-      if (isDoneToday) groups.completed.push(habit);
-      else if (isNegative) groups.avoidance.push(habit);
-      else groups.pendingPositive.push(habit);
+      if (isNegative) {
+        const relapsedToday = eventsForHabit(habit).some(e => isSameDay(parseISO(e.fecha), today));
+        if (relapsedToday) groups.completed.push(habit); else groups.avoidance.push(habit);
+      } else {
+        const done = habitCompletion(eventsForHabit(habit).map(e => e.fecha), habit.frecuencia, today).done;
+        if (done) groups.completed.push(habit); else groups.pendingPositive.push(habit);
+      }
     });
     return groups;
   })();
@@ -96,12 +101,18 @@ export default function HabitChecklist({ habits, events, variables, onCreate }: 
     const isNegative = habitIsNegative(habit);
     const habitEvents = eventsForHabit(habit);
     const isDoneToday = habitEvents.some(e => isSameDay(parseISO(e.fecha), today));
+    const fechas = habitEvents.map(e => e.fecha);
+    const comp = habitCompletion(fechas, habit.frecuencia, today);     // cumplimiento del periodo
+    const streak = habitStreak(fechas, habit.frecuencia, today);       // racha en periodos
+    const isPeriodHabit = habit.frecuencia && habit.frecuencia !== 'Diaria';
+    // "Cumplido" = caída hoy (evitación) o periodo cumplido (positivo).
+    const isDone = isNegative ? isDoneToday : comp.done;
     const last7Days = Array.from({ length: 7 }, (_, i) => subDays(today, 6 - i));
 
     return (
       <Card key={habit.id} className={cn(
         "transition-all duration-300 relative overflow-hidden",
-        !isNegative && isDoneToday ? "bg-primary/5 border-primary/20 opacity-80" : "hover:shadow-sm",
+        !isNegative && isDone ? "bg-primary/5 border-primary/20 opacity-80" : "hover:shadow-sm",
         isNegative && !isDoneToday ? "bg-green-500/5 border-green-500/20" : "",
         isNegative && isDoneToday ? "border-destructive/30 bg-destructive/5 opacity-80" : ""
       )}>
@@ -144,7 +155,7 @@ export default function HabitChecklist({ habits, events, variables, onCreate }: 
                     <CheckCircle2 className="h-6 w-6 text-green-500" />
                 )
             ) : (
-                isDoneToday ? (
+                isDone ? (
                     <CheckCircle2 className="h-6 w-6 text-green-500" />
                 ) : (
                     <Button
@@ -163,12 +174,23 @@ export default function HabitChecklist({ habits, events, variables, onCreate }: 
         <CardContent className="p-4 pt-2">
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">Racha (7d)</span>
+                {isNegative ? (
+                    <span className="text-xs text-muted-foreground">Últimos 7 días</span>
+                ) : (
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Flame className={cn('h-3.5 w-3.5', streak.value > 0 ? 'text-orange-500' : 'text-muted-foreground/40')} />
+                        Racha: <span className="font-semibold text-foreground">{streak.value}</span> {streak.unit}
+                    </span>
+                )}
                 <span className={cn(
                     "text-[10px] font-mono uppercase",
-                    isDoneToday && isNegative ? "text-destructive" : "text-muted-foreground"
+                    isNegative && isDoneToday ? "text-destructive" : isDone ? "text-green-600 dark:text-green-400" : "text-muted-foreground"
                 )}>
-                    {isNegative ? (isDoneToday ? 'Caída registrada' : 'Día Limpio') : (isDoneToday ? 'Completado' : 'Pendiente')}
+                    {isNegative
+                        ? (isDoneToday ? 'Caída registrada' : 'Día limpio')
+                        : isPeriodHabit
+                            ? `${comp.count}/${comp.target} ${comp.periodLabel}`
+                            : (isDone ? 'Hecho hoy' : 'Pendiente hoy')}
                 </span>
             </div>
             <div className="flex gap-1.5 justify-between">
@@ -202,7 +224,7 @@ export default function HabitChecklist({ habits, events, variables, onCreate }: 
                   );
                 })}
             </div>
-            {!isDoneToday && (
+            {(isNegative ? !isDoneToday : !isDone) && (
                 <div className="pt-2">
                     {isNegative ? (
                         <Button
@@ -238,7 +260,7 @@ export default function HabitChecklist({ habits, events, variables, onCreate }: 
       {pendingPositive.length > 0 && (
         <section className="space-y-4">
           <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-            <Zap className="h-4 w-4 text-primary" /> Pendientes hoy
+            <Zap className="h-4 w-4 text-primary" /> Pendientes
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {pendingPositive.map(renderHabitCard)}
@@ -262,7 +284,7 @@ export default function HabitChecklist({ habits, events, variables, onCreate }: 
       {completed.length > 0 && (
         <section className="space-y-4">
           <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-            <CheckCircle className="h-4 w-4" /> Hechos hoy
+            <CheckCircle className="h-4 w-4" /> Hechos
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {completed.map(renderHabitCard)}
@@ -273,8 +295,8 @@ export default function HabitChecklist({ habits, events, variables, onCreate }: 
       {pendingPositive.length === 0 && avoidance.length === 0 && completed.length > 0 && (
         <div className="text-center py-10 bg-primary/5 rounded-xl border border-primary/10">
             <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-4" />
-            <h3 className="text-xl font-bold">¡Día completado!</h3>
-            <p className="text-muted-foreground">Has registrado todos tus hábitos de hoy. ¡Buen trabajo!</p>
+            <h3 className="text-xl font-bold">¡Todo al día!</h3>
+            <p className="text-muted-foreground">Has cumplido todos tus hábitos según su frecuencia. ¡Buen trabajo!</p>
         </div>
       )}
     </div>
