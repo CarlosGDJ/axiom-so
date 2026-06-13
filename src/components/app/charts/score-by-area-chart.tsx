@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../..
 import { ChartContainer, type ChartConfig } from '@/components/ui/chart';
 import type { ScoreByArea } from '@/lib/types';
 import ChartEmptyState from '@/components/app/chart-empty-state';
+import { scoreLevel, STATE_HSL } from '@/lib/state-colors';
 
 interface ScoreByAreaChartProps {
   data: ScoreByArea[];
@@ -75,12 +76,9 @@ export default function ScoreByAreaChart({ data }: ScoreByAreaChartProps) {
                     content={<CustomTooltip />}
                   />
                   <Bar dataKey="score" radius={[4, 4, 0, 0]}>
-                    {data.map((entry, index) => {
-                      let fill = 'hsl(var(--chart-5))';
-                      if (entry.score <= 50) fill = 'hsl(var(--chart-3))';
-                      else if (entry.score <= 75) fill = 'hsl(var(--chart-4))';
-                      return <Cell key={`cell-${index}`} fill={fill} />;
-                    })}
+                    {data.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={STATE_HSL[scoreLevel(entry.score)]} />
+                    ))}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>

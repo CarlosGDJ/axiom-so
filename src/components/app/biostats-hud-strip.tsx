@@ -35,7 +35,7 @@ function getLevel(value: number, invert: boolean) {
 
 // El score global usa su propia escala (bandas del motor: OK ≥62, RIESGO, CRÍTICO <40).
 function getScoreLevel(score: number) {
-  if (score >= 62) return 'ok';
+  if (score >= 60) return 'ok';
   if (score >= 40) return 'risk';
   return 'critical';
 }
@@ -50,7 +50,7 @@ const LEVEL_STYLES = {
 const VELOCITY_CONFIG: Record<string, { label: string; icon: typeof TrendingUp; cls: string }> = {
   rising:   { label: 'Subiendo',   icon: TrendingUp,   cls: 'text-green-500 dark:text-green-400' },
   stable:   { label: 'Estable',    icon: Minus,        cls: 'text-muted-foreground' },
-  drifting: { label: 'Derivando',  icon: TrendingDown, cls: 'text-yellow-500 dark:text-yellow-400' },
+  drifting: { label: 'Derivando',  icon: TrendingDown, cls: 'text-orange-500 dark:text-orange-400' },
   falling:  { label: 'Cayendo',    icon: TrendingDown, cls: 'text-orange-500 dark:text-orange-400' },
   plunging: { label: 'Desplome',   icon: AlertCircle,  cls: 'text-red-500 dark:text-red-400 animate-pulse' },
 };
@@ -108,12 +108,12 @@ export default function BiostatsHudStrip({ rpgStats, scoreVelocity, hideScore }:
         if (res < 15) return null;
         const resLevel = res >= 72 ? 'critical' : res >= 45 ? 'risk' : 'ok';
         const resLabel = res >= 72 ? 'Colapso sistémico' : res >= 45 ? 'Resonancia alta' : 'Resonancia moderada';
-        const resBarColor = res >= 72 ? 'bg-red-500' : res >= 45 ? 'bg-orange-500' : 'bg-yellow-500';
+        const resBarColor = res >= 72 ? 'bg-red-500' : res >= 45 ? 'bg-orange-500' : 'bg-green-500';
         const resTextColor = res >= 72
           ? 'text-red-500 dark:text-red-400'
           : res >= 45
           ? 'text-orange-500 dark:text-orange-400'
-          : 'text-yellow-600 dark:text-yellow-400';
+          : 'text-green-600 dark:text-green-400';
         return (
           <div className="rounded-lg border border-border/40 bg-muted/20 px-3 py-2 space-y-1.5">
             <div className="flex items-center justify-between">

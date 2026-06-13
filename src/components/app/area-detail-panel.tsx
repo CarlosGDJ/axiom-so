@@ -99,8 +99,8 @@ export default function AreaDetailPanel({ areaNameMatch }: AreaDetailPanelProps)
 
   const scoreColor =
     areaScore === null ? 'text-muted-foreground' :
-    areaScore >= 75 ? 'text-green-500' :
-    areaScore >= 50 ? 'text-orange-500' :
+    areaScore >= 60 ? 'text-green-500' :
+    areaScore >= 40 ? 'text-orange-500' :
     'text-red-500';
 
   const stateLabel =
@@ -110,7 +110,7 @@ export default function AreaDetailPanel({ areaNameMatch }: AreaDetailPanelProps)
 
   const stateBadgeClass =
     area?.estado === 'CRITICO' ? 'bg-red-500/10 text-red-500 border-red-500/30' :
-    area?.estado === 'RIESGO' ? 'bg-yellow-500/10 text-yellow-600 border-yellow-500/30' :
+    area?.estado === 'RIESGO' ? 'bg-orange-500/10 text-orange-600 border-orange-500/30' :
     'bg-green-500/10 text-green-600 border-green-500/30';
 
   return (

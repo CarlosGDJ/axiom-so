@@ -745,10 +745,10 @@ export default function FinancesPage() {
             </div>
 
             {!hasAccounts && (
-                <Card className="border-amber-500/30 bg-amber-500/5">
+                <Card className="border-orange-500/30 bg-orange-500/5">
                     <CardContent className="p-4 flex items-center justify-between gap-3">
                         <div className="flex items-center gap-3 text-sm">
-                            <AlertTriangle className="text-amber-600 shrink-0" size={18} />
+                            <AlertTriangle className="text-orange-600 shrink-0" size={18} />
                             <p>Crea una cuenta para empezar a registrar movimientos.</p>
                         </div>
                         <Button size="sm" onClick={() => setIsAccountDialogOpen(true)} className="shrink-0 gap-1.5">
@@ -798,7 +798,7 @@ export default function FinancesPage() {
                                                 key={alert.id}
                                                 className={cn(
                                                     "rounded-xl border p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3",
-                                                    alert.level === 'high' ? "border-destructive/30 bg-destructive/5" : "border-amber-500/30 bg-amber-500/5"
+                                                    alert.level === 'high' ? "border-destructive/30 bg-destructive/5" : "border-orange-500/30 bg-orange-500/5"
                                                 )}
                                             >
                                                 <div className="min-w-0">
@@ -884,7 +884,7 @@ export default function FinancesPage() {
                                             stats.runwayRiskLevel === 'HIGH'
                                                 ? 'text-destructive'
                                                 : stats.runwayRiskLevel === 'MEDIUM'
-                                                    ? 'text-amber-600'
+                                                    ? 'text-orange-600'
                                                     : 'text-muted-foreground'
                                         )}>
                                             {stats.runwayRiskLevel === 'HIGH'

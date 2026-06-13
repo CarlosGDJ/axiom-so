@@ -31,8 +31,8 @@ const stateConfig = {
   RIESGO: {
     label: 'RIESGO',
     accent: 'border-l-orange-500',
-    badgeClass: 'bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/50 dark:text-yellow-300 dark:border-yellow-800',
-    icon: <ShieldAlert className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />,
+    badgeClass: 'bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/50 dark:text-orange-300 dark:border-orange-800',
+    icon: <ShieldAlert className="h-4 w-4 text-orange-600 dark:text-orange-400" />,
     description: 'Desviación detectada.',
     hint: 'Intervención leve ahora evita el modo crítico.',
   },
@@ -63,7 +63,7 @@ function VelocityBadge({ velocity }: { velocity: UserData['kpis']['scoreVelocity
     : velocity.direction === 'stable' ? 'text-muted-foreground bg-muted/50'
     : velocity.direction === 'plunging' ? 'text-red-500 bg-red-500/10 animate-pulse'
     : velocity.direction === 'falling' ? 'text-orange-500 bg-orange-500/10'
-    : 'text-yellow-500 bg-yellow-500/10';
+    : 'text-orange-500 bg-orange-500/10';
   return (
     <span className={cn('flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full', cls)}>
       <Icon className="h-2.5 w-2.5" />

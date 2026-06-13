@@ -153,7 +153,7 @@ export default function DiagnosticDialog({ open, onClose, userData, dominantVari
                           className={cn(
                             'h-3 w-1.5 rounded-sm',
                             i < allostaticIndex
-                              ? allostaticIndex >= 5 ? 'bg-red-500' : allostaticIndex >= 3 ? 'bg-orange-500' : 'bg-yellow-500'
+                              ? allostaticIndex >= 5 ? 'bg-red-500' : allostaticIndex >= 3 ? 'bg-orange-500' : 'bg-orange-500'
                               : 'bg-muted',
                           )}
                         />
@@ -161,7 +161,7 @@ export default function DiagnosticDialog({ open, onClose, userData, dominantVari
                     </div>
                     <span className={cn(
                       'text-xs font-bold tabular-nums',
-                      allostaticIndex >= 5 ? 'text-red-500' : allostaticIndex >= 3 ? 'text-orange-500' : allostaticIndex > 0 ? 'text-yellow-600' : 'text-green-600',
+                      allostaticIndex >= 5 ? 'text-red-500' : allostaticIndex >= 3 ? 'text-orange-500' : allostaticIndex > 0 ? 'text-orange-600' : 'text-green-600',
                     )}>
                       {allostaticIndex}/8
                     </span>
@@ -197,7 +197,7 @@ export default function DiagnosticDialog({ open, onClose, userData, dominantVari
                         <span className="text-muted-foreground">{clinicalMarkerLabel(m)}</span>
                         <div className="w-16 h-1.5 rounded-full bg-muted overflow-hidden">
                           <div
-                            className={cn('h-full rounded-full', sev > 0.7 ? 'bg-red-500' : sev > 0.4 ? 'bg-orange-500' : 'bg-yellow-500')}
+                            className={cn('h-full rounded-full', sev > 0.7 ? 'bg-red-500' : sev > 0.4 ? 'bg-orange-500' : 'bg-orange-500')}
                             style={{ width: `${sev * 100}%` }}
                           />
                         </div>

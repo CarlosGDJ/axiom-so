@@ -22,7 +22,7 @@ interface AreaStatusMatrixChartProps {
 
 const stateColors: { [key in DailyState['state']]: string } = {
     OK: 'bg-green-500/70',
-    RIESGO: 'bg-yellow-500/70',
+    RIESGO: 'bg-orange-500/70',
     CRITICO: 'bg-red-500/70',
 };
 
