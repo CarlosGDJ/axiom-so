@@ -419,8 +419,12 @@ export function QuickLogFab() {
         <div className="fixed inset-0 z-40" onClick={() => setDialOpen(false)} />
       )}
 
-      {/* Speed dial — elevado en móvil para no chocar con la barra inferior */}
-      <div data-tour="quick-log" className="fixed bottom-20 right-4 lg:bottom-6 lg:right-6 z-50 flex flex-col items-end gap-2.5">
+      {/* Speed dial — elevado en móvil para no chocar con la barra inferior.
+          pointer-events-none en el contenedor: cerrado, esta columna fija a z-50
+          formaba una "franja" invisible que capturaba los taps y bloqueaba los
+          botones/inputs de la página por detrás. Solo el FAB (y los elementos al
+          abrir) reactivan pointer-events. */}
+      <div data-tour="quick-log" className="fixed bottom-20 right-4 lg:bottom-6 lg:right-6 z-50 flex flex-col items-end gap-2.5 pointer-events-none">
 
         {/* Standard actions */}
         {SPEED_DIAL_ACTIONS.map((action, i) => {
@@ -431,7 +435,7 @@ export function QuickLogFab() {
               key={action.key}
               className={cn(
                 'flex items-center gap-3 transition-all duration-200',
-                dialOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none',
+                dialOpen ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 translate-y-4 pointer-events-none',
               )}
               style={{ transitionDelay: dialOpen ? `${delay}ms` : `${(SPEED_DIAL_ACTIONS.length - 1 - i) * 30}ms` }}
             >
@@ -456,7 +460,7 @@ export function QuickLogFab() {
         <div
           className={cn(
             'transition-all duration-200 mt-1',
-            dialOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none',
+            dialOpen ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 translate-y-4 pointer-events-none',
           )}
           style={{ transitionDelay: dialOpen ? `${SPEED_DIAL_ACTIONS.length * 40}ms` : '0ms' }}
         >
@@ -475,7 +479,7 @@ export function QuickLogFab() {
           onClick={() => setDialOpen(v => !v)}
           size="icon"
           className={cn(
-            'h-14 w-14 rounded-full shadow-lg shadow-primary/30 transition-all duration-300 mt-1',
+            'h-14 w-14 rounded-full shadow-lg shadow-primary/30 transition-all duration-300 mt-1 pointer-events-auto',
             dialOpen ? 'rotate-45 bg-muted-foreground hover:bg-muted-foreground/90' : 'rotate-0',
           )}
           aria-label={dialOpen ? 'Cerrar' : 'Registro rápido'}
