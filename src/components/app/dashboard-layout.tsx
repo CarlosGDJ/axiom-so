@@ -19,8 +19,10 @@ export const DashboardLayout: FC<{ children: ReactNode }> = ({ children }) => {
       </Sidebar>
       <SidebarInset>
         <AppHeader />
-        {/* pb-24 en móvil deja sitio a la barra de navegación inferior */}
-        <main className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6 pb-24 lg:pb-6 w-full min-w-0">{children}</main>
+        {/* pb-24 en móvil deja sitio a la barra de navegación inferior.
+            overflow-x-hidden evita el desplazamiento horizontal de la página en
+            móvil (el contenido ancho —tablas, heatmaps— tiene su propio scroll). */}
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-4 lg:p-6 pb-24 lg:pb-6 w-full min-w-0 max-w-full">{children}</main>
         <PwaInit />
       </SidebarInset>
       <BottomNav />
