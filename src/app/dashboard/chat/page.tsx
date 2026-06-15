@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Bot, User, Sparkles, RefreshCw, BrainCircuit, Copy, Check, CircleCheck, Plus, X } from 'lucide-react';
+import { Send, Bot, User, Sparkles, RefreshCw, BrainCircuit, Copy, Check, CircleCheck, Plus, X, Wallet, Target } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
@@ -12,7 +12,9 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useUser } from '@/hooks/use-session-user';
 import { setDocumentNonBlocking, addDocumentNonBlocking } from '@/lib/api-writes';
-import { revalidateCollection } from '@/hooks/use-mongo-collection';
+import { revalidateCollection, useCollection } from '@/hooks/use-mongo-collection';
+import { useFinanceCategories } from '@/hooks/use-finance-categories';
+import { COLOR_PALETTE, ICON_OPTIONS } from '@/lib/finance-categories';
 import { useToast } from '@/hooks/use-toast';
 import NavigationReady from '@/components/app/navigation-ready';
 const SUGGESTED_PROMPTS = [
@@ -248,6 +250,8 @@ export default function ChatPage() {
   const { data: userData, isLoading: isUserDataLoading } = useUserData();
   const { user, uid } = useUser();
   const { toast } = useToast();
+  const { categories: financeCategories, expenseCategories, incomeCategories, saveCategories } = useFinanceCategories();
+  const { data: dashboardConfig } = useCollection<{ key: string; value: string }>(uid ? 'dashboardConfig' : null, { orderBy: 'key', direction: 'asc' });
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [input, setInput] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -320,9 +324,87 @@ export default function ChatPage() {
       revalidateCollection('variables');
       revalidateCollection('impactMatrix');
       toast({ title: 'Variable creada', description: `${action.var_nombre} añadida a tu sistema` });
+    } else if (action.type === 'logTransaction') {
+      const acc = userData?.accounts?.[0];
+      const signed = action.txType === 'Gasto' ? -Math.abs(action.monto) : Math.abs(action.monto);
+      addDocumentNonBlocking('transactions', {
+        transaccion_id: `TRN_${Date.now()}`,
+        tipo: action.txType,
+        categoria: action.categoria,
+        monto: signed,
+        impulsivo: action.impulsivo,
+        notas: action.contexto || '',
+        cuenta_id: acc?.cuenta_id ?? '',
+        deuda_id: '',
+        fecha: new Date().toISOString(),
+        ...(action.impulsivo ? { var_id: 'GASTO_IMP' } : {}),
+      });
+      revalidateCollection('transactions');
+      toast({ title: 'Movimiento registrado', description: `${action.txType} de ${action.monto} € · ${action.categoria}` });
+    } else if (action.type === 'setPocket') {
+      const raw = dashboardConfig?.find(c => c.key === 'financial_pockets')?.value;
+      let pockets: Record<string, number> = {};
+      try { pockets = raw ? JSON.parse(raw) : {}; } catch { pockets = {}; }
+      const next = { ...pockets, [action.categoria]: action.monto };
+      setDocumentNonBlocking('dashboardConfig', 'financial_pockets', { key: 'financial_pockets', value: JSON.stringify(next) });
+      revalidateCollection('dashboardConfig');
+      toast({ title: 'Presupuesto actualizado', description: `${action.categoria}: ${action.monto} €/mes` });
+    } else if (action.type === 'createCategory') {
+      const next = [...financeCategories, {
+        name: action.name,
+        type: action.categoryType,
+        color: COLOR_PALETTE[financeCategories.length % COLOR_PALETTE.length],
+        icon: action.icon,
+      }];
+      saveCategories(next);
+      toast({ title: 'Categoría creada', description: `${action.name} (${action.categoryType === 'expense' ? 'gasto' : 'ingreso'})` });
+    } else if (action.type === 'createHabit') {
+      addDocumentNonBlocking('habits', {
+        habito_id: `HB_${Date.now()}`,
+        nombre: action.nombre,
+        frecuencia: action.frecuencia,
+        ...(action.var_id ? { var_id: action.var_id } : {}),
+        duracion_min: 10,
+        minimo_viable: true,
+      });
+      revalidateCollection('habits');
+      toast({ title: 'Hábito creado', description: `${action.nombre} · ${action.frecuencia}` });
+    } else if (action.type === 'createRelation') {
+      const persona_id = `REL_${action.nombre.toUpperCase().replace(/\s/g, '_').substring(0, 5)}_${Date.now()}`;
+      addDocumentNonBlocking('relations', {
+        persona_id, nombre: action.nombre, rol: action.rol,
+        energia_neta: 0, respeto: 5, frecuencia: 'Ocasional',
+      });
+      revalidateCollection('relations');
+      toast({ title: 'Relación creada', description: `${action.nombre} (${action.rol})` });
+    } else if (action.type === 'logInteraction') {
+      addDocumentNonBlocking('interactions', {
+        interaccion_id: `INT_${Date.now()}`,
+        persona_id: action.persona_id,
+        energia_resultante: action.energia,
+        respeto_percibido: action.respeto,
+        contexto: action.contexto || '',
+        fecha: new Date().toISOString(),
+      });
+      revalidateCollection('interactions');
+      toast({ title: 'Interacción registrada', description: action.persona_nombre });
+    } else if (action.type === 'createMilestone') {
+      addDocumentNonBlocking('milestones', {
+        milestone_id: `MS_${Date.now()}`,
+        nombre: action.nombre,
+        estado: 'Pendiente',
+        milestone_type: action.milestone_type,
+        progress_count: 0,
+        ...(action.fecha_objetivo ? { fecha_objetivo: new Date(action.fecha_objetivo).toISOString() } : {}),
+        ...(action.target_count ? { target_count: action.target_count } : {}),
+        ...(action.skill_id ? { skill_id: action.skill_id } : {}),
+        ...(action.system_id ? { system_id: action.system_id } : {}),
+      });
+      revalidateCollection('milestones');
+      toast({ title: 'Hito creado', description: action.nombre });
     }
     setActionStatus(prev => ({ ...prev, [key]: 'done' }));
-  }, [userData, toast]);
+  }, [userData, toast, dashboardConfig, financeCategories, saveCategories]);
 
   const dismissAction = useCallback((key: string) => {
     setActionStatus(prev => ({ ...prev, [key]: 'dismissed' }));
@@ -408,6 +490,12 @@ export default function ChatPage() {
       const hints: ChatActionHints = {
         variables: (userData?.variables ?? []).map(v => ({ var_id: v.var_id, var_nombre: v.var_nombre, polaridad: v.polaridad ?? 1 })),
         habits: (userData?.habits ?? []).map(h => ({ habito_id: h.id, nombre: h.nombre || h.description || h.var_id || 'Hábito' })),
+        expenseCategories: expenseCategories.map(c => c.name),
+        incomeCategories: incomeCategories.map(c => c.name),
+        iconOptions: ICON_OPTIONS,
+        relations: (userData?.relations ?? []).map(r => ({ persona_id: r.persona_id, nombre: r.nombre })),
+        skills: (userData?.skills ?? []).map(s => ({ habilidad_id: s.habilidad_id, nombre: s.nombre })),
+        systems: (userData?.systems ?? []).map(s => ({ sistema_id: s.sistema_id, objetivo: s.objetivo })),
       };
 
       try {
@@ -430,7 +518,7 @@ export default function ChatPage() {
         textareaRef.current?.focus();
       }
     },
-    [isSending, messages, userData]
+    [isSending, messages, userData, expenseCategories, incomeCategories]
   );
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -601,15 +689,59 @@ function ActionCard({ action, status, onExecute, onDismiss }: {
   onExecute: () => void;
   onDismiss: () => void;
 }) {
-  const isEvent = action.type === 'logEvent';
-  const isCreateVar = action.type === 'createVariable';
-  const title = isEvent ? action.var_nombre : isCreateVar ? action.var_nombre : action.habitName;
-  const label = isEvent ? 'Registrar' : isCreateVar ? 'Crear variable' : 'Completar hábito';
-  const subtitle = isEvent
-    ? `${action.impulsivo ? 'Impulsivo · ' : ''}Intensidad ${action.intensidad}/10${action.contexto ? ` · ${action.contexto}` : ''}`
-    : isCreateVar
-    ? `${action.polaridad > 0 ? 'Refuerza' : 'Drena'} · ${action.area_id}${action.rationale ? ` · ${action.rationale}` : ''}`
-    : 'Marcar como hecho hoy';
+  // Etiqueta, título, subtítulo e icono según el tipo de acción.
+  let label = 'Acción';
+  let title = '';
+  let subtitle = '';
+  let icon = <Plus className="h-4 w-4" />;
+  let iconClass = 'bg-primary/10 text-primary';
+
+  switch (action.type) {
+    case 'logEvent':
+      label = 'Registrar'; title = action.var_nombre;
+      subtitle = `${action.impulsivo ? 'Impulsivo · ' : ''}Intensidad ${action.intensidad}/10${action.contexto ? ` · ${action.contexto}` : ''}`;
+      break;
+    case 'completeHabit':
+      label = 'Completar hábito'; title = action.habitName; subtitle = 'Marcar como hecho hoy';
+      icon = <CircleCheck className="h-4 w-4" />; iconClass = 'bg-green-500/10 text-green-600';
+      break;
+    case 'createVariable':
+      label = 'Crear variable'; title = action.var_nombre;
+      subtitle = `${action.polaridad > 0 ? 'Refuerza' : 'Drena'} · ${action.area_id}${action.rationale ? ` · ${action.rationale}` : ''}`;
+      icon = <Sparkles className="h-4 w-4" />; iconClass = 'bg-violet-500/10 text-violet-500';
+      break;
+    case 'logTransaction':
+      label = 'Registrar movimiento'; title = `${action.txType} ${action.monto} €`;
+      subtitle = `${action.categoria}${action.contexto ? ` · ${action.contexto}` : ''}`;
+      icon = <Wallet className="h-4 w-4" />; iconClass = 'bg-orange-500/10 text-orange-500';
+      break;
+    case 'setPocket':
+      label = 'Presupuesto'; title = action.categoria; subtitle = `${action.monto} €/mes`;
+      icon = <Target className="h-4 w-4" />; iconClass = 'bg-orange-500/10 text-orange-500';
+      break;
+    case 'createCategory':
+      label = 'Crear categoría'; title = action.name; subtitle = action.categoryType === 'expense' ? 'Gasto' : 'Ingreso';
+      icon = <Sparkles className="h-4 w-4" />; iconClass = 'bg-orange-500/10 text-orange-500';
+      break;
+    case 'createHabit':
+      label = 'Crear hábito'; title = action.nombre; subtitle = action.frecuencia;
+      icon = <Sparkles className="h-4 w-4" />; iconClass = 'bg-green-500/10 text-green-600';
+      break;
+    case 'createRelation':
+      label = 'Crear relación'; title = action.nombre; subtitle = action.rol;
+      icon = <Sparkles className="h-4 w-4" />; iconClass = 'bg-blue-500/10 text-blue-500';
+      break;
+    case 'logInteraction':
+      label = 'Registrar interacción'; title = action.persona_nombre;
+      subtitle = `Energía ${action.energia > 0 ? '+' : action.energia < 0 ? '−' : '='} · Respeto ${action.respeto > 0 ? '+' : action.respeto < 0 ? '−' : '='}`;
+      icon = <CircleCheck className="h-4 w-4" />; iconClass = 'bg-blue-500/10 text-blue-500';
+      break;
+    case 'createMilestone':
+      label = 'Crear hito'; title = action.nombre;
+      subtitle = `${action.milestone_type === 'recurring' ? 'Recurrente' : 'Único'}${action.fecha_objetivo ? ` · ${action.fecha_objetivo}` : ''}`;
+      icon = <Sparkles className="h-4 w-4" />; iconClass = 'bg-primary/10 text-primary';
+      break;
+  }
 
   return (
     <div className={cn(
@@ -618,9 +750,8 @@ function ActionCard({ action, status, onExecute, onDismiss }: {
       status === 'dismissed' ? 'border-border bg-muted/20 opacity-60' :
       'border-primary/30 bg-primary/5',
     )}>
-      <div className={cn('h-7 w-7 rounded-lg shrink-0 flex items-center justify-center',
-        isCreateVar ? 'bg-violet-500/10 text-violet-500' : isEvent ? 'bg-primary/10 text-primary' : 'bg-green-500/10 text-green-600')}>
-        {isCreateVar ? <Sparkles className="h-4 w-4" /> : isEvent ? <Plus className="h-4 w-4" /> : <CircleCheck className="h-4 w-4" />}
+      <div className={cn('h-7 w-7 rounded-lg shrink-0 flex items-center justify-center', iconClass)}>
+        {icon}
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-xs font-bold truncate">{label}: {title}</p>

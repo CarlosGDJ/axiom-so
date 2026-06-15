@@ -28,6 +28,10 @@ const AREA_IDS = ['SALUD_FIS', 'SALUD_MENT', 'FINANZAS', 'RELACIONES', 'EMOCION'
 const TIPOS = ['Física', 'Mental', 'Emocional', 'Social', 'Financiera', 'Entorno', 'Conductual'] as const;
 const HORMONE_IDS = ['DOPAMINA', 'SEROTONINA', 'CORTISOL', 'FOCUS', 'ENERGY', 'MELATONINA', 'ENDORFINAS', 'TESTOSTERONA', 'OXITOCINA', 'NORADRENALINA', 'PROLACTINA', 'INSULINA', 'GABA', 'PARASIMPATICO', 'DOPA_LOAD'] as const;
 const CONTROLABILIDAD = ['Alta', 'Media', 'Baja'] as const;
+const HABIT_FREQ = ['Diaria', '3xSemana', 'Semanal', 'Mensual'] as const;
+const REL_ROLES = ['Familia', 'Amigo', 'Pareja', 'Trabajo', 'Mentor', 'Conocido'] as const;
+const TX_TYPES = ['Gasto', 'Ingreso'] as const;
+const MS_TYPES = ['single', 'recurring'] as const;
 
 export interface HormoneImpact { hormone_id: string; effect_size: number; duration_hours: number }
 
@@ -47,7 +51,14 @@ export type ChatAction =
       rationale: string;
       impacts: HormoneImpact[];
       firstEvent?: { intensidad: number; contexto: string; impulsivo: boolean };
-    };
+    }
+  | { type: 'logTransaction'; txType: 'Gasto' | 'Ingreso'; monto: number; categoria: string; contexto: string; impulsivo: boolean }
+  | { type: 'setPocket'; categoria: string; monto: number }
+  | { type: 'createCategory'; name: string; categoryType: 'expense' | 'income'; icon: string }
+  | { type: 'createHabit'; nombre: string; frecuencia: string; var_id?: string }
+  | { type: 'createRelation'; nombre: string; rol: string }
+  | { type: 'logInteraction'; persona_id: string; persona_nombre: string; energia: -1 | 0 | 1; respeto: -1 | 0 | 1; contexto: string }
+  | { type: 'createMilestone'; nombre: string; milestone_type: 'single' | 'recurring'; fecha_objetivo?: string; target_count?: number; skill_id?: string; system_id?: string };
 
 /** Normaliza un nombre a un var_id ASCII UPPER_SNAKE (p.ej. "Tabaco" → "TABACO"). */
 function normalizeVarId(s: string): string {
@@ -65,6 +76,12 @@ export interface ChatResult {
 export interface ChatActionHints {
   variables: { var_id: string; var_nombre: string; polaridad: number }[];
   habits: { habito_id: string; nombre: string }[];
+  expenseCategories?: string[];
+  incomeCategories?: string[];
+  iconOptions?: string[];
+  relations?: { persona_id: string; nombre: string }[];
+  skills?: { habilidad_id: string; nombre: string }[];
+  systems?: { sistema_id: string; objetivo: string }[];
 }
 
 function buildSystemPrompt(ctx: ChatContext, hints: ChatActionHints): string {
@@ -88,6 +105,11 @@ function buildSystemPrompt(ctx: ChatContext, hints: ChatActionHints): string {
   const habitList = hints.habits
     .map(h => `- ${h.habito_id} | "${h.nombre}"`)
     .join('\n') || '(ninguno)';
+  const expCats = (hints.expenseCategories ?? []).join(', ') || '(ninguna)';
+  const incCats = (hints.incomeCategories ?? []).join(', ') || '(ninguna)';
+  const relList = (hints.relations ?? []).map(r => `- ${r.persona_id} | "${r.nombre}"`).join('\n') || '(ninguna)';
+  const skillList = (hints.skills ?? []).map(s => `- ${s.habilidad_id} | "${s.nombre}"`).join('\n') || '(ninguna)';
+  const systemList = (hints.systems ?? []).map(s => `- ${s.sistema_id} | "${s.objetivo}"`).join('\n') || '(ninguno)';
 
   return `Eres Axiom, un sistema de inteligencia personal avanzado. Actúas como asesor biológico y de rendimiento personal. Tu voz es directa, empática y científica — nunca terapéutica ni condescendiente.
 
@@ -99,6 +121,18 @@ ${varList}
 
 HÁBITOS DEL USUARIO (para completarlos — usa SOLO estos habito_id):
 ${habitList}
+
+CATEGORÍAS DE GASTO: ${expCats}
+CATEGORÍAS DE INGRESO: ${incCats}
+
+PERSONAS / RELACIONES (para interacciones — usa estos persona_id):
+${relList}
+
+HABILIDADES (skill_id para hitos):
+${skillList}
+
+SISTEMAS (sistema_id para hitos):
+${systemList}
 
 PUEDES PROPONER ACCIONES:
 Si el usuario te pide explícitamente registrar/apuntar algo o marcar un hábito como hecho, prepáralo como acción. El usuario las confirmará antes de ejecutarse.
@@ -119,6 +153,23 @@ Si el usuario quiere registrar algo que NO existe en la lista de variables (p.ej
 - impacts: perfil de varianza hormonal REAL. Cada item { "hormone_id", "effect_size" (-15 a 15), "duration_hours" }. Hormonas válidas: [${HORMONE_IDS.join(', ')}]. Usa effect_size positivo para subir y negativo para bajar. Para conductas adictivas/dopamina rápida sube DOPAMINA a corto plazo y DOPA_LOAD (carga, peor cuanto más alta). Ejemplo tabaco: DOPAMINA +6 (1h), DOPA_LOAD +5 (4h), CORTISOL +4 (3h), ENERGY -3 (6h), FOCUS -2 (3h).
 - Si el usuario indica que YA lo hizo, incluye "firstEvent" para registrar el primer evento al crearla.
 - Si la petición no tiene sentido o es ambigua, NO crees nada: pregúntale.
+
+FINANZAS:
+- logTransaction: registrar gasto/ingreso. { "type":"logTransaction", "txType":"Gasto"|"Ingreso", "monto":NUMERO_POSITIVO, "categoria":"<una de las categorías listadas>", "contexto":"breve", "impulsivo":bool }. Elige la categoría más cercana de la lista; si no encaja ninguna, usa "Otros Gastos"/"Otros Ingresos".
+- setPocket: fijar/ajustar el presupuesto mensual de una categoría de GASTO. { "type":"setPocket", "categoria":"<categoría de gasto>", "monto":NUMERO }.
+- createCategory: crear una categoría nueva si no existe. { "type":"createCategory", "name":"Nombre", "categoryType":"expense"|"income", "icon":"<opcional, uno de los iconos válidos>" }. No dupliques las ya listadas.
+
+HÁBITOS:
+- createHabit: { "type":"createHabit", "nombre":"Nombre", "frecuencia":"Diaria"|"3xSemana"|"Semanal"|"Mensual", "var_id":"<opcional, una variable existente que mida el hábito>" }. No dupliques hábitos ya listados.
+
+SOCIAL:
+- logInteraction: registrar una interacción con una persona EXISTENTE. { "type":"logInteraction", "persona_id":"<persona_id de la lista>", "energia":-1|0|1, "respeto":-1|0|1, "contexto":"breve" }. energia/respeto: 1 positivo, 0 neutro, -1 negativo. Si la persona NO existe, primero createRelation.
+- createRelation: { "type":"createRelation", "nombre":"Nombre", "rol":"Familia"|"Amigo"|"Pareja"|"Trabajo"|"Mentor"|"Conocido" }.
+
+HITOS:
+- createMilestone: { "type":"createMilestone", "nombre":"Nombre", "milestone_type":"single"|"recurring", "fecha_objetivo":"YYYY-MM-DD" (opcional), "target_count":N (solo recurring), "skill_id":"<opcional>", "system_id":"<opcional>" }.
+
+REGLAS GENERALES DE CREACIÓN: nunca dupliques algo que ya existe en las listas; si ya existe, usa la acción de registro correspondiente. Si falta un dato esencial o la petición es ambigua, pregunta en "reply" y deja "actions" vacío.
 
 FORMATO DE SALIDA — responde SIEMPRE con un objeto JSON válido (sin markdown, sin texto fuera del JSON):
 {
@@ -204,9 +255,66 @@ function sanitizeActions(raw: unknown, hints: ChatActionHints): ChatAction[] {
       }
 
       out.push({ type: 'createVariable', var_id, var_nombre, area_id, tipo, polaridad, impacto_base, controlabilidad, rationale, impacts, firstEvent });
+    } else if (t === 'logTransaction') {
+      const txType = (TX_TYPES as readonly string[]).includes((a as any).txType) ? (a as any).txType as 'Gasto' | 'Ingreso' : 'Gasto';
+      const monto = Math.abs(Number((a as any).monto));
+      if (!Number.isFinite(monto) || monto <= 0) continue;
+      const cats = txType === 'Gasto' ? (hints.expenseCategories ?? []) : (hints.incomeCategories ?? []);
+      const match = cats.find(c => c.toLowerCase() === String((a as any).categoria ?? '').toLowerCase());
+      const categoria = match ?? (txType === 'Gasto' ? 'Otros Gastos' : 'Otros Ingresos');
+      out.push({ type: 'logTransaction', txType, monto: Math.round(monto * 100) / 100, categoria, contexto: String((a as any).contexto ?? '').slice(0, 200), impulsivo: Boolean((a as any).impulsivo) });
+    } else if (t === 'setPocket') {
+      const monto = Number((a as any).monto);
+      if (!Number.isFinite(monto) || monto < 0) continue;
+      const cats = hints.expenseCategories ?? [];
+      const categoria = cats.find(c => c.toLowerCase() === String((a as any).categoria ?? '').toLowerCase());
+      if (!categoria) continue; // el pocket debe ser sobre una categoría de gasto existente
+      out.push({ type: 'setPocket', categoria, monto: Math.round(monto) });
+    } else if (t === 'createCategory') {
+      const name = String((a as any).name ?? '').trim().slice(0, 40);
+      if (!name) continue;
+      const categoryType = (a as any).categoryType === 'income' ? 'income' : 'expense';
+      const existing = new Set([...(hints.expenseCategories ?? []), ...(hints.incomeCategories ?? [])].map(c => c.toLowerCase()));
+      if (existing.has(name.toLowerCase())) continue; // no duplicar
+      const icon = (hints.iconOptions ?? []).includes((a as any).icon) ? (a as any).icon : 'Info';
+      out.push({ type: 'createCategory', name, categoryType, icon });
+    } else if (t === 'createHabit') {
+      const nombre = String((a as any).nombre ?? '').trim().slice(0, 60);
+      if (!nombre) continue;
+      const existingHabitNames = new Set(hints.habits.map(h => h.nombre.trim().toLowerCase()));
+      if (existingHabitNames.has(nombre.toLowerCase())) continue; // no duplicar
+      const frecuencia = (HABIT_FREQ as readonly string[]).includes((a as any).frecuencia) ? (a as any).frecuencia : 'Diaria';
+      const reqVar = (a as any).var_id;
+      const var_id = reqVar && validVarIds.has(reqVar) ? reqVar : undefined;
+      out.push({ type: 'createHabit', nombre, frecuencia, var_id });
+    } else if (t === 'createRelation') {
+      const nombre = String((a as any).nombre ?? '').trim().slice(0, 60);
+      if (!nombre) continue;
+      const existingRelNames = new Set((hints.relations ?? []).map(r => r.nombre.trim().toLowerCase()));
+      if (existingRelNames.has(nombre.toLowerCase())) continue;
+      const rol = (REL_ROLES as readonly string[]).includes((a as any).rol) ? (a as any).rol : 'Conocido';
+      out.push({ type: 'createRelation', nombre, rol });
+    } else if (t === 'logInteraction') {
+      const rels = hints.relations ?? [];
+      let rel = rels.find(r => r.persona_id === (a as any).persona_id);
+      if (!rel) rel = rels.find(r => r.nombre.toLowerCase() === String((a as any).persona_nombre ?? '').toLowerCase());
+      if (!rel) continue; // persona debe existir (si no, la IA debe createRelation)
+      const norm = (v: unknown): -1 | 0 | 1 => { const n = Math.round(Number(v)); return n > 0 ? 1 : n < 0 ? -1 : 0; };
+      out.push({ type: 'logInteraction', persona_id: rel.persona_id, persona_nombre: rel.nombre, energia: norm((a as any).energia), respeto: norm((a as any).respeto), contexto: String((a as any).contexto ?? '').slice(0, 200) });
+    } else if (t === 'createMilestone') {
+      const nombre = String((a as any).nombre ?? '').trim().slice(0, 80);
+      if (nombre.length < 3) continue;
+      const milestone_type = (MS_TYPES as readonly string[]).includes((a as any).milestone_type) ? (a as any).milestone_type as 'single' | 'recurring' : 'single';
+      let fecha_objetivo: string | undefined;
+      const fo = String((a as any).fecha_objetivo ?? '');
+      if (/^\d{4}-\d{2}-\d{2}$/.test(fo)) fecha_objetivo = fo;
+      const target_count = milestone_type === 'recurring' ? clampInt((a as any).target_count, 1, 999, 1) : undefined;
+      const skill_id = (hints.skills ?? []).some(s => s.habilidad_id === (a as any).skill_id) ? (a as any).skill_id : undefined;
+      const system_id = (hints.systems ?? []).some(s => s.sistema_id === (a as any).system_id) ? (a as any).system_id : undefined;
+      out.push({ type: 'createMilestone', nombre, milestone_type, fecha_objetivo, target_count, skill_id, system_id });
     }
   }
-  return out.slice(0, 5); // tope de seguridad
+  return out.slice(0, 6); // tope de seguridad
 }
 
 export async function runAxiomChat(
