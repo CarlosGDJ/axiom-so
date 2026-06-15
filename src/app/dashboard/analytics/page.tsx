@@ -743,13 +743,15 @@ export default function AnalyticsPage() {
   const impulsiveImpactData = useMemo(() => {
     if (!filteredEventsForVariables || !userData?.variables) return [];
 
-    const impulsiveVars = ['DOPA_RAP', 'GASTO_IMP', 'ALIM_BASURA', 'REACTIVIDAD'];
+    // La impulsividad se detecta por el flag real `impulsivo` de cada evento, no
+    // por una lista fija de variables. Mostramos las variables que tienen actividad
+    // impulsiva real (comparada con su versión planificada).
     const impactMap: { [key: string]: { name: string, impulsive: number, planned: number } } = {};
 
     filteredEventsForVariables.forEach(event => {
       const variable = userData.variables.find(v => v.var_id === event.var_id);
-      if (!variable || !impulsiveVars.includes(variable.var_id)) return;
-      
+      if (!variable) return;
+
       if (!impactMap[variable.var_id]) {
         impactMap[variable.var_id] = { name: variable.var_nombre, impulsive: 0, planned: 0 };
       }
@@ -769,8 +771,8 @@ export default function AnalyticsPage() {
           impulsive: Math.abs(item.impulsive),
           planned: Math.abs(item.planned),
       }))
-      .filter(item => (item.impulsive + item.planned) > 0.001)
-      .sort((a, b) => (b.impulsive + b.planned) - (a.impulsive + a.planned))
+      .filter(item => item.impulsive > 0.001) // solo variables con impulsividad real
+      .sort((a, b) => b.impulsive - a.impulsive)
       .slice(0, 8);
   }, [filteredEventsForVariables, userData?.variables]);
 

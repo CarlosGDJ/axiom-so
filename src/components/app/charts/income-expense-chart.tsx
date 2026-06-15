@@ -3,6 +3,7 @@
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../ui/card';
 import { ChartContainer, ChartLegendContent, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
+import ChartEmptyState from '@/components/app/chart-empty-state';
 
 const chartConfig = {
   income: {
@@ -82,6 +83,14 @@ export default function IncomeExpenseChart({ income, expenses }: IncomeExpenseCh
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {income === 0 && expenses === 0 ? (
+          <ChartEmptyState
+            title="Sin movimientos"
+            message="Registra ingresos o gastos en el periodo para ver este resumen."
+            icon="bar"
+            minHeight="h-[250px]"
+          />
+        ) : (
         <div className="h-[250px]">
           <ChartContainer config={chartConfig} className="h-full w-full">
             <ResponsiveContainer width="100%" height="100%">
@@ -96,6 +105,7 @@ export default function IncomeExpenseChart({ income, expenses }: IncomeExpenseCh
             </ResponsiveContainer>
           </ChartContainer>
         </div>
+        )}
       </CardContent>
     </Card>
   );
