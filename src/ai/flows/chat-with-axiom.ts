@@ -32,6 +32,8 @@ const HABIT_FREQ = ['Diaria', '3xSemana', 'Semanal', 'Mensual'] as const;
 const REL_ROLES = ['Familia', 'Amigo', 'Pareja', 'Trabajo', 'Mentor', 'Conocido'] as const;
 const TX_TYPES = ['Gasto', 'Ingreso'] as const;
 const MS_TYPES = ['single', 'recurring'] as const;
+const ACCOUNT_TYPES = ['Banco', 'Efectivo', 'Inversion', 'Otro'] as const;
+const DEBT_TYPES = ['Hipoteca', 'Préstamo personal', 'Tarjeta', 'Línea crédito', 'Otro'] as const;
 
 export interface HormoneImpact { hormone_id: string; effect_size: number; duration_hours: number }
 
@@ -58,7 +60,11 @@ export type ChatAction =
   | { type: 'createHabit'; nombre: string; frecuencia: string; var_id?: string }
   | { type: 'createRelation'; nombre: string; rol: string }
   | { type: 'logInteraction'; persona_id: string; persona_nombre: string; energia: -1 | 0 | 1; respeto: -1 | 0 | 1; contexto: string }
-  | { type: 'createMilestone'; nombre: string; milestone_type: 'single' | 'recurring'; fecha_objetivo?: string; target_count?: number; skill_id?: string; system_id?: string };
+  | { type: 'createMilestone'; nombre: string; milestone_type: 'single' | 'recurring'; fecha_objetivo?: string; target_count?: number; skill_id?: string; system_id?: string }
+  | { type: 'createAccount'; nombre: string; accountType: string; saldo: number }
+  | { type: 'createDebt'; nombre: string; debtType: string; principal_inicial: number; interes_tae: number; plazo_total_meses: number; cuota_mensual: number; saldo_actual: number }
+  | { type: 'createSkill'; nombre: string; area_id: string; kpi: string; nivel_actual: number; nivel_objetivo: number }
+  | { type: 'createSystem'; objetivo: string; habilidad_id: string; frecuencia: string };
 
 /** Normaliza un nombre a un var_id ASCII UPPER_SNAKE (p.ej. "Tabaco" → "TABACO"). */
 function normalizeVarId(s: string): string {
@@ -82,6 +88,8 @@ export interface ChatActionHints {
   relations?: { persona_id: string; nombre: string }[];
   skills?: { habilidad_id: string; nombre: string }[];
   systems?: { sistema_id: string; objetivo: string }[];
+  accounts?: { cuenta_id: string; nombre: string }[];
+  debts?: { debt_id: string; nombre: string }[];
 }
 
 function buildSystemPrompt(ctx: ChatContext, hints: ChatActionHints): string {
@@ -110,6 +118,7 @@ function buildSystemPrompt(ctx: ChatContext, hints: ChatActionHints): string {
   const relList = (hints.relations ?? []).map(r => `- ${r.persona_id} | "${r.nombre}"`).join('\n') || '(ninguna)';
   const skillList = (hints.skills ?? []).map(s => `- ${s.habilidad_id} | "${s.nombre}"`).join('\n') || '(ninguna)';
   const systemList = (hints.systems ?? []).map(s => `- ${s.sistema_id} | "${s.objetivo}"`).join('\n') || '(ninguno)';
+  const accountList = (hints.accounts ?? []).map(a => `- "${a.nombre}"`).join(', ') || '(ninguna)';
 
   return `Eres Axiom, un sistema de inteligencia personal avanzado. Actúas como asesor biológico y de rendimiento personal. Tu voz es directa, empática y científica — nunca terapéutica ni condescendiente.
 
@@ -133,6 +142,8 @@ ${skillList}
 
 SISTEMAS (sistema_id para hitos):
 ${systemList}
+
+CUENTAS: ${accountList}
 
 PUEDES PROPONER ACCIONES:
 Si el usuario te pide explícitamente registrar/apuntar algo o marcar un hábito como hecho, prepáralo como acción. El usuario las confirmará antes de ejecutarse.
@@ -168,6 +179,12 @@ SOCIAL:
 
 HITOS:
 - createMilestone: { "type":"createMilestone", "nombre":"Nombre", "milestone_type":"single"|"recurring", "fecha_objetivo":"YYYY-MM-DD" (opcional), "target_count":N (solo recurring), "skill_id":"<opcional>", "system_id":"<opcional>" }.
+
+ESTRUCTURA (cuentas, deudas, habilidades, sistemas):
+- createAccount: { "type":"createAccount", "nombre":"Nombre", "accountType":"Banco"|"Efectivo"|"Inversion"|"Otro", "saldo":NUMERO }.
+- createDebt: { "type":"createDebt", "nombre":"Nombre", "debtType":"Hipoteca"|"Préstamo personal"|"Tarjeta"|"Línea crédito"|"Otro", "principal_inicial":N, "interes_tae":N, "plazo_total_meses":N, "cuota_mensual":N, "saldo_actual":N }. TODOS los números son obligatorios; si el usuario no los da, PREGÚNTALE en "reply" y no crees la deuda con cifras inventadas.
+- createSkill: { "type":"createSkill", "nombre":"Nombre", "area_id":"<una de las áreas>", "kpi":"métrica (ej. Sesiones/semana)", "nivel_actual":0-10, "nivel_objetivo":0-10 }.
+- createSystem: { "type":"createSystem", "objetivo":"Objetivo", "habilidad_id":"<skill_id existente>", "frecuencia":"Diaria"|"3xSemana"|"Semanal"|"Mensual" }. Requiere una habilidad existente; si no hay, créala antes con createSkill.
 
 REGLAS GENERALES DE CREACIÓN: nunca dupliques algo que ya existe en las listas; si ya existe, usa la acción de registro correspondiente. Si falta un dato esencial o la petición es ambigua, pregunta en "reply" y deja "actions" vacío.
 
@@ -312,6 +329,43 @@ function sanitizeActions(raw: unknown, hints: ChatActionHints): ChatAction[] {
       const skill_id = (hints.skills ?? []).some(s => s.habilidad_id === (a as any).skill_id) ? (a as any).skill_id : undefined;
       const system_id = (hints.systems ?? []).some(s => s.sistema_id === (a as any).system_id) ? (a as any).system_id : undefined;
       out.push({ type: 'createMilestone', nombre, milestone_type, fecha_objetivo, target_count, skill_id, system_id });
+    } else if (t === 'createAccount') {
+      const nombre = String((a as any).nombre ?? '').trim().slice(0, 60);
+      if (!nombre) continue;
+      const existing = new Set((hints.accounts ?? []).map(x => x.nombre.trim().toLowerCase()));
+      if (existing.has(nombre.toLowerCase())) continue;
+      const accountType = (ACCOUNT_TYPES as readonly string[]).includes((a as any).accountType) ? (a as any).accountType : 'Banco';
+      const saldo = Number((a as any).saldo);
+      out.push({ type: 'createAccount', nombre, accountType, saldo: Number.isFinite(saldo) ? Math.round(saldo * 100) / 100 : 0 });
+    } else if (t === 'createDebt') {
+      const nombre = String((a as any).nombre ?? '').trim().slice(0, 60);
+      if (nombre.length < 2) continue;
+      const debtType = (DEBT_TYPES as readonly string[]).includes((a as any).debtType) ? (a as any).debtType : 'Préstamo personal';
+      const principal_inicial = Number((a as any).principal_inicial);
+      const interes_tae = Number((a as any).interes_tae);
+      const plazo_total_meses = Math.round(Number((a as any).plazo_total_meses));
+      const cuota_mensual = Number((a as any).cuota_mensual);
+      const saldo_actual = Number((a as any).saldo_actual);
+      // Exigimos cifras válidas: nada de inventar datos financieros.
+      if (!(principal_inicial > 0) || !(interes_tae >= 0) || !(plazo_total_meses > 0) || !(cuota_mensual > 0) || !(saldo_actual >= 0)) continue;
+      out.push({ type: 'createDebt', nombre, debtType, principal_inicial, interes_tae, plazo_total_meses, cuota_mensual, saldo_actual });
+    } else if (t === 'createSkill') {
+      const nombre = String((a as any).nombre ?? '').trim().slice(0, 60);
+      if (nombre.length < 2) continue;
+      const existing = new Set((hints.skills ?? []).map(x => x.nombre.trim().toLowerCase()));
+      if (existing.has(nombre.toLowerCase())) continue;
+      const area_id = (AREA_IDS as readonly string[]).includes((a as any).area_id) ? (a as any).area_id : 'SALUD_MENT';
+      const kpi = String((a as any).kpi ?? 'Sesiones/semana').slice(0, 60) || 'Sesiones/semana';
+      const nivel_actual = clampInt((a as any).nivel_actual, 0, 10, 3);
+      const nivel_objetivo = clampInt((a as any).nivel_objetivo, 0, 10, 7);
+      out.push({ type: 'createSkill', nombre, area_id, kpi, nivel_actual, nivel_objetivo });
+    } else if (t === 'createSystem') {
+      const objetivo = String((a as any).objetivo ?? '').trim().slice(0, 80);
+      if (!objetivo) continue;
+      const habilidad_id = (hints.skills ?? []).some(s => s.habilidad_id === (a as any).habilidad_id) ? (a as any).habilidad_id : '';
+      if (!habilidad_id) continue; // un sistema necesita una habilidad existente
+      const frecuencia = (HABIT_FREQ as readonly string[]).includes((a as any).frecuencia) ? (a as any).frecuencia : 'Diaria';
+      out.push({ type: 'createSystem', objetivo, habilidad_id, frecuencia });
     }
   }
   return out.slice(0, 6); // tope de seguridad

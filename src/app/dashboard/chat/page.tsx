@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Bot, User, Sparkles, RefreshCw, BrainCircuit, Copy, Check, CircleCheck, Plus, X, Wallet, Target } from 'lucide-react';
+import { Send, Bot, User, Sparkles, RefreshCw, BrainCircuit, Copy, Check, CircleCheck, Plus, X, Wallet, Target, Landmark, CreditCard, Star, Layers } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
@@ -402,6 +402,48 @@ export default function ChatPage() {
       });
       revalidateCollection('milestones');
       toast({ title: 'Hito creado', description: action.nombre });
+    } else if (action.type === 'createAccount') {
+      addDocumentNonBlocking('financialAccounts', {
+        cuenta_id: `ACC_${Date.now()}`,
+        nombre: action.nombre, tipo: action.accountType, saldo: action.saldo,
+      });
+      revalidateCollection('financialAccounts');
+      toast({ title: 'Cuenta creada', description: `${action.nombre} · ${action.saldo} €` });
+    } else if (action.type === 'createDebt') {
+      addDocumentNonBlocking('debts', {
+        debt_id: `DEBT_${Date.now()}`,
+        nombre: action.nombre, tipo: action.debtType,
+        principal_inicial: action.principal_inicial,
+        interes_tae: action.interes_tae,
+        plazo_total_meses: action.plazo_total_meses,
+        cuota_mensual: action.cuota_mensual,
+        saldo_actual: action.saldo_actual,
+        saldo_pendiente: action.saldo_actual,
+        tipo_amortizacion: 'Francés',
+        comision_amortizacion: 0,
+        opcion_amortizacion: 'Reducir cuota',
+        prioridad_manual: 'Media',
+        estres_psicologico: 'Medio',
+      });
+      revalidateCollection('debts');
+      toast({ title: 'Deuda creada', description: `${action.nombre} · ${action.saldo_actual} €` });
+    } else if (action.type === 'createSkill') {
+      addDocumentNonBlocking('skills', {
+        habilidad_id: `SKILL_${Date.now()}`,
+        nombre: action.nombre, area_id: action.area_id,
+        nivel_actual: action.nivel_actual, nivel_objetivo: action.nivel_objetivo,
+        estado: 'Activa', kpi: action.kpi, xp: 0,
+      });
+      revalidateCollection('skills');
+      toast({ title: 'Habilidad creada', description: action.nombre });
+    } else if (action.type === 'createSystem') {
+      addDocumentNonBlocking('systems', {
+        sistema_id: `SYS_${Date.now()}`,
+        objetivo: action.objetivo, habilidad_id: action.habilidad_id,
+        frecuencia: action.frecuencia, estado: 'Activo', protocolo_fallo: '',
+      });
+      revalidateCollection('systems');
+      toast({ title: 'Sistema creado', description: action.objetivo });
     }
     setActionStatus(prev => ({ ...prev, [key]: 'done' }));
   }, [userData, toast, dashboardConfig, financeCategories, saveCategories]);
@@ -496,6 +538,8 @@ export default function ChatPage() {
         relations: (userData?.relations ?? []).map(r => ({ persona_id: r.persona_id, nombre: r.nombre })),
         skills: (userData?.skills ?? []).map(s => ({ habilidad_id: s.habilidad_id, nombre: s.nombre })),
         systems: (userData?.systems ?? []).map(s => ({ sistema_id: s.sistema_id, objetivo: s.objetivo })),
+        accounts: (userData?.accounts ?? []).map(a => ({ cuenta_id: a.cuenta_id, nombre: a.nombre ?? a.cuenta_id })),
+        debts: (userData?.debts ?? []).map(d => ({ debt_id: d.debt_id, nombre: d.nombre ?? d.debt_id })),
       };
 
       try {
@@ -740,6 +784,23 @@ function ActionCard({ action, status, onExecute, onDismiss }: {
       label = 'Crear hito'; title = action.nombre;
       subtitle = `${action.milestone_type === 'recurring' ? 'Recurrente' : 'Único'}${action.fecha_objetivo ? ` · ${action.fecha_objetivo}` : ''}`;
       icon = <Sparkles className="h-4 w-4" />; iconClass = 'bg-primary/10 text-primary';
+      break;
+    case 'createAccount':
+      label = 'Crear cuenta'; title = action.nombre; subtitle = `${action.accountType} · ${action.saldo} €`;
+      icon = <Landmark className="h-4 w-4" />; iconClass = 'bg-orange-500/10 text-orange-500';
+      break;
+    case 'createDebt':
+      label = 'Crear deuda'; title = action.nombre;
+      subtitle = `${action.debtType} · ${action.saldo_actual} € · ${action.interes_tae}% TAE`;
+      icon = <CreditCard className="h-4 w-4" />; iconClass = 'bg-red-500/10 text-red-500';
+      break;
+    case 'createSkill':
+      label = 'Crear habilidad'; title = action.nombre; subtitle = `${action.area_id} · ${action.kpi}`;
+      icon = <Star className="h-4 w-4" />; iconClass = 'bg-violet-500/10 text-violet-500';
+      break;
+    case 'createSystem':
+      label = 'Crear sistema'; title = action.objetivo; subtitle = action.frecuencia;
+      icon = <Layers className="h-4 w-4" />; iconClass = 'bg-primary/10 text-primary';
       break;
   }
 
