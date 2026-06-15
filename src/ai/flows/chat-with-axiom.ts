@@ -371,6 +371,46 @@ function sanitizeActions(raw: unknown, hints: ChatActionHints): ChatAction[] {
   return out.slice(0, 6); // tope de seguridad
 }
 
+// Extrae el objeto JSON de la respuesta del modelo aunque venga con prosa o fences
+// alrededor (el modelo a veces antepone texto). Escaneo de llaves balanceadas
+// respetando strings. Devuelve null si no hay un objeto JSON parseable.
+function extractJsonObject(text: string): any | null {
+  const tryParse = (s: string): any | undefined => { try { return JSON.parse(s); } catch { return undefined; } };
+
+  const stripped = text.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
+  const direct = tryParse(stripped);
+  if (direct && typeof direct === 'object') return direct;
+
+  const start = text.indexOf('{');
+  if (start === -1) return null;
+  let depth = 0, inStr = false, esc = false;
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (ch === '\\') esc = true;
+      else if (ch === '"') inStr = false;
+    } else if (ch === '"') inStr = true;
+    else if (ch === '{') depth++;
+    else if (ch === '}') {
+      depth--;
+      if (depth === 0) {
+        const parsed = tryParse(text.slice(start, i + 1));
+        return parsed && typeof parsed === 'object' ? parsed : null;
+      }
+    }
+  }
+  return null;
+}
+
+// Limpia cualquier resto de JSON/fence que se cuele en el texto de respuesta.
+function sanitizeReply(reply: string): string {
+  let r = reply.replace(/```(?:json)?[\s\S]*?```/gi, '').trim();
+  // Si el "reply" es en realidad un objeto JSON crudo, no lo mostramos.
+  if (/^\s*\{[\s\S]*"(reply|actions|type)"\s*:/.test(r)) return '';
+  return r;
+}
+
 export async function runAxiomChat(
   messages: ChatMessage[],
   context: ChatContext,
@@ -394,17 +434,23 @@ export async function runAxiomChat(
     });
 
     const rawText = response.text?.trim() ?? '';
-    const jsonStr = rawText.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim();
-    try {
-      const parsed = JSON.parse(jsonStr);
-      const reply = typeof parsed.reply === 'string' && parsed.reply.trim()
-        ? parsed.reply
-        : 'No pude generar una respuesta. Inténtalo de nuevo.';
-      return { reply, actions: sanitizeActions(parsed.actions, hints) };
-    } catch {
-      // Si el modelo no devolvió JSON, tratamos todo el texto como respuesta.
-      return { reply: rawText || 'No pude generar una respuesta. Inténtalo de nuevo.', actions: [] };
+    const parsed = extractJsonObject(rawText);
+
+    if (parsed && (typeof parsed.reply === 'string' || Array.isArray(parsed.actions))) {
+      const actions = sanitizeActions(parsed.actions, hints);
+      const cleanReply = sanitizeReply(typeof parsed.reply === 'string' ? parsed.reply : '');
+      const reply = cleanReply
+        || (actions.length ? 'He preparado esta acción. Confírmala para aplicarla.' : 'No pude generar una respuesta. Inténtalo de nuevo.');
+      return { reply, actions };
     }
+
+    // No es JSON estructurado: si el texto PARECE un JSON de acción a medias, no lo
+    // mostramos crudo; si es prosa normal, la devolvemos tal cual.
+    const looksLikeActionJson = /"(reply|actions)"\s*:|"type"\s*:\s*"(logEvent|completeHabit|createVariable|logTransaction|setPocket|createCategory|createHabit|createRelation|logInteraction|createMilestone|createAccount|createDebt|createSkill|createSystem)"/.test(rawText);
+    if (looksLikeActionJson) {
+      return { reply: 'He preparado una acción pero no pude interpretarla bien. ¿Puedes repetir la petición de otra forma?', actions: [] };
+    }
+    return { reply: rawText || 'No pude generar una respuesta. Inténtalo de nuevo.', actions: [] };
   } catch (error) {
     console.error('[AxiomChat] Error:', error);
     if (error instanceof Error && error.message.includes('429')) {
