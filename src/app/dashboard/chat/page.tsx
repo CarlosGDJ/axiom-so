@@ -12,6 +12,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useUser } from '@/hooks/use-session-user';
 import { setDocumentNonBlocking, addDocumentNonBlocking } from '@/lib/api-writes';
+import { revalidateCollection } from '@/hooks/use-mongo-collection';
 import { useToast } from '@/hooks/use-toast';
 import NavigationReady from '@/components/app/navigation-ready';
 const SUGGESTED_PROMPTS = [
@@ -278,6 +279,47 @@ export default function ChatPage() {
         impulsivo: false,
       });
       toast({ title: 'Hábito completado', description: action.habitName });
+    } else if (action.type === 'createVariable') {
+      // Crea la variable + su perfil de varianza hormonal (impactMatrix). Si no
+      // trae impactos, el motor los deriva heurísticamente.
+      addDocumentNonBlocking('variables', {
+        var_id: action.var_id,
+        var_nombre: action.var_nombre,
+        area_id: action.area_id,
+        tipo: action.tipo,
+        polaridad: action.polaridad,
+        impacto_base: action.impacto_base,
+        curva: action.polaridad === -1 ? 'Exponencial' : 'Lineal',
+        delay_dias: 0,
+        duracion_dias: 0.25,
+        umbral_riesgo: 2,
+        controlabilidad: action.controlabilidad,
+        activo: true,
+      });
+      action.impacts.forEach((im) => {
+        addDocumentNonBlocking('impactMatrix', {
+          matrix_id: `AI_${action.var_id}_${im.hormone_id}`,
+          var_id: action.var_id,
+          hormone_id: im.hormone_id,
+          effect_size: im.effect_size,
+          duration_hours: im.duration_hours,
+        });
+      });
+      if (action.firstEvent) {
+        addDocumentNonBlocking('events', {
+          evento_id: `EVT_CHAT_${Date.now()}`,
+          fecha: new Date().toISOString(),
+          var_id: action.var_id,
+          intensidad: action.firstEvent.intensidad,
+          contexto: action.firstEvent.contexto || 'Registrado desde el chat',
+          tipo: 'Variable',
+          impulsivo: action.firstEvent.impulsivo,
+        });
+        revalidateCollection('events');
+      }
+      revalidateCollection('variables');
+      revalidateCollection('impactMatrix');
+      toast({ title: 'Variable creada', description: `${action.var_nombre} añadida a tu sistema` });
     }
     setActionStatus(prev => ({ ...prev, [key]: 'done' }));
   }, [userData, toast]);
@@ -560,9 +602,13 @@ function ActionCard({ action, status, onExecute, onDismiss }: {
   onDismiss: () => void;
 }) {
   const isEvent = action.type === 'logEvent';
-  const title = isEvent ? action.var_nombre : action.habitName;
+  const isCreateVar = action.type === 'createVariable';
+  const title = isEvent ? action.var_nombre : isCreateVar ? action.var_nombre : action.habitName;
+  const label = isEvent ? 'Registrar' : isCreateVar ? 'Crear variable' : 'Completar hábito';
   const subtitle = isEvent
     ? `${action.impulsivo ? 'Impulsivo · ' : ''}Intensidad ${action.intensidad}/10${action.contexto ? ` · ${action.contexto}` : ''}`
+    : isCreateVar
+    ? `${action.polaridad > 0 ? 'Refuerza' : 'Drena'} · ${action.area_id}${action.rationale ? ` · ${action.rationale}` : ''}`
     : 'Marcar como hecho hoy';
 
   return (
@@ -573,11 +619,11 @@ function ActionCard({ action, status, onExecute, onDismiss }: {
       'border-primary/30 bg-primary/5',
     )}>
       <div className={cn('h-7 w-7 rounded-lg shrink-0 flex items-center justify-center',
-        isEvent ? 'bg-primary/10 text-primary' : 'bg-green-500/10 text-green-600')}>
-        {isEvent ? <Plus className="h-4 w-4" /> : <CircleCheck className="h-4 w-4" />}
+        isCreateVar ? 'bg-violet-500/10 text-violet-500' : isEvent ? 'bg-primary/10 text-primary' : 'bg-green-500/10 text-green-600')}>
+        {isCreateVar ? <Sparkles className="h-4 w-4" /> : isEvent ? <Plus className="h-4 w-4" /> : <CircleCheck className="h-4 w-4" />}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-xs font-bold truncate">{isEvent ? 'Registrar' : 'Completar hábito'}: {title}</p>
+        <p className="text-xs font-bold truncate">{label}: {title}</p>
         <p className="text-[10px] text-muted-foreground truncate">{subtitle}</p>
       </div>
       {status === 'done' ? (

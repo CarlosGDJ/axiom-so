@@ -23,10 +23,39 @@ export interface ChatContext {
   milestones?: string;
 }
 
+// IDs canónicos del sistema (deben coincidir con seed-data / el motor).
+const AREA_IDS = ['SALUD_FIS', 'SALUD_MENT', 'FINANZAS', 'RELACIONES', 'EMOCION', 'DOPAMINA', 'CARRERA', 'ENTORNO', 'PROPOSITO', 'CREATIVIDAD', 'ESTUDIOS'] as const;
+const TIPOS = ['Física', 'Mental', 'Emocional', 'Social', 'Financiera', 'Entorno', 'Conductual'] as const;
+const HORMONE_IDS = ['DOPAMINA', 'SEROTONINA', 'CORTISOL', 'FOCUS', 'ENERGY', 'MELATONINA', 'ENDORFINAS', 'TESTOSTERONA', 'OXITOCINA', 'NORADRENALINA', 'PROLACTINA', 'INSULINA', 'GABA', 'PARASIMPATICO', 'DOPA_LOAD'] as const;
+const CONTROLABILIDAD = ['Alta', 'Media', 'Baja'] as const;
+
+export interface HormoneImpact { hormone_id: string; effect_size: number; duration_hours: number }
+
 // ── Acciones que el chat puede PROPONER (el usuario confirma antes de ejecutar) ──
 export type ChatAction =
   | { type: 'logEvent'; var_id: string; var_nombre: string; intensidad: number; contexto: string; impulsivo: boolean }
-  | { type: 'completeHabit'; habito_id: string; habitName: string };
+  | { type: 'completeHabit'; habito_id: string; habitName: string }
+  | {
+      type: 'createVariable';
+      var_id: string;
+      var_nombre: string;
+      area_id: string;
+      tipo: string;
+      polaridad: 1 | -1;
+      impacto_base: number;
+      controlabilidad: string;
+      rationale: string;
+      impacts: HormoneImpact[];
+      firstEvent?: { intensidad: number; contexto: string; impulsivo: boolean };
+    };
+
+/** Normaliza un nombre a un var_id ASCII UPPER_SNAKE (p.ej. "Tabaco" → "TABACO"). */
+function normalizeVarId(s: string): string {
+  return s
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_+|_+$/g, '')
+    .slice(0, 40);
+}
 
 export interface ChatResult {
   reply: string;
@@ -78,11 +107,25 @@ Si el usuario te pide explícitamente registrar/apuntar algo o marcar un hábito
 - Si no estás seguro de a qué variable/hábito se refiere, NO inventes: pregúntale en el texto y deja la lista de acciones vacía.
 - Para eventos negativos/impulsivos (recaídas, gastos impulsivos) marca impulsivo=true.
 
+CREAR VARIABLES NUEVAS (createVariable):
+Si el usuario quiere registrar algo que NO existe en la lista de variables (p.ej. "añade fumar/tabaco"), y es una conducta/estado razonable y con sentido, PROPÓN crearla con su perfil hormonal. Reglas:
+- PRIMERO comprueba la lista de variables disponibles. Si ya existe una equivalente (mismo concepto), usa logEvent — NO dupliques.
+- var_id: MAYÚSCULAS ASCII con guion bajo, sin acentos ni espacios (p.ej. "TABACO").
+- area_id ∈ [${AREA_IDS.join(', ')}].
+- tipo ∈ [${TIPOS.join(', ')}].
+- polaridad: 1 (refuerza el sistema) o -1 (lo drena).
+- impacto_base: 3-12 (magnitud general). controlabilidad: Alta/Media/Baja.
+- rationale: una frase de por qué tiene sentido crearla.
+- impacts: perfil de varianza hormonal REAL. Cada item { "hormone_id", "effect_size" (-15 a 15), "duration_hours" }. Hormonas válidas: [${HORMONE_IDS.join(', ')}]. Usa effect_size positivo para subir y negativo para bajar. Para conductas adictivas/dopamina rápida sube DOPAMINA a corto plazo y DOPA_LOAD (carga, peor cuanto más alta). Ejemplo tabaco: DOPAMINA +6 (1h), DOPA_LOAD +5 (4h), CORTISOL +4 (3h), ENERGY -3 (6h), FOCUS -2 (3h).
+- Si el usuario indica que YA lo hizo, incluye "firstEvent" para registrar el primer evento al crearla.
+- Si la petición no tiene sentido o es ambigua, NO crees nada: pregúntale.
+
 FORMATO DE SALIDA — responde SIEMPRE con un objeto JSON válido (sin markdown, sin texto fuera del JSON):
 {
   "reply": "Tu respuesta conversacional en español (markdown permitido: **negrita**, listas con -, ### encabezados).",
   "actions": [
-    { "type": "logEvent", "var_id": "VAR_ID", "var_nombre": "Nombre", "intensidad": 5, "contexto": "Frase corta", "impulsivo": false }
+    { "type": "logEvent", "var_id": "VAR_ID", "var_nombre": "Nombre", "intensidad": 5, "contexto": "Frase corta", "impulsivo": false },
+    { "type": "createVariable", "var_id": "TABACO", "var_nombre": "Tabaco / Fumar", "area_id": "SALUD_FIS", "tipo": "Conductual", "polaridad": -1, "impacto_base": 7, "controlabilidad": "Media", "rationale": "Conducta de dopamina rápida con coste fisiológico no registrada aún.", "impacts": [ { "hormone_id": "DOPAMINA", "effect_size": 6, "duration_hours": 1 }, { "hormone_id": "DOPA_LOAD", "effect_size": 5, "duration_hours": 4 }, { "hormone_id": "CORTISOL", "effect_size": 4, "duration_hours": 3 }, { "hormone_id": "ENERGY", "effect_size": -3, "duration_hours": 6 } ], "firstEvent": { "intensidad": 5, "contexto": "Cigarro", "impulsivo": true } }
   ]
 }
 Si no hay ninguna acción que preparar, devuelve "actions": [].
@@ -121,6 +164,46 @@ function sanitizeActions(raw: unknown, hints: ChatActionHints): ChatAction[] {
     } else if (t === 'completeHabit' && validHabitIds.has((a as any).habito_id)) {
       const h = hints.habits.find(x => x.habito_id === (a as any).habito_id)!;
       out.push({ type: 'completeHabit', habito_id: h.habito_id, habitName: h.nombre });
+    } else if (t === 'createVariable') {
+      const var_nombre = String((a as any).var_nombre ?? '').trim().slice(0, 60);
+      const var_id = normalizeVarId(String((a as any).var_id ?? var_nombre));
+      if (!var_nombre || !var_id) continue;
+
+      // Anti-duplicados: si ya existe por id o por nombre, NO se crea (debió usar logEvent).
+      const existingIds = new Set(hints.variables.map(v => v.var_id.toUpperCase()));
+      const existingNames = new Set(hints.variables.map(v => v.var_nombre.trim().toLowerCase()));
+      if (existingIds.has(var_id) || existingNames.has(var_nombre.toLowerCase())) continue;
+
+      const area_id = (AREA_IDS as readonly string[]).includes((a as any).area_id) ? (a as any).area_id : 'SALUD_MENT';
+      const tipo = (TIPOS as readonly string[]).includes((a as any).tipo) ? (a as any).tipo : 'Conductual';
+      const polaridad: 1 | -1 = Number((a as any).polaridad) === 1 ? 1 : -1;
+      const impacto_base = clampInt((a as any).impacto_base, 3, 12, 6);
+      const controlabilidad = (CONTROLABILIDAD as readonly string[]).includes((a as any).controlabilidad) ? (a as any).controlabilidad : 'Media';
+      const rationale = String((a as any).rationale ?? '').slice(0, 240);
+
+      const seenHormones = new Set<string>();
+      const impacts: HormoneImpact[] = (Array.isArray((a as any).impacts) ? (a as any).impacts : [])
+        .filter((im: any) => im && (HORMONE_IDS as readonly string[]).includes(im.hormone_id))
+        .map((im: any) => ({
+          hormone_id: im.hormone_id as string,
+          effect_size: clampInt(im.effect_size, -15, 15, 0),
+          duration_hours: clampInt(im.duration_hours, 1, 72, 6),
+        }))
+        .filter((im: HormoneImpact) => im.effect_size !== 0 && (seenHormones.has(im.hormone_id) ? false : (seenHormones.add(im.hormone_id), true)))
+        .slice(0, 8);
+
+      // Si no hay perfil hormonal válido, dejamos que el motor lo derive heurísticamente.
+      let firstEvent: { intensidad: number; contexto: string; impulsivo: boolean } | undefined;
+      const fe = (a as any).firstEvent;
+      if (fe && typeof fe === 'object') {
+        firstEvent = {
+          intensidad: clampInt(fe.intensidad, 1, 10, 5),
+          contexto: String(fe.contexto ?? '').slice(0, 200),
+          impulsivo: Boolean(fe.impulsivo),
+        };
+      }
+
+      out.push({ type: 'createVariable', var_id, var_nombre, area_id, tipo, polaridad, impacto_base, controlabilidad, rationale, impacts, firstEvent });
     }
   }
   return out.slice(0, 5); // tope de seguridad
