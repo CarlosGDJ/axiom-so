@@ -25,7 +25,7 @@ const stateConfig = {
     accent: 'border-l-green-500',
     badgeClass: 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/50 dark:text-green-300 dark:border-green-800',
     icon: <ShieldCheck className="h-4 w-4 text-green-600 dark:text-green-400" />,
-    description: 'Biomarcadores en equilibrio.',
+    description: 'Sistema en equilibrio.',
     hint: 'Mantén el ritmo — la consistencia acumula.',
   },
   RIESGO: {

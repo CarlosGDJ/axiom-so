@@ -1911,7 +1911,26 @@ export function useComputedDataWriter(ext?: WriterPrefetch) {
       return raw * Math.min(1, confidence / 0.7);
     })();
 
-    const rawPlayerScore = Math.round(softCeilScore(resources - load - allostaticLoad - resonancePenalty - clinicalPenalty + recoveryReserve + 50));
+    // ── Penalización por áreas de vida flojas (visión holística) ──────────────
+    // El score es biomarcador puro y podía marcar ~98 con áreas en rojo/naranja
+    // (Carrera 44, Salud mental 54). Penalizamos de forma ACOTADA (máx 10 pts) las
+    // áreas genéricamente débiles — dimensión que las hormonas no capturan. Usa el
+    // score INTRÍNSECO del área (sin el cap por estado global → no circular). No
+    // aplica en cold-start (pocos datos → áreas poco fiables).
+    const areaWeaknessPenalty = (() => {
+      if (isColdStart) return 0;
+      let deficit = 0;
+      for (const area of areas) {
+        const areaVarIds = new Set(variables.filter(v => v.area_id === area.area_id).map(v => v.var_id));
+        const areaEvents = safeEvents.filter(e => areaVarIds.has(e.var_id));
+        const aScore = computeAreaScoreAtTime({ area, events: areaEvents, variableById, at: now, playerProfile }).score;
+        if (aScore < 60) deficit += (60 - aScore);
+        if (aScore < 40) deficit += (40 - aScore) * 0.5; // las críticas pesan más
+      }
+      return Math.min(10, deficit * 0.30);
+    })();
+
+    const rawPlayerScore = Math.round(softCeilScore(resources - load - allostaticLoad - resonancePenalty - clinicalPenalty - areaWeaknessPenalty + recoveryReserve + 50));
     const storedPrevScore = lastGlobalState?.rpg_stats?.player_score;
     // `?? ` no atrapa NaN: un score corrupto guardado por un run anterior se
     // autoperpetuaría a través del EMA. Exigimos un número finito.
