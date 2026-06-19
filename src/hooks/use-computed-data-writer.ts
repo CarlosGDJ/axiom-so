@@ -1771,6 +1771,29 @@ export function useComputedDataWriter(ext?: WriterPrefetch) {
       nightAmplifierActive = true;
     }
 
+    // ── Suelo de cortisol por estrés activo ───────────────────────────────────
+    // Mientras haya distress reciente (estrés laboral, sobreesfuerzo, etc.), el
+    // cortisol no puede hundirse: los positivos (buen sueño) lo bajaban a ~10
+    // aunque el estrés siguiera activo, inflando el score. Ahora se mantiene un
+    // suelo proporcional a los estresores en curso (no-eustress, últimas 36h).
+    const activeStressLoad = (() => {
+      let load = 0;
+      for (const e of safeEvents) {
+        const v = variableById.get(e.var_id);
+        if (!v || (v.polaridad ?? 1) >= 0) continue;   // solo ejes negativos
+        if (e.tipo === 'Protocolo' || isEustressEvent(e, v)) continue; // el eustress no es distress
+        const hrs = differenceInHours(now, parseISO(e.fecha));
+        if (hrs < 0 || hrs > 36) continue;             // estrés "activo" reciente
+        load += (e.intensidad ?? 5) * (1 - hrs / 36);  // ponderado por recencia
+      }
+      return load;
+    })();
+    if (activeStressLoad > 0) {
+      const cortisolBaseline = (hormones.find(h => h.hormone_id === 'CORTISOL')?.baseline) ?? 20;
+      const stressFloor = clamp(cortisolBaseline + Math.min(activeStressLoad * 2.5, 38), 0, 75);
+      if (s.cortisol < stressFloor) s.cortisol = stressFloor;
+    }
+
     // ── Saturación suave de los biomarcadores "buenos" ────────────────────────
     // Los efectos se suman con clamp duro a 100, sin rendimientos decrecientes, así
     // que acumular muchos positivos PINCHA serotonina/sueño/energía/foco en 100 y se
