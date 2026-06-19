@@ -10,6 +10,7 @@ import { runAxiomChat, type ChatMessage, type ChatActionHints, type ChatResult }
 import { parseNaturalLog, type ParseNaturalLogOutput, type ParsedLogEvent } from '@/ai/flows/parse-natural-log';
 import { generateNotificationInsight, type NotificationInsightInput, type NotificationInsightOutput } from '@/ai/flows/generate-notification-insight';
 import { generateDailyDigest, type DailyDigestInput, type DailyDigestOutput } from '@/ai/flows/generate-daily-digest';
+import { calibrateFromCheckin, type CalibrateInput, type CalibrateOutput } from '@/ai/flows/calibrate-from-checkin';
 import type { OnboardingSetupInput, OnboardingSetupOutput } from '@/ai/flows/generate-onboarding-setup-flow';
 import type { GenerateSystemPlanOutput } from '@/ai/flows/generate-system-plan-flow';
 import type { GenerateProtocolRecommendationsOutput } from '@/ai/flows/generate-protocol-recommendations';
@@ -195,6 +196,42 @@ export async function generateDailyDigestAction(
   } catch (error) {
     console.error('Error generando resumen diario:', error);
     return null; // el hook cae a notificaciones individuales
+  }
+}
+
+const SENS_KEYS = ['stress', 'dopamine', 'sleep', 'emotional', 'environmental', 'pressure'] as const;
+const clampSens = (v: number) => Math.min(1.8, Math.max(0.6, Number.isFinite(v) ? v : 1));
+const boundDelta = (current: number, next: number) => {
+  // Acota el cambio por cierre a ±0.12 aunque la IA proponga más (ajuste gradual).
+  const delta = Math.max(-0.12, Math.min(0.12, next - current));
+  return clampSens(current + delta);
+};
+
+export async function calibrateFromCheckinAction(input: CalibrateInput): Promise<CalibrateOutput> {
+  const current = input.current;
+  try {
+    const out = await calibrateFromCheckin(input);
+    const s = out.sensitivities;
+    const sensitivities = Object.fromEntries(
+      SENS_KEYS.map(k => [k, boundDelta(current[k], Number(s?.[k]))]),
+    ) as CalibrateOutput['sensitivities'];
+    return { sensitivities, summary: out.summary || 'Ajuste fino aplicado.' };
+  } catch (error) {
+    console.error('Error calibrando desde el cierre:', error);
+    // Fallback determinista: signo del desajuste percibido vs reflejado.
+    const perceivedScore = [20, 40, 60, 80, 95][Math.min(4, Math.max(0, input.perceived - 1))] ?? 60;
+    const err = perceivedScore - input.appScore; // <0: se siente peor → subir sensibilidades
+    const sensitivities = { ...current };
+    let summary = 'Sin cambios: el modelo encaja con tu día.';
+    if (Math.abs(err) >= 15) {
+      const dir = err < 0 ? 1 : -1; // peor → +; mejor → −
+      const step = 0.05 * dir;
+      for (const k of ['stress', 'emotional', 'sleep'] as const) sensitivities[k] = clampSens(current[k] + step);
+      summary = err < 0
+        ? 'Te sentías peor de lo reflejado: subo la sensibilidad a estrés, emoción y sueño.'
+        : 'Te sentías mejor de lo reflejado: bajo la sensibilidad a estrés, emoción y sueño.';
+    }
+    return { sensitivities, summary };
   }
 }
 

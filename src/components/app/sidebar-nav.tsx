@@ -169,6 +169,7 @@ export function AppSidebarNav() {
             <SidebarMenu>
               <div data-tour="analytics-nav"><NavItem href="/dashboard/analytics" icon={LineChart} label="Analíticas" /></div>
               <NavItem href="/dashboard/simulator" icon={Zap} label="Simulador" />
+              <NavItem href="/dashboard/checkins" icon={Moon} label="Cierres del día" />
               <NavItem href="/dashboard/meditation" icon={SunMoon} label="Meditación" />
               <div data-tour="chat-nav"><NavItem href="/dashboard/chat" icon={MessageSquare} label="Chat con IA" /></div>
             </SidebarMenu>
