@@ -268,14 +268,14 @@ function variableCurveResponse(variable: Variable | undefined, intensity: number
   }
 }
 
-function getSensitivity(profile: PlayerProfile) {
+function getSensitivity(profile: PlayerProfile | null | undefined) {
   return {
-    stress: clamp(profile.sensitivity_stress || 1, 0.6, 1.8),
-    dopamine: clamp(profile.sensitivity_dopamine || 1, 0.6, 1.8),
-    sleep: clamp(profile.sensitivity_sleep || 1, 0.6, 1.8),
-    emotional: clamp(profile.sensitivity_emotional || 1, 0.6, 1.8),
-    pressure: clamp(profile.sensitivity_pressure || 1, 0.6, 1.8),
-    environmental: clamp(profile.sensitivity_environmental || 1, 0.6, 1.8),
+    stress: clamp(profile?.sensitivity_stress || 1, 0.6, 1.8),
+    dopamine: clamp(profile?.sensitivity_dopamine || 1, 0.6, 1.8),
+    sleep: clamp(profile?.sensitivity_sleep || 1, 0.6, 1.8),
+    emotional: clamp(profile?.sensitivity_emotional || 1, 0.6, 1.8),
+    pressure: clamp(profile?.sensitivity_pressure || 1, 0.6, 1.8),
+    environmental: clamp(profile?.sensitivity_environmental || 1, 0.6, 1.8),
   };
 }
 
@@ -350,9 +350,9 @@ function computeCalibrationLoads(events: Event[], variableById: Map<string, Vari
  * Returns -1 (extreme night owl) to +1 (extreme morning bird).
  * Judging (structured, disciplined) → morning; Turbulent (reactive) → evening.
  */
-function computeChronotype(profile: PlayerProfile): number {
-  const judging    = (profile.facet_tactics_judging    ?? 50) / 100; // 0–1
-  const turbulent  = (profile.facet_identity_turbulent ?? 50) / 100; // 0–1
+function computeChronotype(profile: PlayerProfile | null | undefined): number {
+  const judging    = (profile?.facet_tactics_judging    ?? 50) / 100; // 0–1
+  const turbulent  = (profile?.facet_identity_turbulent ?? 50) / 100; // 0–1
   // judging → morning signal (+); turbulent → evening signal (-)
   const raw = (judging - 0.5) * 0.65 - (turbulent - 0.5) * 0.35;
   return clamp(raw * 2, -1, 1); // ×2 to stretch the range; clamp to [-1,1]
@@ -564,7 +564,11 @@ export function useComputedDataWriter(ext?: WriterPrefetch) {
   );
 
   useEffect(() => {
-    if (!uid || !playerProfile || !areas || !hormones || !impactMatrix || !variables) {
+    // playerProfile NO es obligatorio: si falta, el motor usa sensibilidades por
+    // defecto. Antes lo exigía y, para usuarios sin perfil (onboarding incompleto),
+    // el motor no corría nunca → no escribía computed_global_state → el score se
+    // quedaba congelado en el valor por defecto pese a registrar eventos negativos.
+    if (!uid || !areas || !hormones || !impactMatrix || !variables) {
       return;
     }
 
