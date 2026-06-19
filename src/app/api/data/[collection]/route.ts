@@ -10,7 +10,7 @@ const ALLOWED_COLLECTIONS = new Set([
   'impactMatrix', 'notifications', 'computed_global_state',
   'computed_areas', 'computed_hormones', 'computed_daily_score',
   'playerProfile', 'settings', 'chatHistory', 'dashboardConfig',
-  'dailyBriefing', 'userProfile',
+  'dailyBriefing', 'userProfile', 'dailyCheckins',
 ]);
 
 async function getUserId(): Promise<string | null> {

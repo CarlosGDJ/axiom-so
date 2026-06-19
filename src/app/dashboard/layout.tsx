@@ -17,6 +17,7 @@ import { useOnlineStatus } from '@/hooks/use-online-status';
 import { DemoBanner } from '@/components/app/demo-banner';
 import { PwaInit } from '@/components/app/pwa-init';
 import { QuickLogFab } from '@/components/app/quick-log-fab';
+import DailyCheckinModal from '@/components/app/daily-checkin-modal';
 import { NotificationPrompt } from '@/components/app/notification-prompt';
 import { Button } from '@/components/ui/button';
 import { useUser } from '@/hooks/use-session-user';
@@ -174,6 +175,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
         )}
       </DashboardLayoutComponent>
       <QuickLogFab />
+      <DailyCheckinModal />
     </DashboardClientLogic>
   );
 }

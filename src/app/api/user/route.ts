@@ -12,7 +12,7 @@ const USER_COLLECTIONS = [
   'relations', 'financialAccounts', 'debts', 'skills', 'systems', 'habits', 'milestones',
   'protocols', 'states', 'impactMatrix', 'notifications', 'computed_global_state',
   'computed_areas', 'computed_hormones', 'computed_daily_score', 'playerProfile',
-  'settings', 'chatHistory', 'dashboardConfig', 'dailyBriefing', 'userProfile',
+  'settings', 'chatHistory', 'dashboardConfig', 'dailyBriefing', 'userProfile', 'dailyCheckins',
 ];
 
 export async function GET() {
