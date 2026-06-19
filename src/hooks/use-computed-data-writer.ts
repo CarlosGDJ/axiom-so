@@ -605,6 +605,19 @@ export function useComputedDataWriter(ext?: WriterPrefetch) {
     const safeHistoricalEvents = (historicalEvents ?? []).filter(e => hasValidDate(e.fecha));
     const safeCalibrationScores = (calibrationScores ?? []).filter(s => hasValidDate(s.fecha));
     const safeMilestones = milestones ?? [];
+
+    // Anti-clobber (carrera de carga): si TODO el historial reciente está vacío
+    // pero ya existe un estado computado con datos reales (no learning), las
+    // colecciones aún no han llegado. NO recalcular: sobreescribiríamos el estado
+    // bueno con uno neutro/CALIBRANDO (biomarcadores a 50, data_quality 0).
+    if (
+      safeHistoricalEvents.length === 0 &&
+      safeInteractions.length === 0 &&
+      safeTransactions.length === 0 &&
+      lastGlobalState && lastGlobalState.is_learning_mode === false
+    ) {
+      return;
+    }
     const protocolById = new Map<string, { nombre?: string; pasos?: string }>();
     [...(protocols ?? []), ...(protocolPresets as any[])].forEach((p: any) => {
       const id = p?.protocolo_id || p?.id;

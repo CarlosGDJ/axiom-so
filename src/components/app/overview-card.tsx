@@ -203,11 +203,18 @@ export default function OverviewCard({ overallState, dominantVariables = [], onA
         {/* Estado + score */}
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <Badge className={cn('py-1 px-2.5 rounded-full flex items-center gap-1.5 text-xs', config.badgeClass)}>
-              {config.icon}
-              <span className="font-bold">{config.label}</span>
-            </Badge>
-            {showDiag && (
+            {isLearningMode ? (
+              <Badge className="py-1 px-2.5 rounded-full flex items-center gap-1.5 text-xs bg-muted text-muted-foreground border-border">
+                <Sparkles className="h-4 w-4" />
+                <span className="font-bold">CALIBRANDO</span>
+              </Badge>
+            ) : (
+              <Badge className={cn('py-1 px-2.5 rounded-full flex items-center gap-1.5 text-xs', config.badgeClass)}>
+                {config.icon}
+                <span className="font-bold">{config.label}</span>
+              </Badge>
+            )}
+            {!isLearningMode && showDiag && (
               <button
                 onClick={() => setIsDiagOpen(true)}
                 className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2"
@@ -228,8 +235,8 @@ export default function OverviewCard({ overallState, dominantVariables = [], onA
 
         {/* Descripción + hint */}
         <div className="space-y-0.5">
-          <p className="text-xs font-semibold text-foreground">{config.description}</p>
-          <p className="text-[11px] text-muted-foreground leading-snug">{config.hint}</p>
+          <p className="text-xs font-semibold text-foreground">{isLearningMode ? 'Recopilando datos para afinar tus métricas.' : config.description}</p>
+          <p className="text-[11px] text-muted-foreground leading-snug">{isLearningMode ? 'Registra eventos unos días; las lecturas ganarán precisión.' : config.hint}</p>
         </div>
       </CardHeader>
 
