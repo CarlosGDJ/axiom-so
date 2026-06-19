@@ -259,6 +259,14 @@ const softCeilScore = (raw: number, knee = 75, ceil = 100, scale = 38) => {
   return knee + (ceil - knee) * Math.tanh((v - knee) / scale);
 };
 
+// Misma idea para los biomarcadores "buenos": rendimientos decrecientes solo en
+// la franja alta (codo 82), para que no se peguen a 100. Por debajo, lineal.
+const softCeilBiomarker = (v: number, knee = 82, ceil = 100, scale = 22) => {
+  const x = Number.isFinite(v) ? v : 0;
+  if (x <= knee) return clamp(x);
+  return knee + (ceil - knee) * Math.tanh((x - knee) / scale);
+};
+
 function circadianMultiplier(hormoneId: string, currentHour: number): number {
   const phase = CIRCADIAN_PHASES[hormoneId];
   if (!phase) return 1;
@@ -1748,6 +1756,17 @@ export function useComputedDataWriter(ext?: WriterPrefetch) {
       s.cortisol   = clamp(s.cortisol   + nightExcess * 0.25 * nightWindow); // amplifica el exceso
       s.serotonina = clamp(s.serotonina - nightExcess * 0.15 * nightWindow); // desregulación melatonina/serotonina
       nightAmplifierActive = true;
+    }
+
+    // ── Saturación suave de los biomarcadores "buenos" ────────────────────────
+    // Los efectos se suman con clamp duro a 100, sin rendimientos decrecientes, así
+    // que acumular muchos positivos PINCHA serotonina/sueño/energía/foco en 100 y se
+    // pierde matiz (y los negativos tienen que vencer un eje ya saturado antes de
+    // notarse). Aplicamos rendimientos decrecientes SOLO en la franja alta (>82):
+    // por debajo queda intacto (los flags de riesgo usan <35, no se tocan); cortisol
+    // y carga_dopaminérgica (ejes de CARGA) no se comprimen — bajarlos falsearía salud.
+    for (const k of ['dopamina', 'serotonina', 'foco', 'energia', SLEEP_KEY, 'conexion_social'] as const) {
+      s[k] = softCeilBiomarker(s[k]);
     }
 
     // ── Resonancia Sistémica ──────────────────────────────────────────────────
