@@ -28,6 +28,7 @@ const AREA_IDS = ['SALUD_FIS', 'SALUD_MENT', 'FINANZAS', 'RELACIONES', 'EMOCION'
 const TIPOS = ['Física', 'Mental', 'Emocional', 'Social', 'Financiera', 'Entorno', 'Conductual'] as const;
 const HORMONE_IDS = ['DOPAMINA', 'SEROTONINA', 'CORTISOL', 'FOCUS', 'ENERGY', 'MELATONINA', 'ENDORFINAS', 'TESTOSTERONA', 'OXITOCINA', 'NORADRENALINA', 'PROLACTINA', 'INSULINA', 'GABA', 'PARASIMPATICO', 'DOPA_LOAD'] as const;
 const CONTROLABILIDAD = ['Alta', 'Media', 'Baja'] as const;
+const CURVAS = ['Lineal', 'Umbral', 'Exponencial'] as const;
 const HABIT_FREQ = ['Diaria', '3xSemana', 'Semanal', 'Mensual'] as const;
 const REL_ROLES = ['Familia', 'Amigo', 'Pareja', 'Trabajo', 'Mentor', 'Conocido'] as const;
 const TX_TYPES = ['Gasto', 'Ingreso'] as const;
@@ -50,6 +51,10 @@ export type ChatAction =
       polaridad: 1 | -1;
       impacto_base: number;
       controlabilidad: string;
+      curva: string;
+      delay_dias: number;
+      duracion_dias: number;
+      umbral_riesgo: number;
       rationale: string;
       impacts: HormoneImpact[];
       firstEvent?: { intensidad: number; contexto: string; impulsivo: boolean };
@@ -153,17 +158,23 @@ Si el usuario te pide explícitamente registrar/apuntar algo o marcar un hábito
 - Para eventos negativos/impulsivos (recaídas, gastos impulsivos) marca impulsivo=true.
 
 CREAR VARIABLES NUEVAS (createVariable):
-Si el usuario quiere registrar algo que NO existe en la lista de variables (p.ej. "añade fumar/tabaco"), y es una conducta/estado razonable y con sentido, PROPÓN crearla con su perfil hormonal. Reglas:
-- PRIMERO comprueba la lista de variables disponibles. Si ya existe una equivalente (mismo concepto), usa logEvent — NO dupliques.
-- var_id: MAYÚSCULAS ASCII con guion bajo, sin acentos ni espacios (p.ej. "TABACO").
-- area_id ∈ [${AREA_IDS.join(', ')}].
-- tipo ∈ [${TIPOS.join(', ')}].
-- polaridad: 1 (refuerza el sistema) o -1 (lo drena).
-- impacto_base: 3-12 (magnitud general). controlabilidad: Alta/Media/Baja.
-- rationale: una frase de por qué tiene sentido crearla.
-- impacts: perfil de varianza hormonal REAL. Cada item { "hormone_id", "effect_size" (-15 a 15), "duration_hours" }. Hormonas válidas: [${HORMONE_IDS.join(', ')}]. Usa effect_size positivo para subir y negativo para bajar. Para conductas adictivas/dopamina rápida sube DOPAMINA a corto plazo y DOPA_LOAD (carga, peor cuanto más alta). Ejemplo tabaco: DOPAMINA +6 (1h), DOPA_LOAD +5 (4h), CORTISOL +4 (3h), ENERGY -3 (6h), FOCUS -2 (3h).
-- Si el usuario indica que YA lo hizo, incluye "firstEvent" para registrar el primer evento al crearla.
-- Si la petición no tiene sentido o es ambigua, NO crees nada: pregúntale.
+Si el usuario quiere registrar algo que NO existe en la lista de variables (p.ej. "añade fumar/tabaco"), y es razonable, PROPÓN crearla MODELANDO TODA SU CASCADA SISTÉMICA — no solo un par de hormonas. Piensa como un fisiólogo: qué neuroquímica dispara, qué efectos de REBOTE deja después, en qué EJES de vida impacta y CÓMO se propaga en el tiempo.
+- PRIMERO comprueba la lista de variables. Si ya existe una equivalente, usa logEvent — NO dupliques.
+- var_id: MAYÚSCULAS ASCII con guion bajo, sin acentos (p.ej. "TABACO").
+- area_id ∈ [${AREA_IDS.join(', ')}] · tipo ∈ [${TIPOS.join(', ')}] · polaridad: 1 (refuerza) o -1 (drena).
+- impacto_base: 3-12 (magnitud global) · controlabilidad: Alta/Media/Baja.
+- DINÁMICA TEMPORAL (modélala según la conducta real):
+  · curva ∈ [${CURVAS.join(', ')}]: "Exponencial" para adictivo/compulsivo (cada repetición pesa más), "Umbral" si solo importa al superar cierta dosis, "Lineal" en lo demás.
+  · delay_dias: 0 si el efecto es inmediato; >0 si se nota MÁS TARDE (p.ej. alcohol o mala noche → 1 = al día siguiente).
+  · duracion_dias: cuánto persiste el efecto (un cigarro ~0.25; resaca ~1; estrés crónico 2-3).
+  · umbral_riesgo: nº de veces/periodo a partir del cual se vuelve preocupante (1-10).
+- impacts: la CASCADA hormonal completa. Cada item { "hormone_id", "effect_size" (-15..15), "duration_hours" }. Hormonas: [${HORMONE_IDS.join(', ')}]. Modela:
+  · efecto PRIMARIO inmediato (corta duración) Y el REBOTE/resaca posterior (mayor duration_hours). Ej.: dopamina rápida sube DOPAMINA y NORADRENALINA a 1-2h, sube DOPA_LOAD (carga) varias horas, y deja caída de SEROTONINA/ENERGY/FOCUS después.
+  · usa varias hormonas (3-6) cuando aplique; effect_size + sube, - baja.
+- rationale: 1 frase clara del porqué y del efecto principal.
+- Ejemplo TABACO (cascada completa): curva "Exponencial", delay_dias 0, duracion_dias 0.25, umbral_riesgo 3, impacts: DOPAMINA +6 (1h), NORADRENALINA +5 (1h), DOPA_LOAD +6 (5h), CORTISOL +4 (3h), SEROTONINA -3 (6h), ENERGY -3 (6h), FOCUS -2 (3h).
+- Si el usuario indica que YA lo hizo, incluye "firstEvent". Si es ambiguo, NO crees nada: pregúntale.
+- En tu "reply", explica BREVEMENTE la cascada que has modelado (qué hormonas suben/bajan, el rebote posterior y a qué área afecta) para que el usuario vea el razonamiento.
 
 FINANZAS:
 - logTransaction: registrar gasto/ingreso. { "type":"logTransaction", "txType":"Gasto"|"Ingreso", "monto":NUMERO_POSITIVO, "categoria":"<una de las categorías listadas>", "contexto":"breve", "impulsivo":bool }. Elige la categoría más cercana de la lista; si no encaja ninguna, usa "Otros Gastos"/"Otros Ingresos".
@@ -247,6 +258,13 @@ function sanitizeActions(raw: unknown, hints: ChatActionHints): ChatAction[] {
       const polaridad: 1 | -1 = Number((a as any).polaridad) === 1 ? 1 : -1;
       const impacto_base = clampInt((a as any).impacto_base, 3, 12, 6);
       const controlabilidad = (CONTROLABILIDAD as readonly string[]).includes((a as any).controlabilidad) ? (a as any).controlabilidad : 'Media';
+      // Dinámica temporal: la IA la modela; si falta, defaults sensatos por polaridad.
+      const curva = (CURVAS as readonly string[]).includes((a as any).curva) ? (a as any).curva : (polaridad === -1 ? 'Exponencial' : 'Lineal');
+      const delayRaw = Number((a as any).delay_dias);
+      const delay_dias = Number.isFinite(delayRaw) ? Math.min(7, Math.max(0, Math.round(delayRaw))) : 0;
+      const durRaw = Number((a as any).duracion_dias);
+      const duracion_dias = Number.isFinite(durRaw) ? Math.min(7, Math.max(0.05, durRaw)) : 0.25;
+      const umbral_riesgo = clampInt((a as any).umbral_riesgo, 1, 10, 2);
       const rationale = String((a as any).rationale ?? '').slice(0, 240);
 
       const seenHormones = new Set<string>();
@@ -271,7 +289,7 @@ function sanitizeActions(raw: unknown, hints: ChatActionHints): ChatAction[] {
         };
       }
 
-      out.push({ type: 'createVariable', var_id, var_nombre, area_id, tipo, polaridad, impacto_base, controlabilidad, rationale, impacts, firstEvent });
+      out.push({ type: 'createVariable', var_id, var_nombre, area_id, tipo, polaridad, impacto_base, controlabilidad, curva, delay_dias, duracion_dias, umbral_riesgo, rationale, impacts, firstEvent });
     } else if (t === 'logTransaction') {
       const txType = (TX_TYPES as readonly string[]).includes((a as any).txType) ? (a as any).txType as 'Gasto' | 'Ingreso' : 'Gasto';
       const monto = Math.abs(Number((a as any).monto));
