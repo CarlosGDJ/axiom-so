@@ -1,8 +1,8 @@
 import { differenceInHours, parseISO } from 'date-fns';
 import type { Area, Event, OverallState, PlayerProfile, Variable } from '@/lib/types';
 
-const AREA_BASE_SCORE = 70;
-const AREA_SCORE_MULTIPLIER = 2;
+export const AREA_BASE_SCORE = 70;
+export const AREA_SCORE_MULTIPLIER = 2;
 
 const clamp = (value: number, min = 0, max = 100) => Math.max(min, Math.min(max, value));
 

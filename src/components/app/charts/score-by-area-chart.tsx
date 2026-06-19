@@ -44,7 +44,7 @@ export default function ScoreByAreaChart({ data }: ScoreByAreaChartProps) {
       <CardHeader>
         <CardTitle>Puntuación por Área</CardTitle>
         <CardDescription>
-          Estado actual por área (Verde {'>'} 75, Naranja {'>'} 50, Rojo ≤ 50).
+          Estado actual por área (Verde ≥ 60, Naranja ≥ 40, Rojo {'<'} 40).
         </CardDescription>
       </CardHeader>
       <CardContent>

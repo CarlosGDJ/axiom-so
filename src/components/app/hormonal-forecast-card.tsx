@@ -6,12 +6,14 @@ import { Badge } from '@/components/ui/badge';
 import { TrendingUp, TrendingDown, Minus, Zap, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { addHours, parseISO, differenceInHours } from 'date-fns';
-import { computeAreaEventContributionAtTime, getVariableDecayK } from '@/lib/area-scoring';
+import { computeAreaEventContributionAtTime, getVariableDecayK, AREA_BASE_SCORE, AREA_SCORE_MULTIPLIER } from '@/lib/area-scoring';
 import type { UserData } from '@/lib/types';
 
 const clamp = (v: number, min = 0, max = 100) => Math.max(min, Math.min(max, v));
-const BASE = 70;
-const MULT = 2;
+// Mismas constantes que el motor de áreas (importadas, no duplicadas) para que la
+// proyección no derive del cálculo real si cambian.
+const BASE = AREA_BASE_SCORE;
+const MULT = AREA_SCORE_MULTIPLIER;
 
 const HORIZONS = [
   { label: 'Ahora',  hours: 0 },
