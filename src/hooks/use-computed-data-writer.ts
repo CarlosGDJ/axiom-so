@@ -246,6 +246,19 @@ const tanhNorm = (value: number, scale = 1) => {
   return Math.tanh(v / Math.max(0.0001, scale));
 };
 
+// Saturación suave de la franja alta del score. Por DEBAJO del codo (knee) el
+// score es lineal: preserva intactos los umbrales clínicos (40/70) y todos los
+// estados de riesgo. Por ENCIMA se comprime con rendimientos decrecientes hacia
+// 100 (curva tanh, monótona y siempre <100). Antes el raw de un estado sano se
+// iba a ~120-135 y se recortaba en seco a 100, perdiendo toda resolución: los
+// eventos negativos no movían el score. Ahora un estado sano se sitúa ~90-97 y
+// los negativos vuelven a notarse, sin tocar la mitad baja del rango.
+const softCeilScore = (raw: number, knee = 75, ceil = 100, scale = 38) => {
+  const v = Number.isFinite(raw) ? raw : 0;
+  if (v <= knee) return clamp(v);
+  return knee + (ceil - knee) * Math.tanh((v - knee) / scale);
+};
+
 function circadianMultiplier(hormoneId: string, currentHour: number): number {
   const phase = CIRCADIAN_PHASES[hormoneId];
   if (!phase) return 1;
@@ -1843,7 +1856,7 @@ export function useComputedDataWriter(ext?: WriterPrefetch) {
       return raw * Math.min(1, confidence / 0.7);
     })();
 
-    const rawPlayerScore = clamp(Math.round(resources - load - allostaticLoad - resonancePenalty - clinicalPenalty + recoveryReserve + 50));
+    const rawPlayerScore = Math.round(softCeilScore(resources - load - allostaticLoad - resonancePenalty - clinicalPenalty + recoveryReserve + 50));
     const storedPrevScore = lastGlobalState?.rpg_stats?.player_score;
     // `?? ` no atrapa NaN: un score corrupto guardado por un run anterior se
     // autoperpetuaría a través del EMA. Exigimos un número finito.
