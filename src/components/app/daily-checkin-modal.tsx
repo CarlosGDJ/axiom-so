@@ -119,6 +119,9 @@ export default function DailyCheckinModal() {
         sensitivity_pressure: s.pressure,
       }, { merge: true });
       revalidateCollection('playerProfile');
+      // Guarda las sensibilidades resultantes en el cierre → permite ver la evolución.
+      setDocumentNonBlocking('dailyCheckins', today, { sensitivities: s }, { merge: true });
+      revalidateCollection('dailyCheckins');
       toast({ title: 'Cierre guardado · Axiom se ha ajustado', description: res.summary });
     } catch {
       toast({ title: 'Cierre guardado', description: 'Gracias por tu reflexión de hoy.' });

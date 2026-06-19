@@ -34,8 +34,12 @@ import ProfileProgressionCard from '@/components/app/profile-progression-card';
 import XpTimelineChart from '@/components/app/charts/xp-timeline-chart';
 import ExportPdfButton from '@/components/app/export-pdf-button';
 import { useUser } from '@/hooks/use-session-user';
-import { useDoc } from '@/hooks/use-mongo-collection';
+import { useDoc, useCollection } from '@/hooks/use-mongo-collection';
+import Sparkline from '@/components/app/sparkline';
 import { signOut } from 'next-auth/react';
+
+type SensKey = 'stress' | 'dopamine' | 'sleep' | 'emotional' | 'environmental' | 'pressure';
+interface CheckinSens { fecha: string; sensitivities?: Record<SensKey, number> }
 export default function ProfilePage() {
   const { user, uid } = useUser();
   const router = useRouter();
@@ -47,6 +51,16 @@ export default function ProfilePage() {
   const { data: playerProfile } = useDoc<PlayerProfile>('playerProfile', uid ? 'main-profile' : null);
   const { data: userProfile } = useDoc<UserProfile>('userProfile', uid ? uid : null);
   const { data: calibrationDoc } = useDoc<DashboardConfig>('dashboardConfig', uid ? 'bio_auto_calibration' : null);
+  const { data: checkinHistory } = useCollection<CheckinSens>(uid ? 'dailyCheckins' : null, { orderBy: 'fecha', direction: 'asc', limit: 60 });
+
+  // Series de evolución por sensibilidad a partir de los cierres del día.
+  const sensSeries = useMemo(() => {
+    const withSens = (checkinHistory ?? []).filter(c => c.sensitivities);
+    const keys: SensKey[] = ['stress', 'dopamine', 'sleep', 'emotional', 'environmental', 'pressure'];
+    const out = {} as Record<SensKey, number[]>;
+    for (const k of keys) out[k] = withSens.map(c => c.sensitivities![k]).filter(v => typeof v === 'number');
+    return out;
+  }, [checkinHistory]);
 
   const calibrationInfo = useMemo(() => {
     if (!calibrationDoc?.value) return null;
@@ -302,6 +316,9 @@ export default function ProfilePage() {
                         delta < -0.05 ? 'Más resiliente' :
                         'Estable';
 
+                      const series = sensSeries[row.key as SensKey] || [];
+                      const evoDelta = series.length >= 2 ? series[series.length - 1] - series[0] : 0;
+
                       return (
                         <div key={row.key} className="rounded-lg border p-3 bg-muted/20">
                           <div className="flex items-center justify-between">
@@ -311,6 +328,14 @@ export default function ProfilePage() {
                           <p className={cn('text-xs mt-1', trendClass)}>
                             {trendText} ({delta >= 0 ? '+' : ''}{delta.toFixed(2)} vs base 1.00)
                           </p>
+                          {series.length >= 2 && (
+                            <div className="mt-2 flex items-center justify-between gap-2">
+                              <Sparkline values={series} domain={[0.6, 1.8]} className={trendClass} />
+                              <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                                {evoDelta >= 0 ? '▲' : '▼'} {Math.abs(evoDelta).toFixed(2)} · {series.length} cierres
+                              </span>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
