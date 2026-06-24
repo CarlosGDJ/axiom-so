@@ -52,6 +52,7 @@ firebase-data/
 *.export_metadata
 studio-*-firebase-adminsdk-*.json
 prod-backup.json
+backups/
 .modified
 .idx/
 app_out.txt
